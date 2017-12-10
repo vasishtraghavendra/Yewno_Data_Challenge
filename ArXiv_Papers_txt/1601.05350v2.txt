@@ -1,0 +1,574 @@
+Disaggregation of SMAP L3 Brightness
+
+Temperatures to 9km using Kernel Machines
+
+1
+
+Subit Chakrabarti, Student Member, IEEE, Jasmeet Judge, Senior Member, IEEE, Tara Bongiovanni,
+
+Anand Rangarajan, Member, IEEE,
+
+Sanjay Ranka, Fellow, IEEE.
+
+Abstract
+
+In this study, a machine learning algorithm is used for disaggregation of SMAP brightness temperatures (TB)
+from 36km to 9km. It uses image segmentation to cluster the study region based on meteorological and land cover
+similarity, followed by a support vector machine based regression that computes the value of the disaggregated
+TB at all pixels. High resolution remote sensing products such as land surface temperature, normalized difference
+vegetation index, enhanced vegetation index, precipitation, soil texture, and land-cover were used for disaggregation.
+The algorithm was implemented in Iowa, United States, from April to July 2015, and compared with the SMAP
+L3 SM AP TB product at 9km. It was found that the disaggregated TB were very similar to the SMAP-TB product,
+even for vegetated areas with a mean difference ≤ 5K. However, the standard deviation of the disaggregation was
+lower by 7K than that of the AP product. The probability density functions of the disaggregated TB were similar to
+the SMAP-TB. The results indicate that this algorithm may be used for disaggregating TB using complex non-linear
+correlations on a grid.
+
+Disaggregation, Microwave Remote Sensing, Soil Moisture, Kernel Regression, Clustering, Multi-spectral Re-
+
+mote Sensing.
+
+Index Terms
+
+6
+1
+0
+2
+
+ 
+
+b
+e
+F
+1
+1
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+0
+5
+3
+5
+0
+
+.
+
+1
+0
+6
+1
+:
+v
+i
+X
+r
+a
+
+This work was supported in part by the NASA-Terrestrial Hydrology Program (THP)-NNX13AD04G.
+S. Chakrabarti and J. Judge are with the Center for Remote Sensing, Agricultural and Biological Engineering Department, Institute of
+Food and Agricultural Sciences, University of Florida, Gainesville, USA; A. Rangarajan and S. Ranka are with the Department of Computer
+& Information Science & Engineering, University of Florida, Gainesville. E-mail: subitc@uﬂ.edu
+
+A version of this manuscript has been submitted to IEEE Geoscience and Remote Sensing Letters.
+
+2
+
+I. INTRODUCTION
+
+Microwave observations are highly sensitive to near-surface soil moisture (SM) [1]–[10], and with the recent
+launch of the NASA Soil Moisture Active and Passive (SMAP) mission along with the ESA SMOS mission, we
+now have unprecedented global observations of SM every 2-3 days. The NASA-SMAP was expected to provide
+SM at a spatial resolution of 9 km retrieved from combined active and passive (AP) observations at 1.26 and
+1.41 GHz, respectively, every 2-3 days [11]. This spatial resolution is optimal for many hydrometeorological
+applications [12]–[18]. However, on July 7th 2015, the radar on board SMAP halted its transmissions due to an
+anomaly [19], creating a gap in the disaggregation of coarse scale radiometer observations (TB) available at 36km
+to 9km using active observations to meet the mission requirements for the L3 SM AP product. A few studies have
+attempted to disaggregate TB directly without the complementary information provided by active observations, such
+as statistical inversion techniques [20]–[22]. These techniques allow discovery of non-linear correlations between
+TB across scales. However, many of these methods require high-resolution TB for training, which is typically not
+available. Piles et. al. [23] disaggregated TB directly into SM by applying the Universal Triangle (UT) method and
+used a 2nd order regression-based linking model to relate coarse resolution SM to TB from the SMOS mission, and
+other high resolution products, aggregated to the resolution of SMOS observations. The ﬁne scale SM was then
+estimated using the assumption that the linking model at the coarse resolution also holds at ﬁner resolutions. The
+robustness of this method over heterogeneous vegetation and weather conditions remain mostly untested. Treating
+each pixel as a sample instead of using spatial information to regularize the disaggregation results in salt and
+pepper noise due to spatial auto-correlation [24]. Moreover, these approaches use second order metrics, which do
+not leverage all the information in the data that is necessary in a highly non-linear regression problem such as
+disaggregation [25].
+
+The goal of this study is to disaggregate SMAP TB observations from 36 km to 9 km without requiring in-situ
+data for training. This is done using a version of the self regularized regressive model (SRRM) algorithm [26] that
+includes kernel based support vector regression models in conjunction with coarse-scale spatial segmentation. The
+segmentation algorithm separates the study region into discrete sets of pixels which have similar terrain conditions.
+A support vector regression model is estimated for each set using coarse scale TB and auxiliary correlated data
+which is further applied to the auxiliary data at ﬁne scale to obtain disaggregated TB. The primary objectives are to,
+1) enhance the SRRM algorithm to disaggregate coarse SMAP TB to 9 km without ﬁne-scale TB as training, and
+using other spatially correlated variables such as land surface temperature(LST), normalized difference vegetation
+index (NDVI), enhanced vegetation index (EVI), precipitation (PPT), soil texture and land-cover (LC), 2) implement
+the downscaling algorithm in Iowa in mid-western United States, and 3) compare the disaggregated TB to the SMAP
+L3 SM AP TB at 9km product (hereafter referred to as SMAP-TB) during April 27 to July 5, 2015, when the
+product is available.
+
+II. THEORY
+
+Disaggregation is an ill-posed problem constrained by the smoothness of the coarse-scale data which constrains
+the generation of data at ﬁne scale because any added sharpness can be misconstrued as noise. Additional geospatial
+and meteorological data that are correlated to TB are needed to ensure that the added sharpness has physical basis.
+In this study, these auxiliary data-sets are utilized to create localized regression models that provide a mapping
+from the TB at coarse scale to TB at ﬁne scale. To ensure that the localization is realistic and not arbitrary, the
+coarse TB image is ﬁrst segmented into multiple regions of radiometric similarity. The overall organization and the
+datasets involved is shown in Figure 1.
+
+A. Self-Regularized Regressive Models (SRRM)
+
+The ﬁrst step of the algorithm divides the study area into segments using the coarse scale TB. In this study,
+the segmentation algorithm uses information theoretic measures of inter and intra segment similarity [27]. If X =
+{x1, x2, x3 . . . xN} is a matrix containing TB for N pixels, the Cauchy-Schwarz cost-function, ˆJCS, estimates
+optimal memberships of the pixels to segments, m, in an un-supervised manner.
+
+(cid:80)N
+(cid:113)(cid:81)K
+
+1
+2
+
+(cid:80)N
+(cid:80)N
+
+i=1
+
+j=1
+
+(cid:0)1 − mT
+(cid:80)N
+
+i mj
+
+(cid:1) Gσ
+
+√
+
+ˆJ REG
+CS =
+
+k=1
+
+i=1
+
+j=1 mikmjkGσ
+
+2 (xi, xj)
+√
+
+2(xi, xj)
+
+(1)
+
+2 is the Gaussian kernel with standard-deviation σ and ν is the
+where, K is the number of segments, Gσ
+regularization weight. The optimal value of the membership vector can be obtained from the following constrained
+optimization problem,
+
+√
+
+3
+
+minm1,...,mN
+subject to mT
+
+ˆJ REG
+CS (m1, . . . , mN )
+j 1 − 1 = 0,
+
+j = 1, . . . , N
+
+(2)
+
+To compute optimum values of m, and thus the membership of each pixel to the K segments, a Lagrange
+multiplier formulation can be used along with a stochastic gradient descent scheme, the details of which are shown
+in [26].
+
+In the second step, support vector regression (SVR) [28], is used to generate the downscaled estimates. A training
+set of pixels, for example ytrain is used in the regression to ﬁt a non-linear function, for example f, from the set
+of the auxiliary data and coarse scale TB, for example z, to ﬁne scale TB. This function takes the form,
+
+(3)
+where w are the weights and < ., . > is the inner-product operation in some Hilbert space, H. The cost function
+
+f (z) =< w, z >H +b
+
+of support vector regression, which minimizes the errors between ytrain and f (z) to at most ,
+
+(4)
+
+l(cid:88)
+
+1
+2
+
+i=1
+
+(ξi + ξ∗
+i )
+
+(cid:107)w2(cid:107) + C
+
+ytrain− < w, z >H −b ≤  + ξi
+
+< w, z >H +b − ytrain ≤  + ξ∗
+i , ξi ≥ 0
+ξ∗
+
+i
+
+subject to
+
+where ξ∗
+
+i and ξi are called slackness constants such that Equation 4 can be solved using convex optimization
+and C determines the trade-off between the ﬂatness of f and the amount up to which deviations greater that 
+are tolerated. The function f is allowed to be non-linear by selecting a suitable H such that the inner product
+becomes a kernel evaluation as < w, z >H= κ(w, z). In this study the radial basis function kernel was chosen,
+where σ is the kernel parameters. More details about the statistics and convex optimization
+κ(w, z) = exp
+theory that is used to solve SVR based problems are available in [29], [30] and are not repeated here.
+
+(cid:16)(cid:107)w−z(cid:107)2
+
+(cid:17)
+
+2σ2
+
+III. EXPERIMENTAL DESCRIPTION AND RESULTS
+
+A. Study Area
+
+The study was conducted in a 320 × 560 km2 region in the state of Iowa in the United States (US), stretching
+from 40.36◦ to 43.57◦N and 90.14◦ to 96.68◦W, equivalent to 162 SMAP pixels. Iowa, with an area of about
+1.7 × 105 km2, out of which 1.2 × 105 km2 is cropland, is one of the most important agricultural areas in the
+US responsible for > 70% of the country’s agricultural gross domestic product [31], and includes a SMAP core
+validation site in the South Fork watershed. The percentage of silt, clay and soil is also shown in the study region
+in Figure 2.
+
+To downscale TB at 36 km to 9 km, satellite based observations of EVI, NDVI, LST, PPT were used from April
+20 to June 30 2015. LC and soil texture (STEX) were also used and considered to be constant for the duration of
+the study. The products used in this study along with their native and interpolated spatio-temporal resolutions are
+listed in Table I. LST, EVI and NDVI, available at ∼ 1 km, were interpolated to 9km through spatial averaging.
+For this study, LC is available as a categorical data product at a spatial resolution of 30 m. LC was recategorized
+into seven groups and the ratio of each group within a 1 km pixel was used. The two groups occupying the largest
+area had corn and soybean land covers. Agricultural areas with other crops were conglomerated and referred to as
+’miscellaneous’ and used as a single group. Some forests, wetlands, and developed regions were also present in the
+study area and used as three groups. Anything that could not be categorized into the 6 groups, mentioned above,
+were assigned to a group referred to as ’others’. The ratio of each group within a single 1-km pixel is shown in
+Figures 3(a) through (f). The 9 km LC was obtained by linearly averaging the ratios obtained at 1 km.
+
+B. Implementation in Iowa
+
+4
+
+In the modiﬁed SRRM algorithm, the DCS based clustering algorithm to discover regions of similarity in the
+study area. In Equation 1 from Section II.A., X = {[TB,1, lat1, lon1] , [TB,1, lat2, lon2] , . . . , [TB,M, latM , lonM ]}
+where M is the total number of coarse pixels in the region and lati and loni are the latitude and longitude of the
+ith pixel. The number of clusters, N, is used as a parameter. Since no ground truth is available in the region, N
+is determined using the principle of minimum description length as described in [32] is used. After clustering, M
+models, ˆf1, ˆf2, . . . , ˆfM are developed using NDVI, EVI, PPT, LST, LC and STEX aggregated to 36km along with
+the coarse scale TB using Equation 4. The disaggregated value of TB at 9km is then computed by applying the
+learnt functions ˆf1, ˆf2, . . . , ˆfM to NDVI, EVI, PPT, LST and LC values aggregated to 9km.
+
+The means and standard deviations of the disaggregated TB and SMAP-TB are compared to provide an index
+of the intra-season variability captured in the TB, as shown in Figure 4. The means are preserved by the multiscale
+SRRM algorithm with differences of ≤ 0.5K, while the average standard-deviation of the disaggregated TB is 7K
+lower than that for the SMAP-TB. The maximum difference between the standard deviations of the disaggregated
+TB and SMAP-TB is observed when TB shows a decreases sharply on DoY 139 and DoY 161 due to high spatial
+variability in PPT, and the TB is underestimated for areas with high PPT which decreases the standard deviation in
+disaggregated TB because of a 4-hour time lag between the SMAP and Global Precipitation Measurement (GPM)
+observations. Any rainfall that occurs in this time is not indicated by the GPM PPT product but affects the TB.
+
+In addition, the disaggregated TB images on three days during May and June are compared with SMAP-TB, to
+determine spatial diversity under increasing amounts of vegetation and different precipitation conditions. On DoY
+125 (May 5), the precipitation is heterogeneous across the region, as shown in Figure 5(b). The disaggregated
+TB captures the decrease in TB in the east-central region of Iowa due to high PPT adequately, similar to the
+SMAP-TB at 9km. The major variability in the inputs and SMAP-TB are present in the disaggregated TB. It is
+also smoother compared to SMAP-TB which suggests low noise levels because any two neighbouring pixels differ
+by ≤ 10K in the disaggregated TB. Similar performance is observed for DoYs 157 (June 6) and 181 (June 30),
+shown in Figure 6 and Figure 7 respectively. The locations of the clusters also change on both the days according
+to the spatial patterns of TB. Furthermore, even when the NDVI and EVI are high, as observed for DoY 181, the
+disaggregated TB is similar as compared to the SMAP-TB. On DoY 181, the LST is unavailable for a lot of the
+pixels in the study region, which reduces the heterogeneity in disaggregated TB because the spatial patterns in LST
+cannot be utilized for disaggregation. However, as shown in Figure 7(b), the spatial distribution of the disaggregated
+TB is comparable to the SMAP-TB. Thus,the multiscale SRRM algorithm is sufﬁciently robust to vegetation levels
+and LCs.
+
+The probability density functions (PDF) of the disaggregated TB, coarse scale SMAP TB at 36km, and SMAP-
+TB at 9km are estimated to facilitate inter-comparisons and further elucidate the relationship among the three
+products. The statistical similarity of disaggregated TB to the coarse scale SMAP TB is shown in Figure 8. The
+PDF of disaggregated TB is closer to the PDF of coarse scale SMAP TB than the SMAP-TB which shows that the
+disaggregated TB is more closely coupled to the coarse scale SMAP TB. This demonstrates that the multi-scale
+SRRM algorithm can be operationally used to disaggregate the coarse scale SMAP TB to 9 km.
+
+IV. CONCLUSION
+
+In this study, a disaggregation methodology from 36km to 9km was developed and implemented that preserves
+the high variability in TB due to heterogeneous meteorological and vegetation conditions. The multiscale SRRM
+preserves heterogeneity by utilizing a segmentation algorithm to create a number of regions of similarity which
+subsequently, are used in a support vector machine regression framework. The clusters were computed using RS
+products, viz. PPT, EVI, NDVI, LC and Soil Texture. It was found that the difference between the means of the
+disaggregated TB and SMAP-TB is ≤ 5K for all days while the average variance is ≤ 7K. The disaggregated TB
+and SMAP-TB were alike even under highly vegetated conditions. The PDFs of the disaggregated TB were found
+to be closer to the PDF of the coarse scale SMAP TB than the PDF of the SMAP-TB product. The results indicate
+that this algorithm can be used for disaggregating TB with complex non-linear correlations on a grid with high
+accuracy.
+
+[1] J. T.J and T. Schmugge, “Vegetation effects on the microwave emission of soils,” Remote Sens. Env., vol. 36, no. 3, pp. 203–212, 1991.
+
+REFERENCES
+
+5
+
+[2] T. Jackson and T. Schmugge, “Surface soil moisture measurement with microwave radiometry,” Acta Astronautica, vol. 35, no. 7, pp.
+
+[3] S. Ahmad, A. Kalra, and H. Stephen, “Estimating soil moisture using remote sensing data: A machine learning approach,” Adv. in
+
+477–482, 1995.
+
+Water Res., vol. 33, pp. 69–80, 2010.
+
+[4] C. Gruhier, P. de Rosnay, S. Hasenauer, T. Holmes, R. de Jen, Y. Kerr, E. Mougin, E. Njoku, F.Timouk, W. Wagner, and M. Zribi, “Soil
+moisture active and passive microwave products: intercomparison and evaluation over a Sahelian site,” Hydrology and Earth System
+Sciences, vol. 14, pp. 141–156, 2010.
+
+[5] B. W. Barrett, E. Dwyer, and P. Whelan, “Soil moisture retrieval from active spaceborne microwave observations: an evaluation of
+
+current techniques,” Remote sensing, vol. 1, pp. 210–242, 2009.
+
+[6] J. Qin, S. Liang, K. Yang, I. Kaihotsu, R. Liu, and T. Koike, “Simultaneous estimation of both soil moisture and model parameters
+using particle ﬁltering method through the assimilation of microwave signal,” Journal of Geophysical Research, vol. 114, p.
+doi:10.1029/2008JD011358, 2009.
+
+[7] T. Lakhankar, N. Krakauer, and R. Khanbilvardi, “Applications of microwave remote sensing of soil moisture for agricultural
+
+applications,” International Journal of Terraspace Science and Engineering, vol. 2, no. 1, pp. 81–91, 2009.
+
+[8] K. B. Mao, H. J. Tang, L. X. Zhang, M. C. Li, Y. Guo, and D. Z. Zhao, “A method for retrieving soil moisture in Tibet region by
+
+utilizing microwave index from TRMM/TMI data,” Int. J. Remote Sensing, vol. 29, no. 10, pp. 2903–2923, 2008.
+
+[9] L. Wang, J. J. Qu, S. Zhang, X. Hao, and S. Dasgupta, “Soil moisture retrieval using EOS MODIS and ground measurements in Eastern
+
+China,” Int. J. Remote Sensing, vol. 28, no. 6, pp. 1413–1418, 2007.
+
+[10] S. Dongsheng, Z. Kai, and G. Zhi, “Advances in research on soil moisture by microwave remote sensing in china,” Chinese Geographical
+
+Science, vol. 17, no. 2, pp. 186–191, 2007.
+
+[11] D. Entekhabi, E. Njoku, P. O’Neill, M. Spencer, T. Jackson, J. Entin, E. Im, and K. Kellogg, “The Soil Moisture Active/Passive Mission
+
+(SMAP),” in IEEE Int. Geosc. and Rem. Sens. Symposium, vol. 3. Proc. IGARSS 2008, 2008, pp. III–1 – III–4.
+
+[12] M. Fennessy and J. Shukla, “Impact of initial soil wetness on seasonal atmospheric prediction,” J. Clim., vol. 12, pp. 3167–3180, 2009.
+[13] H. Douville and F. Chauvin, “Relevance of soil moisture for seasonal climate predictions: A preliminary study,” Clim. Dyn., vol. 16,
+
+pp. 719–736, 2000.
+
+[14] The GLACE Team, R. Koster1, P. Dirmeyer, Z. Guo, G. Bonan, E. Chan, P. Cox, C. Gordon, S. Kanae, E. Kowalczyk, D. Lawrence,
+P. Liu, C. Lu, S. Malyshev, B. McAvaney, K. Mitchell, D. Mocko, T. Oki, K. Oleson, A. Pitman, Y. Sud, C. Taylor, D. Verseghy,
+R. Vasic, Y. Xue, and T. Yamada, “Regions of strong coupling between soil moisture and precipitation,” Science, vol. 305, no. 5687,
+pp. 1138–1140, 2004.
+
+[15] F. Tubiello, C. Rosenzweig, R. Goldberg, S. Jagtap, and J. Jones, “Effects of climate change on U.S. crop production: Simulation
+
+results using two different GCM scenarios. part i: Wheat, potato, maize, and citrus,” Clim. Res., vol. 20, pp. 259–270, 2002.
+
+[16] J. Yuste, M. Nagy, I. Jenkins, I. Janssens, A. Carrara, and R. Ceulemans, “Soil respiration in a mixed temperate forest and its contribution
+
+to total ecosystem respiration,” Tree Physiol., vol. 25, no. 05, pp. 609–619, 2005.
+
+[17] A. Friend, A. Arneth, N. Kiang, M. Lomass, J. Ogee, C. Rodenbeck, S. Running, J. Santaren, S. Sitch, N. Viovy, F. Woodwards, and
+
+S. Zaehle, “FLUXNET and modelling the global carbon cycle,” Global Change Biology, vol. 13, pp. 613–633, 2007.
+
+[18] F. Fecan, B. Marticorena, and G. Bergametti, “Parametrization of the increase of the aeolian erosion threshold wind friction velocity
+due to soil moisture for arid and semi-arid areas,” Ann. Geophys.-Atmos. Hydrospheres Space Sci., vol. 17, no. 01, pp. 149–157, 1999.
+[Online]. Available:
+
+(2015) NASA soil moisture radar ends operations, mission science continues.
+
+[19] NASA SMAP Team.
+
+http://smap.jpl.nasa.gov/news/1247/
+
+[20] Y. Wang, J. Shi, L. Jiang, J. Du, and B. Tian, “The development of an algorithm to enhance and match the resolution of satellite
+
+measurements from amsr-e,” Science China: Earth Sciences, vol. 54, no. 3, pp. 410–419, 2011.
+
+[21] A. Gambardella and M. Migliaccio, “On the superresolution of microwave scanning radiometer measurements,” IEEE Geosci. and
+
+Remote Sensing Letters, vol. 5, no. 4, pp. 796–800, 2008.
+
+[22] F. Lenti, F. Nunziata, C. Estatico, and M. Migliaccio, “On the spatial resolution enhancement of microwave radiometer data in banach
+
+spaces,” IEEE Trans. Geosci. Remote Sensing, vol. 52, no. 3, pp. 1834–1842, 2014.
+
+[23] M. Piles, M. Vall-llossera, L.Laguna, and A. Camps, “A downscaling approach to combine SMOS multi-angular and full-polarimetric
+observations with mdis vis/ir data into high resolution soil moisture maps,” in IEEE Int. Geosc. and Rem. Sens. Symposium, vol. 1.
+Proc. IGARSS 2012, 2012, pp. 1247–1250.
+
+[24] Z. Jiang, S. Shekhar, X. Zhou, J. Knight, and J. Corcoran, “Focal-test-based spatial decision tree learning: A summary of results,”
+
+Proceedings of the IEEE 13th International Conference on Data Mining (ICDM), pp. 320–329, 2013.
+
+[25] J. Principe, D. Xu, and J. Fisher, Information theoretic learning, in unsupervised adaptive ﬁltering. New York: Wiley, 2010.
+[26] S. Chakrabarti, J. Judge, A. Rangarajan, and S. Ranka, “Disaggregation of remotely sensed soil moisture in heterogeneous landscapes
+
+using holistic structure based models,” IEEE Trans. Geosci. Remote Sensing, vol. Under Review, 2015.
+
+[27] R. Jennsen, D. Erdogmus, K. Hild, J. Principe, and T. Eltoft, “Optimizing the Cauchy-Schwarz PDF distance for information theoretic,
+non-paremetric clustering,” in Proceedings of the 5th international conference on Energy Minimization Methods in Computer Vision
+and Pattern Recognition, vol. 1. Proc. EMMCVPR 2005, 2005, pp. 34–45.
+
+[28] V. Vapnik, S. Golowich, and A. Smola, “A tut,” Advances in Neural Information Processing, vol. 9, pp. 281–287, 1996.
+[29] A. Smola and B. Sch¨olkopf, “A tutorial on support vector regression,” Statistics and Computing, vol. 14, pp. 199–222, 2004.
+[30] S. Clarke, J. Griebsch, and T. Simpson, “Analysis of support vector regression for approximation of complex engineering analyses,” J.
+
+[31] T. Vilsack and C. Clark, “Census of agriculture - United States,” National Agricultural Statistics Service, Washington, DC, Tech. Rep.,
+
+[32] M. Hanse and B. Yu, “Model selection and the principle of minimum description length,” Journal of the American Statistical Association,
+
+Mech. Des, vol. 127, no. 6, pp. 1077–1087, 2004.
+
+2012.
+
+vol. 96, no. 454, pp. 746–774, 2001.
+
+6
+
+SATELLITE OBSERVATIONS AND OTHER DATA PRODUCTS USED.
+
+TABLE I
+
+Sl. No.
+
+Physical Quantity
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+Brightness Temperature
+
+Precipitation
+
+Enhanced Vegetation Index
+
+Land Surface Temperature
+
+Land Cover
+
+Normalized Difference Vegetation Index
+
+Spatial
+Resolution
+
+Source
+
+36 km
+0.1◦
+1 km
+
+1 km
+
+30 m
+0.125◦
+
+NASA-SMAP
+
+NASA-GPM
+
+NASA Aqua/Terra
+
+NASA Aqua/Terra
+
+USDA NASS-CDL
+
+NASA Aqua/Terra
+
+Temporal
+Resolution
+2-3 days
+
+30 min
+
+8 days
+
+1 day
+
+1 year
+
+8 days
+
+7
+
+Fig. 1. Flowchart for the multi-scale SRRM disaggregation method.
+
+ 36km 9km SEGMENTATION TB,SMAP/SMOS TB,9km KERNEL REGRESSION ≤1km  EVI  NDVI  PPT   LST  LC Features AGGREGATE Features TRAINING AGGREGATE  Soil  EVI  NDVI  LST  LC  Soil 8
+
+Fig. 2. Soil texture in the study region in Iowa, United States - volumetric ratio of (a)sand, (b)clay and (c)silt in the soil.
+
+9
+
+Fig. 3. Land Covers in the study region in Iowa, United States - (a) Corn, (b) Soybean.
+
+10
+
+Fig. 4. Spatial average and variance of disaggregated brightness temperature and SMAP L3 SM AP product at 9km for the whole season.
+
+11
+
+Fig. 5.
+(a) SMAP brightness temperature product at 36km, (b) LST at 1km, (c) Precipitation at 9km, (d) Normalized Difference Vegetation
+Index at 1km, (e) Enhanced vegetation index at 1km, (f) Segmentation at 36km, (g) Disaggregated brightness temperature at 9km, (h) SMAP
+L3 SM AP product at 9km on May 25, 2015 (DOY 125)
+
+12
+
+Fig. 6.
+(a) SMAP brightness temperature product at 36km, (b) LST at 1km, (c) Precipitation at 9km, (d) Normalized Difference Vegetation
+Index at 1km, (e) Enhanced vegetation index at 1km, (f) Segmentation at 36km, (g) Disaggregated brightness temperature at 9km, (h) SMAP
+L3 SM AP product at 9km on June 6, 2015 (DOY 157)
+
+13
+
+Fig. 7.
+(a) SMAP brightness temperature product at 36km, (b) LST at 1km, (c) Precipitation at 9km, (d) Normalized Difference Vegetation
+Index at 1km, (e) Enhanced vegetation index at 1km, (f) Segmentation at 36km, (g) Disaggregated brightness temperature at 9km, (h) SMAP
+L3 SM AP product at 9km on June 30, 2015 (DOY 185)
+
+14
+
+Fig. 8. Kernel density estimate of the probability density function (PDF) of SMAP L1C TB product at 36km, SMAP L3 SM AP product
+at 9km and Disaggregated brightness temperature at 9km.
+
+

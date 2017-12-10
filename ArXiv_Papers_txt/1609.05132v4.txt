@@ -1,0 +1,558 @@
+7
+1
+0
+2
+
+ 
+
+n
+a
+J
+ 
+
+9
+1
+
+ 
+ 
+]
+E
+N
+.
+s
+c
+[
+ 
+ 
+
+4
+v
+2
+3
+1
+5
+0
+
+.
+
+9
+0
+6
+1
+:
+v
+i
+X
+r
+a
+
+Low Complexity Multiply Accumulate
+
+Unit for Weight-Sharing
+
+Convolutional Neural Networks
+
+James Garland and David Gregg, Trinity College Dublin
+
+Abstract—Convolutional Neural Networks (CNNs) are one of the most successful deep machine learning technologies for processing
+image, voice and video data. CNNs require large amounts of processing capacity and memory, which can exceed the resources of low
+power mobile and embedded systems. Several designs for hardware accelerators have been proposed for CNNs which typically
+contain large numbers of Multiply Accumulate (MAC) units. One approach to reducing data sizes and memory trafﬁc in CNN
+accelerators is “weight sharing”, where the full range of values in a trained CNN are put in bins and the bin index is stored instead of
+the original weight value. In this paper we propose a novel MAC circuit that exploits binning in weight-sharing CNNs. Rather than
+computing the MAC directly we instead count the frequency of each weight and place it in a bin. We then compute the accumulated
+value in a subsequent multiply phase. This allows hardware multipliers in the MAC circuit to be replaced with adders and selection
+logic. Experiments show that for the same clock speed our approach results in fewer gates, smaller logic, and reduced power.
+
+Index Terms—Convolutional neural network, power efﬁciency, multiply accumulate, arithmetic hardware circuits.
+
+!
+
+1 INTRODUCTION
+
+C ONVOLUTIONAL neural networks require large amounts of
+
+computation and weight data that stretch the limited bat-
+tery, computation and memory in mobile systems. Researchers
+have proposed hardware accelerators for CNNs that include
+many parallel hardware multiply-accumulate units.
+
+CNN training involves incrementally modifying the nu-
+meric “weight” values associated with connections in the neu-
+ral network. Once training is complete, there are no further
+updates of the weight values, and the trained network can be
+deployed to large numbers of embedded devices. Han et al. [6],
+[7] found that similar weight values can occur multiple times
+in a trained CNNs. By binning the weights and retraining the
+network with the binned values, they found that just 16 weights
+were sufﬁcient in many cases. They encode the weights by
+replacing the original numeric values with a four-bit index that
+speciﬁes which of the 16 shared weights should be used. This
+greatly reduces the size of the weight matrices.
+
+We propose a novel Multiply Accumulate (MAC) circuit
+design aimed speciﬁcally at hardware accelerators for CNNs
+that use weight sharing. Rather than performing the MAC
+operation directly, we instead count the frequency of each
+weight and accumulate the corresponding image value in a
+bin. This allows the hardware multiplier in the MAC to be
+replaced with counting and selection logic. After accumulation,
+the accumulated image values in the bins are then multiplied
+with the corresponding weight value of that bin. Where the
+number of bins is small, the counting and selection logic can be
+signiﬁcantly smaller than the corresponding multiplier.
+
+2 BACKGROUND
+The most computationally-intensive part of a CNN is the multi-
+channel convolution. Fig. 1 shows pseudo-code for the main
+loop of the 2D multi-channel convolution operator. The input
+
+• Manuscript submitted: 30-Aug-2016. Manuscript accepted: 14-Dec-2016.
+• This research is supported by Science Foundation Ireland, Project
+
+Final manuscript received: 19-Jan-2016.
+
+12/IA/1381.
+
+for h in 1 to height
+
+input [ width ] [ height ] [ input channels ] ;
+
+for o in 1 to output channels {
+
+1
+2 k e r n e l s [ output channels ] [K] [K] [ input channels ] ;
+3 output [ width ] [ height ] [ output channels ] ;
+4 for w in 1 to width
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+
+in 1 to input channels
+sum += input [w+x ] [ h+y ] [ i ] ∗
+
+sum = 0 ;
+for x in 1 to K
+
+output [w] [ h ] [ o ] = sum ;
+
+for y in 1 to K
+
+for
+
+i
+
+k e r n e l s [ o ] [ x ] [ y ] [ i ] ;
+
+}
+
+Fig. 1. Simpliﬁed code for 2D multi-channel convolution with a single
+multi-channel input and multiple multi-channel convolution kernels. Note
+that special treatment of edge boundaries is not shown in this code.
+
+of the operator consists of an image with many (often 256 or 512
+[8]) channels, which is combined with a large number of kernels
+to create an output image, again with many channels. The
+innermost loops can be implemented with a hardware MAC
+and accelerators for CNNs commonly include a large number
+of parallel MACs [9].
+
+A simple MAC unit is a sequential circuit that accepts a pair
+of numeric values, computes their product and accumulates the
+result. The accumulator register is typically located within the
+MAC to reduce routing complexity and delays. When one of the
+inputs to the MAC is encoded using weight sharing, an extra
+level of indirection is required. Fig. 2 shows a simpliﬁed version
+of weight sharing decode with a single MAC. The weights in
+the CNN are represented by, for example, a 4-bit number which
+is an index to a table of 16 shared weight values.
+
+The most common computation in a CNN is multiply-
+accumulate. Hardware accelerators for CNNs may contain
+dozens, hundreds or even thousands of MAC units. However,
+each MAC unit is a relatively expensive piece of hardware
+consuming large ﬂoor area (i.e. large numbers of gates) and
+power in an Application Speciﬁc Integrated Circuit (ASIC).
+Hardware accelerators for CNNs typically use 8-, 16-, 24- or 32-
+
+Fig. 2. Simple MAC showing how pre-trained weight values are stored
+in a weights register ﬁle. Values are indexed and retrieved by binIndex
+and multiplied by the corresponding image value.
+
+Complexity of MAC, Weight-shared MAC and PAS
+
+TABLE 1
+
+Simple Weight Shared
+MAC
+
+MAC
+
+Sub Component
+
+Gates
+
+Adder
+Multiplier
+Register
+Register
+File Port
+
+O(w)
+O(w2)
+O(w)
+
+O(wb)
+
+1
+1
+1
+
+Fig. 3. Multiple-PAS-Shared-MAC showing PAS units followed by a
+shared MAC to multiply and accumulate weights with binned image
+values from bins for a bit width w and a wci binIndex indexing into the b
+weight-bin register. The accumulation phase accumulates image values
+against a binIndex representing how often the corresponding weight
+appears. The post-pass multiply-accumulate phase would multiply the
+weights with binned image values indexed by binIndex.
+
+PAS
+
+1
+
+b
+
+2
+
+1
+1
+b
+
+1
+
+bit ﬁxed point arithmetic [2]. A combinatorial w-bit multiplier
+requires O(w2) logic gates to implement which makes up a
+large part of the MAC unit. Note that sub-quadratic multipliers
+are possible, but are inefﬁcient for practical values of w [3].
+
+The gates column of Table 1 shows the circuit complexity in
+gates of each sub-component, assuming ﬁxed-point arithmetic.
+The bit-width of the data is w and the number of bins is b in the
+weight-shared designs. For example, a simple MAC unit con-
+tains an adder (O(w) gates) a multiplier (O(w)2) gates) and a
+register (O(w) gates). A weight shared MAC also needs a small
+register ﬁle with b entries to allow fast mapping of encoded
+weight indices to shared weights. The Parallel Accumulate and
+Store (PAS) is our novel weight-shared MAC unit which is
+described in Section 3.
+
+3 APPROACH
+We propose to reduce the area and power consumption of
+the MACs by re-architecting the MAC to do the accumulation
+ﬁrst followed by a shared post-pass multiplication. Rather than
+computing the Sum Of Products (SOP) in the MAC directly, we
+instead count how many times each of the b weight indexes ap-
+pears and store the corresponding image value in a register bin.
+For example, if the shared weight with index 2 had the value 19
+and were multiplied and accumulated with the image value 25,
+then a weight-sharing MAC would compute 19× 25 = 475 and
+add this value to the accumulator. Instead we keep b separate
+accumulators, one for each weight value. If we encounter the
+shared weight with index 2, value 19 and image value 25, then
+rather than performing any multiplication, we instead add 25 to
+accumulator number 2 in the local b-entry register ﬁle. Storing
+this result in a register ﬁle that is local the MAC unit reduces
+unnecessary data movement.
+
+Our Parallel Accumulate and Store (PAS) unit represents the
+sum as an unevaluated sum of a set of coefﬁcients of each of the
+b weights (see Fig. 3). The system computes the dot product by
+computing the total of how many of each of the weights appear
+in the sum. This turns the multiply-accumulate step into an
+array-index-and-add operation.
+
+To compute the ﬁnal dot product value the ﬁnal SOP of
+weights and their respective frequencies is calculated using a
+standard MAC unit. We refer to this combination of a PAS and
+MAC as a Parallel Accumulate Shared MAC (PASM). The post-
+pass MAC requires just b multiplications whereas the standard
+
+Fig. 4. Phase 1: As each image value is streamed in, its associated bin
+index is also streamed so that the image values can be accumulated
+into the correct bins.
+
+dot product needs as many multiplications as there are inputs.
+With far fewer multiplications needed, one post-pass MAC unit
+can be shared between several PAS units.
+
+The PASM proposed in Fig. 3 stores the w bit image values
+in corresponding b weight-bin registers indexed by the binIndex
+signal. The PASM has two phases: (1) to accumulate the image
+values into the weight bins (known as the PAS) and (2) to
+multiply the binned values with the weights (completing the
+PASM).
+
+Fig. 4 shows how image value 26.7 is accumulated into bin
+0 indexed by binIndex. Next 3.4 is accumulated into bin 1. This
+continues until ﬁnally accumulating 6.1 into bin 0 to give 26.7+
+6.1 = 32.8.
+
+Fig. 5 demonstrates the multiply phase, multiplying and
+accumulating bin 0 pretrained weight with bin 0 accumulated
+image value, giving 32.8 × 1.7 = 55.76. The contents of pre-
+trained weight bin 1 in multiplied and accumulated with image
+value in bin 1 and so on until all the corresponding bins are
+multiplied and accumulated into the result register, giving 98.8.
+The latter MAC stage can be implemented on a MAC unit
+that is shared between several PAS units. MAC units can be
+replaced by PAS units and a number of PAS units share a single
+MAC. Due to its parallel nature, the PASM can have higher
+throughput for known sets of weights when compared to the
+standard MAC.
+
+Of course, from Table 1, the PASM is only efﬁcient in a
+weight shared CNN. If this weight-shared accumulate-shared-
+multiply system were used in a standard CNN then the number
+of the weight-bin registers would be prohibitive.
+Table 2 shows each sequence of MAC operations will consist
+of k × k × c inputs (see lines 10 - 13 of Fig. 1). For example,
+if b = 16 bins is used for k = 5 × 5 kernels and c = 32
+channels, then 800 accumulations and 16 multipliers (one for
+
++resultREGISTER2w*wwciimagebinIndexWEIGHTSREGISTERFILEw=BitWidth     (4-32 Bits)wci=binIndex Bit Width        (4 to 256 weight bins)wpretrainedweightsw2ww=BitWidth     (4-32 Bits)wci=binIndex Bit Width        (4 to 256 weight bins)+imagebinIndexwciwIMAGEACCUMULATIONREGISTERFILEWEIGHTSREGISTERFILE+resultREGISTER2w2w*PAS_0PAS_n....Shared MACwcibinIndexwpretrainedweightsww17.7image+=binIndex4.83.426.732106.1017.7image bins01234.83.432.8Fig. 5. Phase 2: Each accumulated value in each bin is multiplied with
+its corresponding pretrained weight value to produce the ﬁnal equivalent
+result.
+
+Numbers of Channels Multiplied and Accumulated with the Kernels
+
+TABLE 2
+
+kernels (K)
+
+input channels (c)
+512
+32
+32
+512
+4608
+288
+12800
+800
+1568
+25088
+
+128
+128
+1152
+3200
+6272
+
+1x1
+3x3
+5x5
+7x7
+
+each bin) would be required to do the accumulate and multiply.
+If b = 16 bins is used, the overhead of the ﬁnal accumulation is
+minimal for large numbers of kernels and channels. Careful
+consideration of the size of bins used with respect to the
+number of channels and kernels is important due to the sum
+being multiply-accumulated i many times before the output is
+updated as can be seen on lines 10 - 13 of Fig. 1.
+
+4 EVALUATION
+We designed a multi-channel, multi-kernel convolution acceler-
+ator unit to perform a simpliﬁed version of the accumulations
+in Fig. 1. Our accelerator accepts 4 image inputs and 4 shared-
+weight inputs each cycle, and uses them to compute 16 separate
+MAC operations each cycle. The standard version performs
+these operations on 16 weight-shared MAC units (16-MAC).
+Our proposed PASM unit (16-PAS-4-MAC) has 16 PAS units
+and uses 4 MAC units for post-pass multiplication. Both are
+coded in Verilog 2001 and synthesized to a ﬂat netlist at
+100MHz with a short 0.1ns clock transition time targeted at
+a 45nm process ASIC. We measure and compare the timing,
+power and gate count in both designs for the same correspond-
+ing bit widths and same numbers of weight bins.
+
+The standard 16-MAC and the proposed 16-PAS-4-MAC
+each have w bit image and weight inputs and the 16-PAS-4-
+MAC has a wci bit binIndex input to index into the b = 2wci
+weight bins. The designs are coded using integer/ﬁxed point
+precision numbers. Both versions are synthesized to produced
+a gate level netlist and timing constraints designed using Syn-
+opsys Design Constraints (SDC) [4] so that both designs meet
+timing at 100MHz.
+
+Cadence Genus (version 15.20 - 15.20-p004 1) is used for
+synthesizing the Register Transfer Level (RTL) into the OSU
+FreePDK 45nm process ASIC and applying the constraints in
+order to meet timing. Genus supplies commands for reporting
+approximate timing, gate count and power consumption of the
+designs at the post synthesis stage. The “report timing”, “report
+gates” and “report power” of Cadence Genus are used to obtain
+the results for both MAC and PASM designs. Graphs of the gate
+count and power consumption results are produced for the two
+different designs at different bit widths and different numbers
+of weight bins, showing that the PASM is consistently smaller
+and more efﬁcient than the weight-sharing MAC.
+
+Fig. 6. Logic gate count comparisons (in NAND2X1 gates) for w =
+4, 8, 16, 32 bits wide 16-MAC and 16-PAS-4-MAC for b = 16 weight bins
+- lower is better
+
+Fig. 7. Power consumption (in W) comparisons for w = 4, 8, 16, 32 bits
+wide 16-MAC and 16-PAS-4-MAC for b = 16 weight bins - lower is
+better
+
+Fig. 6 shows comparisons of the logic resource requirements
+of a b = 16 shared-weight-bin 16-PAS-4-MAC and 16-MAC
+for varying w bit widths. Gate counts are normalised to a
+NAND2X1 gate. The PASM uses signiﬁcantly fewer logic gates.
+For example, for w = 32 bits wide the 16-PAS-4-MAC is
+35% smaller in sequential logic, 78% smaller in inverters, 61%
+smaller in buffers and 68% smaller in logic, an overall 66%
+saving in total logic gates. The PASM requires more accumula-
+tors for the b-entry register ﬁle, but otherwise overall resource
+requirements are signiﬁcantly lower than that of the MAC.
+
+Fig. 7 shows comparisons of power consumption of the de-
+signs. 16-PAS-4-MAC’s power is lower than the weight-shared
+16-MACs and the gap grows with increasing w bit width. For
+example, for the w = 32 bit versions of each design, the 16-PAS-
+4-MAC consumes 60% less leakage power, 70% less dynamic
+power and 70% less total power than that of the 16-MACs.
+
+Fig. 8 shows the effect of varying the number of bins from
+b = 4 to b = 256, with gate counts normalised to a NAND2X1.
+For bit width w = 32 and b = 16 bins the 16-PAS-4-MAC
+utilization has 35% fewer sequential gates, 78% fewer inverters,
+62% fewer buffers and 69% fewer logic and 66% less total logic
+gates compared to the 16-MAC design. However, at b = 256,
+PASM registers and buffers are less efﬁcient than the MAC.
+
+result2.0pretrainedweights0123+=image bins1.30.41.717.701234.83.432.8*98.8InverterBuffersSequentialLogicTotalInverterBuffersSequentialLogicTotalInverterBuffersSequentialLogicTotalInverterBuffersSequentialLogicTotalBit Width (w)102103104105106Gate Count (Log scale)     w=4                      w=8                      w=16                     w=3216-PAS-4-MAC16-MACLeakageDynamicTotalLeakageDynamicTotalLeakageDynamicTotalLeakageDynamicTotalBit Width (w)10-410-310-210-1100Power (W) (Log Scale)     w=4                      w=8                      w=16                     w=3216-PAS-4-MAC16-MAC5 RELATED WORK
+Other research groups have proposed numerous hardware ac-
+celerators for CNNs in both FPGA [5], [9] and ASIC [1]. Gupta
+et al. [5] show increased efﬁciency in a hardware accelerator
+of a 16-bit ﬁxed-point representation using stochastic rounding
+without loss of accuracy. Zhang et al. [9] deduce the best CNN
+accelerator taking FPGA requirements into consideration and
+then implement the best on an FPGA to demonstrate high
+performance and throughput. Chen et al. [1] design an ASIC
+accelerator for large scale CNNs focussing on the impact of
+memory on the accelerator performance.
+
+Chen et al. [2] address the problem of data movement which
+consumes large amounts of time and energy. They focus on
+data ﬂow in the CNN to minimize data movement by reusing
+weights within the hardware accelerator to improve locality.
+This was implemented in ASIC and power and implementation
+results compared showing the effectiveness of weight reuse in
+saving power and increasing locality.
+
+Han et al. [6] have proposed an Efﬁcient Inference Engine
+which builds on their ‘Deep compression’ [7] work to perform
+inferences on the deeply compressed network to accelerate
+the weight-shared matrix-vector multiplication. This accelerates
+the classiﬁcation task whilst saving energy when compared
+to Central Processing Unit (CPU) or Graphics Processor Unit
+(GPU) implementations.
+
+Both weight sharing [6], [7] and weight reuse [2] reduce
+redundant data movement through different but complemen-
+tary approaches. This paper builds on these ideas to reduce the
+circuit complexity of the underlying MAC units.
+
+6 CONCLUSION
+In this paper we propose a novel low-complexity MAC unit to
+exploit weight-sharing in CNN accelerators. The gate count and
+area for the 16-PAS-4-MAC is signiﬁcantly lower when com-
+pared with the 16-MAC. We also found better power efﬁciency
+with the 16-PAS-4-MAC. CNN accelerators can contain hun-
+dreds or thousands of MAC units. We believe that our reduced-
+complexity design offers the possibility of adding more parallel
+MAC units to ASIC hardware CNN accelerators within a given
+clock speed, logic area and power budget.
+
+REFERENCES
+[1] T. Chen, Z. Du, N. Sun, J. Wang, C, Wu, Y. Chen, DianNao: A
+Small-Footprint High-Throughput Accelerator for Ubiquitous Machine-
+Learning: ASPLOS, 2014.
+
+[2] Y. Chen, J. Emer, V. Sze, Eyeriss: A Spatial Architecture for Energy-
+Efﬁcient Dataﬂow for Convolutional Neural Networks: IEEE Interna-
+tional Solid-State Circuits Conference (ISSCC), 2016.
+
+[3] M. F ¨urer, Faster Integer Multiplication: ACM Symposium on Theory
+
+of Computing, June 1113, 2007, San Diego, California, USA
+
+[4] S. Gangadharan, S. Churiwala, Constraining Designs for Synthesis and
+Timing Analysis - A Practical Guide to Synopsys Design Constraints
+(SDC): Springer, 2013.
+
+[5] S. Gupta, A. Agrawal, K. Gopalakrishnan, P. Narayanan,
+Deep Learning with Limited Numerical Precision: CoRR, vol.
+abs/1502.02551, 2015.
+
+[6] S. Han, X. Liu, H. Mao, J. Pu, A. Pedram, M. Horowitz, W. Dally,
+
+EIE: Efﬁcient Inference Engine on Compressed Deep Neural Network:
+
+[7] S. Han, H. Mao, W. Dally, Deep Compression: Compressing Deep Neural
+Networks with Pruning, Trained Quantization and Huffman Coding:
+ICLR, 2016.
+
+[8] C. Szegedy, W. Liu, Y. Jia, P. Sermanet, S. Reed, D. Anguelov, D. Er-
+han, V. Vanhoucke, A. Rabinovich, , Going Deeper with Convolutions:
+CVF, 2015.
+
+[9] C. Zhang, P. Li, G. Sun, Y. Guan, B. Xiao, J. Cong, Optimizing FPGA-
+based Accelerator Design for Deep Convolutional Neural Networks:
+ACM, 2015.
+
+Fig. 8. Logic gate counts comparisons (in NAND2X1 gates) for b =
+4, 16, 64, 256 weight bins for a 16-MAC and 16-PAS-4-MAC for w = 32
+bit width - lower is better
+
+Fig. 9. Power consumption (in W) comparisons for b = 4, 16, 64, 256
+weight bins deep 16-MAC and 16-PAS-4-MAC for w = 32 bit width -
+lower is better
+
+The 16-PAS-4-MAC also consumes 61% less leakage power,
+
+70% less dynamic power and 70% less total power (Fig. 9).
+
+We also experimented with implementing the designs on
+a Xilinx Kintex Ultrascale Field Programmable Gate Array
+(FPGA) however, for larger values of b bins, such as b = 64
+and b = 256, our approach quickly becomes inefﬁcient.
+
+The weight-shared PASM introduces a delay in the process-
+ing the output of the PAS units. The PAS unit has a throughput
+of one pair of inputs per cycle, and so computes the initial
+accumulated values in about n cycles. The post pass MAC unit
+also has a throughput of one pair of inputs per cycle, so requires
+a cycle for each of the b accumulator bins, for a total of n + b
+cycles. In contrast a simple MAC unit requires just n cycles.
+
+Whilst more parallelism of standard MACs could be applied
+to accelerate a CNN, these parallel MACs would consume more
+power and area that that of our parallel PASs and shared MACs.
+Future improvements should include placing and routing
+the MAC and PASM designs to a fully routed test chip. Back
+annotated gate level simulations should be executed on the ﬁnal
+netlist to obtain design toggle rates and applied to the power
+reporting tool. The placement and routing impacts and simu-
+lation toggle rates shall increase the power analysis accuracy
+comparisons of the designs.
+
+InverterBuffersSequentialLogicTotalInverterBuffersSequentialLogicTotalInverterBuffersSequentialLogicTotalInverterBuffersSequentialLogicTotalNumber of Bins (b)103104105106107Gate Count (Log Scale)     b=4                       b=16                      b=64                     b=25616-PAS-4-MAC16-MACLeakageDynamicTotalLeakageDynamicTotalLeakageDynamicTotalLeakageDynamicTotalNumber of Bins (b)10-410-310-210-1100101Power (W) (Log Scale)     b=4                       b=16                      b=64                     b=25616-PAS-4-MAC16-MAC

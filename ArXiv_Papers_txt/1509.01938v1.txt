@@ -1,0 +1,1047 @@
+Exploiting Out-of-Domain Data Sources for Dialectal Arabic Statistical
+
+Machine Translation
+
+Katrin Kirchhoff
+
+Department of Electrical Engineering
+
+University of Washington
+
+Seattle, WA, USA
+
+Bing Zhao∗
+LinkedIn
+
+bingzhao@gmail.com
+
+kk2@u.washington.edu
+
+Wen Wang
+
+SRI International
+
+Menlo Park, CA, USA
+
+5
+1
+0
+2
+
+ 
+
+p
+e
+S
+7
+
+ 
+
+ 
+ 
+]
+L
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+8
+3
+9
+1
+0
+
+.
+
+9
+0
+5
+1
+:
+v
+i
+X
+r
+a
+
+wwang@speech.sri.com
+
+Abstract
+
+Statistical machine translation for dialec-
+tal Arabic is characterized by a lack of data
+since data acquisition involves the transcrip-
+tion and translation of spoken language. In
+this study we develop techniques for ex-
+tracting parallel data for one particular di-
+alect of Arabic (Iraqi Arabic) from out-of-
+domain corpora in different dialects of Ara-
+bic or in Modern Standard Arabic. We com-
+pare two different data selection strategies
+(cross-entropy based and submodular selec-
+tion) and demonstrate that a very small but
+highly targeted amount of found data can
+improve the performance of a baseline ma-
+chine translation system. We furthermore
+report on preliminary experiments on us-
+ing automatically translated speech data as
+additional training data.
+
+Introduction
+
+1
+In the Arabic-speaking world, dialectal Arabic
+(DA) is used side-by-side with the standard form
+of the language, Modern Standard Arabic (MSA).
+Whereas the latter is used for written and formal
+oral communication (lectures, speeches), DA is
+used for everyday, casual communication. DA is
+almost never written; exceptions are transcriptions
+of spoken language, e.g., in novels, movie scripts,
+or in online blogs or forums. DA and MSA exhibit
+strong differences at the lexical, phonological, mor-
+phological, and syntactic levels; furthermore, the
+dialects themselves form a similarity continuum
+that ranges from closely related to mutual unintelli-
+gible. An overview of the main characteristics of
+DA can be found in (Habash, 2010).
+∗Work was done while the author was at SRI International.
+
+Most natural language processing (NLP) tools
+that have been developed for Arabic have been tar-
+geted towards MSA, for which large amounts of
+written data exist. NLP for DA suffers from a spar-
+sity of tools as well as data. Work on DA annotation
+tools includes the development of morphological
+analyzers for Arabic dialects (Habash et al., 2005;
+Habash et al., 2012; Habash et al., 2013), treebanks
+(Maamouri et al., 2006) and parsers (Chiang et al.,
+2006), unsupervised (Duh and Kirchhoff, 2005) or
+supervised (Al-Sabbagh and Girju, 2012) training
+of POS taggers for DA, and lexicon acquisition
+(Duh and Kirchhoff, 2006). However, most of these
+have been targeted to the Egyptian or Levantine
+dialects and do not easily generalize to other di-
+alects. There are a small number of speech and
+parallel text corpora for Egyptian, Levantine, and
+Iraqi DA, primarily available from the Linguistic
+Data Consortium (LDC) and the European Lan-
+guage Resources Association (ELRA). In general,
+however, spoken language needs to be recorded and
+transcribed to produce text data, which constitutes
+a bottleneck for the rapid acquisition of new data.
+The lack of training data for DA in statistical ma-
+chine translation (SMT) has only been addressed
+in a few previous studies; the standard approach
+has been to simply collect more training data by
+transcribing and translating DA speech. (Zbib et
+al., 2012) compare utilizing large amounts of MSA
+data for training and creating a small corpus of DA
+training data. They conclude that simply adding
+large amounts of mismatched (MSA) training data
+does not help, whereas even a small amount of di-
+alectal data is very useful. Salloum and Habash
+(Salloum and Habash, 2011; Salloum and Habash,
+2013) propose to transform DA to MSA by means
+of a combination of statistical processing and hand-
+coded transformation rules, and to then apply MT
+
+systems for MSA-to-English. Their work was on
+Egyptian Arabic, and porting this approach to a dif-
+ferent dialect involves a fair amount of manual ef-
+fort and dialect expertise. In (Aminian et al., 2014)
+the speciﬁc problem of out-of-vocabulary words in
+MT for DA is addressed by replacing DA words
+with their MSA equivalents.
+
+In this paper we attempt to enrich available train-
+ing data for Iraqi Arabic by automatically iden-
+tifying IA-English parallel data in out-of-domain
+corpora of MSA and other dialects of Arabic. This
+procedure is based on the assumption that at least
+some dialects will exhibit similarities with IA. Cor-
+pora formally described as MSA may also contain
+dialectal data at the subsentential level due to code-
+switching (mixed use of MSA and DA), which is
+common among Arabic speakers. In principle, auto-
+matic dialect identiﬁcation methods (Aloriﬁ, 2008;
+Sadat et al., 2014; Zaidan and Callison-Burch,
+2014) might be used for this purpose; however,
+these methods are themselves error-prone and have
+not been developed for all dialects of Arabic. Our
+approach is to directly select data that is matched
+to features (n-grams) extracted from a sample cor-
+pus of the dialect of interest. In addition to ﬁnding
+dialect-matched data, the selected data is also likely
+to be matched with respect to topic and style. Two
+different data selection methods are investigated,
+the widely-used cross entropy method of (Moore
+and Lewis, 2010), and a more recent submodular
+data selection method (Wei et al., 2013). We demon-
+strate that the performance of SMT systems for IA
+can be improved by selecting a very small amount
+of highly targeted out-of-domain data. In addition,
+we conduct a preliminary investigation of the possi-
+bility of using automatically translated speech data
+as SMT training data.
+
+The paper is structured as follows: we ﬁrst report
+on previous work on data selection for SMT (Sec-
+tion 2). We then describe the submodular technique
+used in this paper in detail (Section 3). The data is
+described in Section 4; experiments are results are
+presented in Section 5. We provide conclusions in
+Section 6.
+
+2 Data Selection: Previous Work
+
+A currently widely-used data selection method in
+SMT (which we also use as a baseline in Section 5)
+uses the cross-entropy between two language mod-
+els (Moore and Lewis, 2010), one trained on the
+test set of interest, and another trained on generic or
+
+out-of-domain training data. We call this the cross-
+entropy method. This method trains a test-set spe-
+ciﬁc (or in-domain) language model, LMin, and a
+generic (out-of- or mixed-domain) language model,
+LMout. Each sentence x ∈ V in the training data is
+scored by both language models and is assigned the
+log ratio of the language model probabilities as a
+score:
+
+mce(x) =
+
+1
+(cid:96)(x)
+
+log[Pr(x|LMin)/Pr(x|LMout)]
+
+(1)
+
+where (cid:96)(x) is the length of sentence x. Sentences
+are then ranked in descending order based on their
+scores and the top N sentences are chosen. Vari-
+ous extensions to this method have been proposed.
+In (Axelrod et al., 2011) the monolingual selec-
+tion method is extended to bilingual corpora. In
+(Duh et al., 2013), neural language models are used
+instead of backoff language models. Finally, (Me-
+diani et al., 2014) propose a different method for
+drawing the out-of-domain sample and the use of
+word-association models to improve the data for
+training the out-of-domain language model.
+
+The cross-entropy approach ranks each sen-
+tence individually, without reference to other sen-
+tences. Thus, no sentence interactions can be mod-
+elled, such as redundancy at the sentential or sub-
+sentential level. Moreover, the method does not
+have a theoretical performance guarantee.
+
+3 Submodular Data Selection
+
+Submodular functions (Edmonds, 1970; Fujishige,
+2005) were ﬁrst developed in mathematics, opera-
+tions research and economics; more recently, they
+have been used for a variety of optimization prob-
+lems in machine learning as well. For example,
+they have been applied to the problems of cluster-
+ing (Narasimhan and Bilmes, 2007), observation
+selection (Krause et al., 2008), sensor placement
+(Krause and Guestrin, 2011), or image segmenta-
+tion (Jegelka and Bilmes, 2011). Within natural
+language processing (NLP) submodular functions
+have been used for extractive text summarization
+(Lin and Bilmes, 2012).
+
+To explain submodular functions, we introduce
+the following notation: assume a ﬁnite set of
+data elements V , the ground set. A valuation
+function f : 2V → R+ is then deﬁned that returns a
+non-negative real value for any subset X ⊆ V . The
+function f is called submodular if it satisﬁes the
+property of diminishing returns: for all X ⊆ Y and
+
+v /∈ Y , the following is true:
+
+f (X ∪{v})− f (X) ≥ f (Y ∪{v})− f (Y ).
+
+(2)
+
+This means that the incremental value (or gain) of
+element v decreases when the context in which v
+is considered grows from X to Y . The “gain” is
+deﬁned as f (v|X) (cid:44) f (X ∪{v})− f (X). Thus, f is
+submodular if f (v|X) ≥ f (v|Y ). Submodularity is
+a natural model for data selection in SMT and other
+NLP tasks. The ground set V is the set of training
+data elements, and elements are selected from this
+set according to a submodular valuation function
+for any given subset of V . The value of this
+function diminishes for items that are (partially)
+redundant with other items in the already-selected
+subset, which is precisely the submodularity
+property. The speciﬁc function we utilize for the
+purpose of MT data selection is as follows:
+
+f (X) = ∑
+u∈U
+
+wuφu(∑
+x∈X
+
+mu(x))
+
+(3)
+
+Here, U is a set of features (such as words, n-grams,
+etc.), X is a subset of V , w is a non-negative weight,
+φ is a non-negative, non-decreasing concave func-
+tion, and mu(x) is a score indicating how relevant
+u is in sample x. Thanks to the concave function,
+the contribution of each feature u in the context of
+an existing subset X diminishes as X grows.
+
+In our work the feature set U consists of all n-
+grams up to a pre-speciﬁed length drawn from a
+representative in-domain data set. The feature rele-
+vance scores mu(x) are the tf-idf weighted counts
+of the the features (n-grams). The tf-idf (term fre-
+quency, inverse document frequency) values are
+computed by treating each sentence as a “docu-
+ment”. That is, the weighting term is
+
+t f − id f (u) = c(u,x)∗ log
+
+|V|
+c(u,V )
+
+(4)
+
+where c(u,x) is the count of u in x (term frequency),
+and c(u,V ) is the number of sentences out of V that
+u occurs in.
+
+The above function can be optimized efﬁciently
+even for large data sets. Formally, we have the
+following optimization problem:
+
+X∗ ∈ argmax
+X⊆V,m(X)≤b
+
+f (X),
+
+(5)
+
+where b is a known budget – in the present con-
+text, the budget can be, e.g., the number of words
+
+Algorithm 1: The Greedy Algorithm
+1 Input: Submodular function f : 2V → R+,
+cost vector m, budget b, ﬁnite set V .
+2 Output: Xk where k is the number of
+iterations.
+3 Set X0 ← /0 ; i ← 0 ;
+4 while m(Xi) < b do
+5
+
+Choose vi as follows:
+
+(cid:111)
+
+vi ∈(cid:110)
+
+f ({v}|Xi)
+m(v)
+Xi+1 ← Xi ∪{vi} ; i ← i + 1 ;
+
+argmaxv∈V\Xi
+
+;
+
+6
+
+Train Tune Dev Test1 Test2 Test3
+7.6M 64kk
+9k
+
+29k
+
+10k
+
+8k
+
+Table 1: Size of Iraqi Arabic Transtac corpus parti-
+tions (in words).
+
+or parallel sentences to select. Solving this prob-
+lem exactly is NP-complete (Feige, 1998), and ex-
+pressing it as an ILP procedure renders it impracti-
+cal for large data sizes. When f is submodular
+and the cost is just size (m(X) = |X|), then the
+simple greedy algorithm (detailed in Algorithm
+1) will have a worst-case guarantee of f ( ˜X∗) ≥
+(1 − 1/e) f (Xopt) ≈ 0.63 f (Xopt) where Xopt is the
+optimal and ˜X∗ is the greedy solution (Nemhauser
+et al., 1978). This constant factor guarantee stays
+the same as n grows; thus, it scales well to large data
+sets. The application of this procedure to the selec-
+tion of training data for large-scale SMT tasks was
+described in (Kirchhoff and Bilmes, 2014). Here,
+we apply it in the same way to the selection of
+out-of-domain data for a small-scale task.
+
+4 Data
+
+The in-domain data available for the present study
+is the Transtac corpus of Iraqi Arabic; the sizes of
+the training, tuning and development test sets are
+shown in Table 1.
+
+The out-of-domain data sources used for the se-
+lection experiments are listed in Table 2. We utilize
+22 LDC corpora that include MSA and other di-
+alects of Arabic, notably Egyptian and Levantine.
+For example, training corpora developed for the
+GALE, TIDES, and BOLT projects were included,
+as were the Levantine Arabic Treebank, an Egyp-
+tian Arabic word alignment corpus, and a corpus
+of dialectal Arabic web data (75% Levantine, 25%
+Egyptian) that was translated through crowdsourc-
+
+Description
+LDC ID
+GALE-Y1Q1
+LDC2005E83
+GALE-Y1Q2
+LDC2006E34
+Tides MT05 Eval
+LDC2006E39
+Tides MT04 Eval
+LDC2006E44
+GALE-Y1Q3
+LDC2006E85
+GALE-Y1Q4
+LDC2006E92
+GALE-P2-BC
+LDC2012T06
+LDC2007E101 GALE-P2R1
+LDC2007E101 GALE-P3R1
+GALE-P2R2
+LDC2007E46
+LDC2007E87
+GALE-P2R3
+GALE-P3R2
+LDC2008E40
+GALE-P4R1v2
+LDC2009E15
+GALE-P4R2
+LDC2009E16
+LDC2009E95
+GALE-P4R3v1.2
+GALE-P3 Treebank
+LDC2010E38
+GALE-Levantine
+LDC2010E79
+LDC2010T17
+NIST-OpenMT-2006
+NIST-OpenMT-2009
+LDC2010T23
+BOLT-P1-R2 MT Training Data DF
+LDC2012E19
+LDC2012E51
+BOLT-P1 ARZ word alignments DF
+LDC2012T09 Web translations
+
+Genre
+BN, BC, WB
+BC, WB
+NW
+NW
+WB
+BN, WB
+BC
+BC, BN
+BC, NW, BN
+NW, WB
+BC, BN, NW, WB
+BC, BN
+WB, BC, BN, NW
+BC, BN, NW, WB
+BC, BN, NW, WB
+BC, NW
+BC
+NW, BC, BN, WB
+NW, WB
+
+Various
+
+Total
+
+Dialect
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+MSA
+
+Levantine
+
+MSA
+MSA
+
+Egyptian
+Egyptian
+
+Egyptian, Levantine
+
+Size
+170k
+126k
+135k
+170k
+18k
+293k
+174k
+337k
+530k
+87k
+188k
+268k
+305k
+273k
+147k
+349k
+34k
+141k
+129k
+126k
+55k
+1.613M
+5.690M
+
+Table 2: List of out-of-domain corpora used for data selection. BN = broadcast news, BC = broadcast
+conversations, WB = web blogs, NW = newswire data, DF = discussion forums. Sizes are given in number
+of source-language words after tokenization.
+
+ing (thus, translations are noisy). Note that even
+though a corpus may be ofﬁcially listed as MSA,
+it may contain segments of DA, especially when
+broadcast conversations (e.g., talkshows) are in-
+cluded.
+
+5 Experiments and Results
+
+We use two different MT systems for translation
+from IA to English, an in-house system based
+on Moses and the SRI MT system developed for
+the DARPA BOLT (Broad Operational Language
+Translation) spoken dialog translation project (see
+(Ayan et al., 2013; Kirchhoff et al., 2015) for more
+details). The former is a ﬂat phrase-based statistical
+MT system with a hierarchical lexicalized reorder-
+ing model and a 6-gram language model trained on
+the target side of the Transtac training data. For
+preprocessing we use a statistical morphological
+segmenter developed in the BOLT project. The
+second system is similar in nature but has a hierar-
+chical phrase-based translation model and utilizes
+sparse features (see (Zhao et al., 2014) for more
+
+information).
+
+5.1
+
+Initial evaluation of selection techniques
+
+In an initial set of experiments we attempted to
+gauge the performance of the cross-entropy vs. the
+submodular selection technique by subselecting the
+Transtac training data. We chose 10-40% of the
+Transtac training set; the feature set U was the set
+of all n-grams up to length 7 of the tune and dev
+sets. We investigated both translation directions, IA
+→ English and English → IA. Table 3 shows the
+BLEU scores.
+
+Compared to using 100% of the training data, the
+same or even better performance can be obtained
+by using a subset of the data when the submodular
+subselection technique is used, even at small per-
+centages of the training data. The cross-entropy
+method falls short of this performance, presumably
+due to the failure of this method to control for re-
+dundancy in the selected set.
+
+IA → EN
+Xent
+30.2
+31.5
+31.8
+31.2
+
+EN → IA
+SM
+17.9
+17.7
+17.5
+17.5
+
+SM Xent
+32.3
+16.1
+32.5
+17.0
+32.5
+17.4
+32.6
+17.3
+
+32.5
+
+16.2
+
+Size
+10%
+20%
+30%
+40%
+100%
+
+Table 3: BLEU scores on dev set for training data
+subselection using cross-entropy (Xent) vs. the sub-
+modular (SM) method. IA = Iraqi Arabic, EN =
+English.
+
+IA-EN
+
+BLEU (%) PER (%)
+
+33.5
+33.6
+33.7
+
+40.9
+40.9
+40.7
+
+EN-IA
+
+BLEU (%) PER (%)
+
+17.0
+17.1
+17.2
+
+57.1
+57.1
+56.8
+
+Baseline
+Xent
+Submod
+
+Baseline
+Xent
+Submod
+
+Table 4: BLEU and PER on dev set for system with
+additional out-of-domain data, in-house system.
+
+5.2 Selection of out-of-domain training data
+In order to integrate additional out-of-domain train-
+ing data, we set a budget constraint of 100k words
+on the source side. The LDC corpora were pre-
+processed in the same manner as the Transtac data,
+i.e. , they were preprocessed and morphologically
+segmented. The greedy algorithm was used in com-
+bination with Equation 3 to select parallel sentences
+from the corpora listed in Table 2 such that the re-
+sulting corpus contains at most 100k words on the
+source side. The selected data was then added to
+both the MT and LM training data. Table 4 shows
+the BLEU scores and position-independent word
+error rate (PER) for the in-house MT system that
+was used for development purposes (note that base-
+line results are different from those in Table 3 be-
+cause the baseline MT system changed in between
+experiments and was trained on different data set
+deﬁnitions and tokenization schemes). We again
+compared the cross-entropy against the submodular
+selection method. Improvements in the system are
+small; however, the submodular technique again
+shows slightly better results.
+
+We subsequently used the selected data with
+
+System
+base
++ 7k data
+
+dev
+17.5
+17.5
+
+test1
+35.2
+35.5
+
+test2
+32.2
+32.7
+
+test3
+33.1
+33.5
+
+Table 5: BLEU scores of EN-IA system, obtained
+with an additional 7k sentences of submodular-
+selected data, evaluation system.
+
+the submodular method in the second MT system,
+viz. the evaluation system developed for a bilingual
+dialog system, and tested the system on additional
+in-domain data sets. BLEU scores (shown in Table
+5) show slight improvements of up to 0.5 absolute.
+Note that the selected data set was very small, con-
+taining only 7k sentences. Larger sets (up to 20k)
+were tried but were not found to be useful.
+
+We analyzed the selected data as to its origin and
+found that the top three data sources were broadcast
+conversations from various GALE corpora (47%),
+the dialectal web corpus (35.7%), and the BOLT
+MT training data (9.9%).
+
+5.3 Using translated speech data
+In addition to the various parallel text corpora listed
+in Table 2 we also had access to an Iraqi Arabic
+Conversational Telephone Speech (CTS) corpus
+(LDC2006T16). This corpus includes with speech
+transcriptions but no translations. Although the data
+matches the dialect of interest is is not necessarily
+matched in topic or style. To obtain parallel data
+we translated the transcriptions of this corpus with
+our baseline IA → EN translation system. Those
+segments that were translated contiguously (i.e.,
+without intervening out-of-vocabulary words) were
+extracted and added to the data from the corpora
+in Table 2. Data selection was then re-run. We
+found that in this experiment 80% of the selected
+data came from the CTS corpus; however, the trans-
+lation performance did not improve (see Table 6).
+The likely reason is that translations were too noisy
+to be used as parallel data and introduced more
+confusability and irrelevant variation rather than
+contributing useful translations. The use of auto-
+matically translated speech data might be improved
+by selecting only the most conﬁdent translations
+according to the translation model scores.
+
+6 Conclusion
+
+We have described data selection procedures for
+identifying Iraqi Arabic data resources in unrelated
+dialectal and/or MSA corpora. We have demon-
+
+IA-EN
+
+BLEU (%) PER (%)
+
+Baseline
+Submod
++ CTS
+
+33.5
+33.7
+33.8
+
+40.9
+40.7
+41.0
+
+EN-IA
+
+BLEU (%) PER (%)
+
+Baseline
+Submod
++ CTS
+
+17.0
+17.2
+17.0
+
+57.1
+56.8
+57.5
+
+Table 6: BLEU and PER on dev set, system with
+additional out-of-domain data, including CTS, in-
+house system.
+
+strated that judiciously selected data can improve
+MT performance even when the overall amount is
+very small. Furthermore, we have compared two
+different data selection techniques, the widely-used
+cross-entropy selection method, and a more recently
+developed method that relies on submodular func-
+tion optimization. The latter performed slightly
+better than the former. Finally, we have conducted
+initial experiments on utilizing automatically trans-
+lated conversational speech as additional training
+data. Whereas the data was strongly matched to the
+in-domain data on the source side, the translations
+were too noisy to yield any further improvement in
+machine translation performance.
+Acknowledgments
+This study was funded by the Defense Advanced Research
+Projects Agency (DARPA) under contract HR0011-12-C-0016
+- subcontract 19-000234 and by the Intelligence Advanced
+Research Projects Activity (IARPA) under agreement number
+FA8650-12-2-7263. The U.S. Government is authorized to
+reproduce and distribute reprints for Governmental purposes
+notwithstanding any copyright notation thereon. The views
+and conclusions contained herein are those of the authors and
+should not be interpreted as necessarily representing the ofﬁ-
+cial policies or endorsements, either expressed or implied, of
+Intelligence Advanced Research Projects Activity (IARPA) or
+the U.S.Government.
+
+References
+[Al-Sabbagh and Girju2012] Al-Sabbagh,
+
+and
+R. Girju. 2012. A supervised POS tagger for written
+In Proceedings
+Arabic social networking corpora.
+of KONVENS.
+
+R.
+
+[Aloriﬁ2008] Aloriﬁ, F.S. 2008. Automatic Identiﬁca-
+tion of Arabic Dialects USING Hidden Markov Mod-
+
+els. Ph.D. thesis, Swanson School of Engineering,
+University of Pittsburgh.
+
+[Aminian et al.2014] Aminian, M., M. Ghoneim, and
+M. Diab.
+2014. Handling OOV words in di-
+alectal Arabic to English machine translation.
+In
+EMNLP Workshop on Language Technology for
+Closely Related Languages and Language Variants
+(LT4CloseLang), page 99108.
+
+[Axelrod et al.2011] Axelrod, A., X. He, and J. Gao.
+2011. Domain adaptation via pseudo in-domain data
+In Proceedings of EMNLP, pages 355–
+selection.
+362, Edinburgh, Scotland.
+
+[Ayan et al.2013] Ayan et al., N.F. 2013. Can you give
+me another word for hyperbaric? - improving speech
+translation using targeted clariﬁcation questions. In
+Proceedings of ICASSP.
+
+[Chiang et al.2006] Chiang, David, M.Diab, N. Habash,
+O. Rambow, and S. Shareef. 2006. Parsing Arabic
+dialects. In Proceedings of EACL.
+
+[Duh and Kirchhoff2005] Duh, K. and K. Kirchhoff.
+2005. Pos tagging of dialectal Arabic: a minimally
+supervised approach. In In Proceedings of the ACL
+Workshop on Computational Approaches to Semitic
+Languages, page 5562.
+
+[Duh and Kirchhoff2006] Duh, K. and K. Kirchhoff.
+2006. Lexicon acquisition for dialectal Arabic using
+transductive learning. In Proceedings of EMNLP.
+
+[Duh et al.2013] Duh, K., G. Neubig, K. Sudoh, and
+H. Tsukada. 2013. Adaptation data selection using
+neural language models: Experiments in machine
+translation. In Proceedings of ACL.
+
+[Edmonds1970] Edmonds, J., 1970. Combinatorial
+Structures and their Applications, chapter Submodu-
+lar functions, matroids and certain polyhedra, pages
+69–87. Gordon and Breach.
+
+[Feige1998] Feige, U. 1998. A threshold of ln n for ap-
+proximating set cover. Journal of the ACM (JACM),
+45(4):634–652.
+
+[Fujishige2005] Fujishige, S. 2005. Submodular func-
+tions and optimization. Annals of Discrete Mathe-
+matics, volume 58. Elsevier Science.
+
+[Habash et al.2005] Habash, N., O. Rambow, and G. Ki-
+raz. 2005. Morphological analysis and generation
+for Arabic dialects. In Proceedings of the ACL Work-
+shop on Computational Approaches to Semitic Lan-
+guages.
+
+[Habash et al.2012] Habash, N., R. Eskander,
+
+and
+A. Hawwari. 2012. A morphological analyzer for
+In Proceedings of the Twelfth
+Egyptian Arabic.
+Meeting of
+the Special Interest Group on Com-
+putational Morphology and Phonology (SIGMOR-
+PHON2012), page 19.
+
+[Sadat et al.2014] Sadat, F., F. Kazemi, and A. Farzindar.
+2014. Automatic identiﬁcation of Arabic language
+varieties and dialects in social media. In Proceedings
+of the Second Workshop on Natural Language Pro-
+cessing for Social Media (SocialNLP), page 2227.
+
+[Salloum and Habash2011] Salloum, W. and N. Habash.
+2011. Dialectal to standard Arabic paraphrasing to
+improve Arabic-English statistical machine transla-
+tion. In Proceedings of the First Workshop on Algo-
+rithms and Resources for Modelling of Dialects and
+Language Varieties, pages 10–21.
+
+[Salloum and Habash2013] Salloum, W. and N. Habash.
+2013. Dialectal Arabic to English machine transla-
+tion: Pivoting through modern standard Arabic. In
+Proceedings of NAACL.
+
+[Wei et al.2013] Wei, K., Y. Liu, K. Kirchhoff, and
+J. Bilmes. 2013. Using document summarization
+techniques for speech data subset selection. In Pro-
+ceedings of NAACL.
+
+[Zaidan and Callison-Burch2014] Zaidan,
+
+and
+C. Callison-Burch. 2014. Arabic dialect identiﬁca-
+tion. Computational Linguistics, 40:171–202.
+
+O.
+
+[Zbib et al.2012] Zbib, Rabih, Erika Malchiodi, Jacob
+Devlin, David Stallard, Spyros Matsoukas, Richard
+Schwartz, John Makhoul, Omar F. Zaidan, and Chris
+Callison-Burch. 2012. Machine translation of Ara-
+bic dialects. In Proceedings of the 2012 Conference
+of the North American Chapter of the Association for
+Computational Linguistics: Human Language Tech-
+nologies, page 4959.
+
+[Zhao et al.2014] Zhao, B., Y.-C. Tam, and J. Zheng.
+2014. An autoencoder with bilingual sparse features
+for improved statistical machine translation. In Pro-
+ceedings of ICASSP.
+
+[Habash et al.2013] Habash, N., R. Roth, O. Rambow,
+R. Eskander, and N. Tomeh. 2013. Morphological
+analysis and disambiguation for dialectal Arabic. In
+Proceedings of NAACL, pages 426–432.
+
+[Habash2010] Habash, N. 2010. Introduction to Arabic
+natural language processing. Synthesis Lectures on
+Human Language Technologies, 3:1–187.
+
+[Jegelka and Bilmes2011] Jegelka, S. and J.A. Bilmes.
+2011. Submodularity beyond submodular energies:
+In Computer Vision
+coupling edges in graph cuts.
+and Pattern Recognition (CVPR), Colorado Springs,
+CO, June.
+
+[Kirchhoff and Bilmes2014] Kirchhoff,
+
+and
+J. Bilmes. 2014. Submodularity for data selection
+in statistical machine translation. In Proceedings of
+EMNLP, pages 131–141.
+
+K.
+
+[Kirchhoff et al.2015] Kirchhoff,
+
+Tam
+dn C. Richey, and W. Wang. 2015. Morphological
+modeling for machine translation of English-iraqi
+Arabic spoken dialogs. In Proceedings of NAACL.
+
+Y.C.
+
+K.,
+
+[Krause and Guestrin2011] Krause, A. and C. Guestrin.
+2011. Submodularity and its applications in opti-
+mized information gathering. ACM Transactions on
+Intelligent Systems and Technology, 2(4).
+
+[Krause et al.2008] Krause, A., H.B. McMahan,
+C. Guestrin, and A. Gupta.
+2008. Robust sub-
+modular observation selection. Journal of Machine
+Learning Research, 9:2761–2801.
+
+[Lin and Bilmes2012] Lin, H. and J. Bilmes.
+
+2012.
+Learning mixtures of submodular shells with appli-
+cation to document summarization. In Uncertainty
+in Artiﬁcal Intelligence (UAI), Catalina Island, USA,
+July. AUAI.
+
+[Maamouri et al.2006] Maamouri, M., A. Bies, T. Buck-
+walter, M. Diab, N. Habash, O. Rambow, and
+D. Tabessi. 2006. Developing and using a pilot di-
+alectal Arabic treebank. In Proceedings of the Fifth
+International Conference on Language Resources
+and Evaluation (LREC).
+
+[Mediani et al.2014] Mediani, M., J. Winebarger, and
+A. Waibel. 2014.
+Improving in-domain data se-
+lection for small in-domain sets. In Proceedings of
+IWSLT.
+
+[Moore and Lewis2010] Moore, R. and W. Lewis. 2010.
+Intelligent selection of language model training data.
+In Proceedings EMNLP.
+
+[Narasimhan and Bilmes2007] Narasimhan, M.
+
+J. Bilmes.
+submodular clustering. In Proceedings of IJCAI.
+
+2007.
+
+and
+Local search for balanced
+
+[Nemhauser et al.1978] Nemhauser, G.L., L.A. Wolsey,
+and M.L. Fisher. 1978. An analysis of approxi-
+mations for maximizing submodular set functions i.
+Mathematical Programming, 14:265–294.
+
+

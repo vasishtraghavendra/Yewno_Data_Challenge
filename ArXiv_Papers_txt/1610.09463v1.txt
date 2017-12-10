@@ -1,0 +1,1132 @@
+Sparse Signal Recovery for Binary Compressed
+Sensing by Majority Voting Neural Networks
+
+Daisuke Ito and Tadashi Wadayama
+
+Department Computer Science and Engineering,
+Nagoya Institute of Technology, Nagoya, Japan
+
+Email: d.ito.480@stn.nitech.co.jp, wadayama@nitech.ac.jp
+
+6
+1
+0
+2
+
+ 
+t
+c
+O
+ 
+9
+2
+
+ 
+ 
+]
+T
+I
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+3
+6
+4
+9
+0
+
+.
+
+0
+1
+6
+1
+:
+v
+i
+X
+r
+a
+
+Abstract—In this paper, we propose majority voting neural
+networks for sparse signal recovery in binary compressed sensing.
+The majority voting neural network is composed of several
+independently trained feedforward neural networks employing
+the sigmoid function as an activation function. Our empirical
+study shows that a choice of a loss function used in training
+processes for the network is of prime importance. We found a
+loss function suitable for sparse signal recovery, which includes
+a cross entropy-like term and an L1 regularized term. From
+the experimental results, we observed that the majority voting
+neural network achieves excellent recovery performance, which
+is approaching the optimal performance as the number of
+component nets grows. The simple architecture of the majority
+voting neural networks would be beneﬁcial for both software and
+hardware implementations.
+
+I.
+
+INTRODUCTION
+
+Recent ﬂourish of studies on compressed sensing inspires
+researchers to apply the idea for applications in wireless
+communications. Fletcher et al. [1] showed that a detection
+problem for on-off random access channels is equivalent a
+sparse signal recovery problem discussed in compressed sens-
+ing. Kaneko et al. [2] used a compressed sensing technique to
+develop an identiﬁcation protocol for a passive RFID system.
+For such an application in wireless communications, we need
+powerful sparse signal recovery algorithms that are suitable
+for hardware implementation in order to achieve high speed
+signal processing and energy efﬁciency.
+
+Binary (or one-bit) compressed sensing ﬁrstly proposed
+by Boufounos and Baraniuk [3] is a variant of the original
+compressed sensing. In the scenario of binary compressed
+sensing, a linear observation vector that is quantized to a
+binary value, typically in the binary alphabet {+1, −1}, is
+given to a receiver. The linear observation vector is the product
+of a sensing matrix and a hidden sparse signal vector. A
+receiver then tries to reconstruct the original sparse signal.
+This process is called a sparse signal recovery process. It
+is known that power consumption of an AD converter is
+closely related to the number of its quantization levels and the
+sampling frequency, namely, the power consumption of an AD
+converter increases as the sampling frequency increases. When
+we pursue to develop an extremely low power consumption
+device for battery-powered sensors or to develop a digital
+signal processing device operating at very high sampling
+frequency, binary quantization by a comparator is a reasonable
+choice. Binary compressed sensing is well suited to such a
+situation. Moreover, since the input to the receiver is restricted
+to binary values, no gain control is required in the case of
+
+binary compressed sensing. This fact further simpliﬁes the
+hardware needed in the receiver.
+
+The optimal sparse signal recovery for binary compressed
+sensing can be attained by solving a certain integer pro-
+gramming problem. However, the IP problem is, in general,
+computationally hard to solve and the approach can handle
+only small problems. Boufounos and Baraniuk [3] studied
+a relaxation method that replaces L0-norm with L1-norm
+and introduced a convex relaxation for integer constraints.
+Although nonlinearity induced by binary quantization prohibits
+direct applications of known sparse recovery algorithms for
+the original compressed sensing, several sparse recovery al-
+gorithms for binary compressed sensing has been developed
+[5] [6] [7] based on the known iterative methods for the
+original compressed sensing. Boufounos [5] proposed a greedy
+algorithm called Matched Sign Pursuit (MSP) that is a counter
+part of Orthogonal Matching Pursuit (OMP). The paper [6]
+presents Binary Iterative Hard Thresholding (BIHT) algorithm
+by reforming Iterative Hard Thresholding (IHT) algorithm [8].
+
+Although the known sparse recovery algorithms exhibit
+reasonable sparse recovery performance, it may not be suitable
+for applications in high speed wireless communications. This
+is because most of algorithms require a number of iterations
+to achieve reasonable sparse recovery results. Most of known
+algorithms also require calculations involving matrix-vector
+products with O(n2)-computations for each iteration where
+n is the length of the sparse signal vector.
+
+Our approach for sparse signal recovery is to employ feed-
+forward neural networks as building blocks of sparse signal
+recovery schemes. We expect that an appropriately designed
+and trained neural networks greatly reduce required computing
+resources and are well suited to hardware implementation. In
+this paper, we will propose the majority voting neural networks
+composed of several independently trained neural networks,
+which are feedforward 3-layer neural networks employing
+the sigmoid function as an activation function. As far as we
+know, there is no previous studies on sparse signal recovery
+based on neural networks. Our focus is thus not only on the
+practical aspect of the neural sparse signal recovery but also
+on studies on the fundamental behavior of the neural networks
+for sparse signal recovery. Recently, deep neural networks [9]
+have been actively studied because they provide surprisingly
+excellent performance in the areas of image/speech recognition
+and natural language processing [10]. Such powerful neural
+networks can be used in wireless communication as well. This
+work can be seen as a ﬁrst attempt to this direction.
+
+II. SPARSE RECOVERY BY NEURAL NETWORKS
+
+Input
+layer
+
+Hidden
+
+layer
+
+Output
+
+round
+
+layer
+
+A. Binary compressed sensing
+
+The main problem for binary compressed sensing is to
+reconstruct an unknown sparse signal vector x ∈ Rn from the
+observation signal vector u ∈ {+1, −1}m under the condition
+that these signals satisfy the relationship:
+
+u = sign(Ax).
+
+The sign function sign(·) is deﬁned by
+
+sign(a) =(cid:26)−1
+
++1
+
+(a ≤ 0),
+(a > 0).
+
+(1)
+
+(2)
+
+The matrix A ∈ Rm×n is called a sensing matrix. We assume
+that the length of the observation signal vector u is smaller
+than the length of the sparse signal vector x, i.e., m < n. This
+problem setup is similar to that of the original compressed
+sensing. The notable difference between them is that
+the
+observation signal u is binarized in a sensing process of binary
+compressed sensing. A receiver obtains the observation signal
+u and then it tries to recover the corresponding hidden signal x.
+We here make two assumptions for the signal x and the sensing
+matrix A. The ﬁrst assumption is sparsity of the hidden signal
+x. The original binary signal x ∈ {0, 1}n contains only k non-
+zero elements, where k is a positive integer much smaller than
+n, i.e., Hamming weight of x should be k. We call the set of
+binary vectors with Hamming weight k is k-sparse signals.
+The second assumption is that the receiver completely knows
+the sensing matrix A.
+
+B. Network architecture
+
+When we need an extremely high speed signal processing
+or an energy-efﬁcient sparse signal processing method for
+battery powered sensor, it would be reasonable to develop a
+sparse signal recovery algorithm suitable for the situation. In
+the sparse signal recovery method based on neural networks
+to be described in this section requires only several matrix-
+vector products to obtain an output signal, which is an estimate
+signal of the sparse vector x. Thus, the proposed method
+needs smaller computational costs than those required by
+conventional iterative methods.
+
+Our sparse recovery method is based on a 3-layer feedfor-
+ward neural network illustrated in Fig.1. This architecture is
+fairly common one; it consists of the input, hidden and output
+layers. Adjacent layers are connected by weighted edges and
+each layer includes neural units that can keep real values. As
+an activation function, we employed the sigmoid function to
+determine the values of the hidden and output layers. In our
+problem setting, the observation signal u is fed into the input
+layer from the left in Fig.1. The signal propagates from left to
+right and the output signal y eventually comes out from the
+output layer. The network should be trained so that the output
+signal y is an accurate estimation of the original sparse signal
+x. The precise description of the network in Fig.1 is given by
+the following equations:
+
+h = σ(Whu + bh),
+y = σ(Woh + bo),
+ˆx = round(y).
+
+(3)
+(4)
+(5)
+
+・
+・
+・
+・
+・
+
+・
+・
+・
+
+・
+・
+・
+
+・
+・
+・
+
+Fig. 1.
+Architecture of feedforward neural networks for sparse signal
+recovery. An observation signal u comes from the left and is fed to the input
+layer. A sparse estimation vector comes out from the output layer. The sigmoid
+function is used as an activation function.
+
+The function σ(·) is the sigmoid function deﬁned by f (a) =
+1/(1 + e−a). In this paper, we will follow a simple con-
+vention that f (a) represents (f (a1), f (a2), . . . , f (an)) where
+a = (a1, . . . , an). The round function round(a)(a ∈ R)
+gives the nearest integer from a. The equation (3) deﬁnes the
+signal transformation from the input layer to the hidden layer.
+An afﬁne transformation is ﬁrstly applied to the input signal
+u ∈ {+1, −1}n and then the sigmoid function is applied. The
+weight matrix Wh ∈ Rm×α and the bias vector bh ∈ Rα
+deﬁnes the afﬁne transformation. The resulting signal h ∈ Rα
+is kept in the units in the hidden layer, which are called
+hidden units. The parameter α thus means the number of
+hidden units. From the hidden layer to the output layer, the
+equation (4) governs the second signal transformation. The
+second transformation to yield the signal y consists of the
+afﬁne transformation, based on the weight matrix Wo ∈ Rα×n
+and the bias vector bo ∈ Rn, and the nonlinear mapping based
+on the sigmoid function. The vector y ∈ Rn emitted from
+the output layer is ﬁnally rounded to a nearest integer vector
+because we assumed that non-zero elements in the original
+sparse signal x takes the value one. Since the range of the
+sigmoid function lies in the open interval (0, 1), an element in
+the estimate vector ˆx should take the value zero or one.
+
+C. Training
+
+is expected that
+
+The network in Fig.1 can be seen as a parametrized
+estimator ˆx = round(Φθ(u)) where θ is the set of the trainable
+parameters θ = {Wh, Wo, bh, bo}. It
+the
+trainable parameter θ should be adjusted in the training phase
+so as to minimize the error probability P rob[x 6= ˆx]. However,
+it may be computationally intractable to minimize the error
+probability directly. Instated of direct minimization of the error
+probability itself, we will minimize a loss function including
+a cross entropy-like loss function and an L1-regularization
+term. In this subsection, the details of the training process is
+described.
+
+In the training phase of the network, the parameter θ
+should be updated in order to minimize the values of the given
+loss function. Let D = {(u1, x1), . . . , (uL, xL)} be the set
+of the training data used in the training phase. The signals
+ui and xi relate as ui = sign(Axi), i = 1, 2, . . . , L. In the
+
+training process, we use randomly generated training samples;
+the sparse vectors x1, x2, . . . , xL are generated uniformly at
+random from the set of k-sparse vectors. The sample ui is fed
+into the network and the corresponding sample xi is used as
+the supervisory signal.
+
+We here employ stochastic gradient descent (SGD) algo-
+rithms to minimize the loss function described later. It is em-
+pirically known that SGD and its variations behave very well
+for non-convex objective functions that are computationally
+hard to minimize. This is the reason why SGD and related
+algorithms are widely used for training deep neural networks.
+In order to use SGD, we need to partition the training set
+into minibatches. A minibatch is a subset of the training data
+and the use of minibatches introduces stochastic disturbance in
+training processes. Such stochastic disturbance helps a search
+point in an SGD process to escape from a stationary point of
+the non-convex objective function to be minimized. We divide
+the training data into a number of minibatches as follows:
+
+D = {{(u1, x1), . . . , (uT , xT )}, {(uT +1, xT +1) . . . , } . . .}.
+
+In this case, every minibatch contains T -pair of samples. We
+denote k-th , k = 1, 2, . . . , L/T , minibatch as Dk.
+
+D. Loss function
+
+The choice of the loss function, i.e., the objective function
+to be minimized in training processes, is crucial to achieve ap-
+propriate recovery performance. We introduce a loss function
+designed for sparse signal recovery. The loss function of k-th
+minibatch is deﬁned by
+
+Lk(θ) = −
+
+1
+
+nT Xi∈Dk
+
+n
+
+Xj=1
+
+xi
+j log yi
+
+j +
+
+λ
+
+T Xi∈Dk
+
+||yi||1.
+
+(6)
+
+1, . . . , yi
+
+The vector yi = (yi
+n) is given by yi = Φθ(ui), i.e,
+the output of our neural network corresponding to the input
+ui. The ﬁrst term of Lk(θ) measures closeness between yi
+and xi. This measure is closely related to cross entropy that
+are often used in supervised classiﬁcation problems. In the
+case of a classiﬁcation problem, xi is a one-hot vector that
+can be interpreted as a probability vector. In our case, since xi
+contains k-ones, thus the ﬁrst term is not the same as the cross
+entropy. It has been empirically observed that this term plays
+an important role for sparse signal recovery. For example, from
+several numerical experiments indicated that the L2-distance
+between yi and xi is not suitable for our purpose. The second
+term of equation (6) is the L1-regularization term for pro-
+moting sparsity of the output y. The regularization parameter
+λ adjusts effectiveness of regularization. Some experiments
+showed that the L1-regularization term is indispensable for
+obtaining sparse output vector.
+
+The training process of our network can be summarized
+as follows. We ﬁrst generate the training data D. In the k-th
+update iteration of the parameter θ, the minibatch Dk is fed
+to the Adam optimizer [11] based on the loss function (6).
+The Adam optimizer is a variant of SGD that provides fast
+convergence in many cases and it is widely used in learning
+process for deep neural networks. An iteration corresponding
+to a process for a minibatch is called a learning step. A training
+process ﬁnishes when all the minibatches are processed.
+
+III. NUMERICAL RESULTS
+
+As the primal performance measure of sparse signal recon-
+struction, we adopt the recovery rate which is the probability
+of the event ˆx 6= x under the assumption where x is chosen
+uniformly at random from the set of k-sparse binary vectors.
+In this section, we evaluate the sparse signal recovery perfor-
+mance of our feedforward neural networks in Fig. 1.
+
+A. Details on experiments
+
+We used TensorFlow [12] to implement and to train our
+neural networks. TensorFlow is a framework designed for
+distributed data ﬂow based numerical calculations that is es-
+pecially well suited for training of deep neural networks. Ten-
+sorFlow supports automatic back propagation for computing
+the gradient vectors required for the parameter updates and it
+also provides GPU-computing that can signiﬁcantly accelerate
+training processes. It is rather straightforward to implement
+our neural networks and the training process descried in the
+previous section by using TensorFlow.
+
+The details of parameters used throughout the paper are
+following. The length of the original sparse signal x is set
+to n = 256. The sensing matrix A ∈ Rm×n is generated at
+random, i.e., each element of A is independently generated
+according to Gaussian distribution with mean 0 and variance
+1. The sensing matrix is generated just before an experiment
+and ﬁxed during an experiment. At the beginning of a training
+process, the weight matrices Wh and Wo at the hidden and
+output layers are initialized based on pseudo random numbers,
+namely each element of these matrices follows Gaussian
+distribution with mean 0 and variance 0.05. The bias vectors
+bh and bo at the hidden and output layers are initialized to the
+zero vector. The number of hidden units is set to α = 1000
+and the minibatch size is set to T = 100. The initial value of
+the learning coefﬁcient of Adam optimizer is ǫ = 0.002 and
+the coefﬁcient of regularization term is set to λ = 0.95.
+
+B. Initial experiments
+
+As an example of sparse signal reconstruction via our
+neural network, we show a 6-sparse vector x and the corre-
+sponding output of the trained neural network y = Φθ∗(x) in
+Fig.2. The parameter θ∗ is obtained by a training process with
+5 × 104 learning steps, i.e., minibatches. In this experiment,
+we set the length of the observation signal to m = 140. From
+Fig.2, we can observe that the output y shows fairly good
+match with the original signal x. For example, the support
+of components in y with the value larger than 0.5 exactly
+coincides with the support of x. Some of the components have
+the value pretty close to 1 as well. It is also seen that some of
+components with small values, e.g., at indices around 110 and
+145, incur false positive which means that the corresponding
+components in the original x are zero. This is the reason why
+we introduced the round function at the ﬁnal stage of our
+neural network in (5). It is expected that the round function
+eliminates the effect of the components with small values that
+may produce false positive elements in the ﬁnal estimation ˆx.
+Fig.3 indicates a relationship between the recovery rate and
+the learning steps. The parameters are n = 256, m = 140, k =
+6. From Fig.3, we can see that the recovery rate increases as
+the number of learning steps increases although the progress
+
+1.0
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0.0
+
+0
+
+1.0
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0.0
+
+0
+
+50
+
+100
+
+150
+
+200
+
+250
+
+ 1
+
+ 0.8
+
+ 0.6
+
+ 0.4
+
+ 0.2
+
+e
+
+t
+
+a
+r
+ 
+y
+r
+e
+v
+o
+c
+e
+R
+
+ 0
+
+ 0
+
+NN : k=4
+NN : k=6
+IP : k=4
+IP : k=6
+
+ 50
+
+ 100
+
+ 150
+
+ 200
+
+ 250
+
+Length of observation vector m
+
+50
+
+100
+
+150
+
+200
+
+250
+
+Index of signal component
+
+Recovery rates of the proposed scheme (denoted by NN). (n =
+Fig. 4.
+256, k = 4, 6) As benchmarks, recovery rates of IP-based scheme is also
+included (denoted by IP).
+
+Fig. 2. Sparse signal recovery for a 6-sparse vector. (top: the original sparse
+signal x, bottom: the output y = Φθ∗ (x) from the trained neural network.
+n = 256, m = 120)
+
+conditions:
+
+e
+
+t
+
+a
+r
+ 
+y
+r
+e
+v
+o
+c
+e
+R
+
+0.8
+
+0.7
+
+0.6
+
+0.5
+
+0.4
+
+0.3
+
+0.2
+
+0.1
+
+0
+
+zi = k,
+
+n
+
+Xi=1
+
+∀i ∈ [1, m],
+
+∀i ∈ [1, m],
+
+n
+
+Xj=1
+Xj=1
+
+n
+
+(7)
+
+Ai,jzj > 0,
+
+if ui = +1,
+
+(8)
+
+Ai,jzj ≤ 0,
+
+if ui = −1,
+
+(9)
+
+where Ai,j
+is the (i, j) element of the sensing matrix A
+and ui is the i-th element of the observation signal u. If a
+feasible solution z∗ satisfying all the above conditions exists,
+it becomes an estimate ˆx = z∗. It is clear that these conditions
+are consistent with our setting of binary compressed sensing.
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+(x104)
+
+Learning steps
+
+D. Experimental results
+
+Fig. 3. Learning steps and recovery rate. (n = 256, m = 140, k = 6)
+
+contains ﬂuctuations. The recovery rate appears to be saturated
+around 5.0 × 104 steps. In following experiments, the number
+of learning steps is thus set to 5×104 based on this observation.
+
+C. Sparse recovery by integer programming
+
+We introduce integer programming (IP)-based sparse sig-
+nal recovery as a performance benchmark in the subsequent
+subsections because it provides the optimal recovery rate. The
+IP formulation shown here is based on the linear programming
+formulation in [4]. Although IP-based sparse signal recovery
+requires huge computer resources, it is applicable to moderate
+size problems if we employ a recent advanced IP solver. We
+used IBM CPLEX Optimizer for solving the IP problem shown
+below. The problem needed to solve is to ﬁnd a feasible binary
+vector z = (z1, . . . , zn) ∈ {0, 1}n satisfying the following
+
+Fig.4 presents the recovery rates of the proposed scheme
+under the condition where n = 256, k = 4, 6. The neural
+network shown in Fig.1 was used. In Fig.4, it is seen that the
+recovery rate tend to increase as m increases for all k. The
+recovery rate is beyond 90% at m = 140 when the original
+signal is 4-sparse. It can be also observed that the recovery rate
+strongly depends on the sparseness parameter k. For example,
+the recovery rate of k = 6 comes around 70% at m = 140.
+The IP-based sparse recovery provides the recovery rate 99%
+at m ≥ 60 when the original signal is 6-sparse vector. On
+the other hand, our neural network yields the recovery rate
+more than 90% at m ≥ 240 when the original signal is 6-
+sparse. Although computation costs of the neural network in
+the recovery phase are much smaller than those required for
+IP-based sparse recovery, the performance gap appears rather
+huge and the neural-based reconstruction should be further
+improved.
+
+IV. MAJORITY VOTING NEURAL NETWORKS
+
+In the previous section, we saw that neural-based sparse
+signal recovery is successful under some parameter setting
+
+but there are still much room for improvement in terms of
+the recovery performance. In this section, we will propose a
+promising variant of the feedforward neural networks which
+is called majority voting neural networks. The majority voting
+neural network consists of several independently trained neural
+networks. The outputs from these neural network are combined
+by soft majority voting nodes and the ﬁnal estimation vector
+is obtained by rounding the output from the soft majority
+voting nodes. Combining a several neural networks to obtain
+improved performance is not a novel idea, e.g., [14], but it will
+be shown that the idea is very effective for our purpose.
+
+A. Network architecture
+
+From statistics of reconstruction errors occurred in our
+computer experiments, we observed that many reconstruction
+error events (i.e., x 6= ˆx) occur due to only one symbol
+mismatch. In addition to this observation, we also found that
+independently trained neural networks tend to make symbol
+errors at distict positions. These observations inspire us to use
+majority voting to combine several outputs from independently
+trained neural networks.
+
+Figure 5 presents the architecture of the majority voting
+neural networks. In this case,
+the majority voting neural
+network consists of S component feedforward neural networks
+deﬁned by
+
+h(s) = σ(W (s)
+
+h u + b(s)
+h ),
+o h(s) + b(s)
+o ),
+
+y(s) = σ(W (s)
+
+(10)
+(11)
+
+where s = 1, 2, 3, . . . , S. The output of the component neural
+networks are aggregated by the soft majority logic nodes and
+it yields the estimation vector:
+
+ˆx = Tτ  S
+Xs=1
+
+y(s)! ,
+
+where Tτ (·) is the the threshold function deﬁned by
+
+(12)
+
+(13)
+
+Tτ (a) =(cid:26) 0,
+
+1,
+
+if a ≤ τ,
+if a > τ.
+
+In the following experiments, we set τ = S/2. Each compo-
+nent network was trained independently. This means that the
+training sets were independently generated for each component
+network.
+
+Input
+
+Multiple NNs
+
+Threshold
+function
+
+Output
+
+・
+・
+・
+
+・
+・
+・
+
+・
+・
+・
+
+・
+・
+・
+
+・
+・
+・
+
+・
+・
+・
+
+・
+・
+・
+
+・
+・
+・
+
+Fig. 5.
+netowork consists of S independently trained feedforward neural networks.
+
+Network architecture of majority voting neural networks. The
+
+ 1
+
+ 0.8
+
+ 0.6
+
+ 0.4
+
+ 0.2
+
+e
+
+t
+
+a
+r
+ 
+y
+r
+e
+v
+o
+c
+e
+R
+
+ 0
+
+ 0
+
+single NN
+3-NNs
+5-NNs
+IP
+
+ 50
+
+ 100
+
+ 150
+
+ 200
+
+ 250
+
+Length of observation vector m
+
+Fig. 6. Recovery rate of majority voting neural network. (n = 256, k = 6)
+
+create high speed sparse recovery circuits on FPGA or ASIC.
+Note that implementation of neural networks with FPGA is
+recently becoming a hot research topic [13].
+
+B. Required computational resources
+
+C. Experimental results
+
+The simple architecture of the majority voting neural net-
+works is advantageous for both software and hardware imple-
+mentations. In a case of software implementation, computation
+time required for matrix-vector products are dominant in a
+recovery process. For computing y(s), we need approximately
+2α(m + n) basic arithmetic operations such as additions and
+multiplications. Since there are S-components, approximately
+2Sα(m + n) basic arithmetic operations are required for
+computing the output. This number appears competitive to
+known iterative methods [5] because, in most iterative algo-
+rithms, O(n2)-basic operations are required for each iteration
+to compute Ax′ where A ∈ Rm×n and x′ ∈ Rn. For a case
+of hardware implementation, parallelism in the architecture
+of the majority voting neural networks possibly enables us to
+
+Fig.6 presents comparisons of the recovery rates of the
+majority voting neural networks. The length of the sparse
+signal is set to n = 256 and the sparseness parameter is set to
+k = 6. From Fig.6, we can observe signiﬁcant improvement in
+recovery performance compared with the performance of the
+single neural network. A single feedforward neural network
+discussed in the previous section provides recovery rate around
+50% at m = 120. On the other hand, the majority voting neural
+networks with 3 component nets achieves 95% at m = 120.
+The majority nets with 5 components shows further improve-
+ment to 99% at m = 120. This result implies that the soft
+majority voting process introduced in this section is effective to
+improve the reconstruction performance. Another implication
+obtained from this result is that independently trained nets
+
+ 1
+
+ 0.8
+
+ 0.6
+
+ 0.4
+
+ 0.2
+
+e
+
+t
+
+a
+r
+ 
+y
+r
+e
+v
+o
+c
+e
+R
+
+ 0
+
+ 0
+
+single NN
+3-NNs
+5-NNs
+7-NNs
+IP
+
+ 50
+
+ 100
+
+ 150
+
+ 200
+
+ 250
+
+Length of observation vector m
+
+training neural networks is of prime importance to achieve
+excellent reconstruction performance. We found a loss function
+suitable for this purpose, which includes a cross entropy like
+term and an L1 regularized term. The majority voting neural
+network proposed in this paper is composed from several
+independently trained feedforward neural networks. From the
+experimental results, we observed that the majority voting neu-
+ral network achieves excellent recovery performance, which is
+approaching the optimal IP-based performance as the number
+of component nets grows. The simple architecture of the
+majority voting neural network would be beneﬁcial for both
+software and hardware implementation. It can be expected that
+high speed sparse signal recovery circuits based on the neural
+networks produce novel applications in wireless communica-
+tions such as multiuser detection in multiple access channels.
+
+Fig. 7. Recovery rate of majority voting neural network. (n = 256, k = 8)
+
+ACKNOWLEDGEMENT
+
+TABLE I.
+COMPUTATION TIME (IN SECOND) FOR SPARSE RECOVERY
+OF 10000 INSTANCES (n = 256, k = 6). THE PARAMETER S REPRESENTS
+
+THE NUMBER OF COMPONENT NETWORKS
+
+m
+60
+90
+120
+150
+180
+
+IP
+1.5 × 104
+1.1 × 104
+5.2 × 103
+3.2 × 103
+3.1 × 103
+
+S = 1
+1.4 × 10−1
+1.7 × 10−1
+1.6 × 10−1
+1.5 × 10−1
+1.5 × 10−1
+
+S = 3
+9.7 × 10−1
+8.7 × 10−1
+8.9 × 10−1
+9.7 × 10−1
+9.4 × 10−1
+
+S = 5
+1.5 × 100
+1.5 × 100
+1.5 × 100
+1.8 × 100
+1.7 × 100
+
+The processor is Intel Core i7-3770K CPU(3.50GHz, 8-cores) and the memory
+size is 7.5 Gbytes.
+
+tend to have different estimation error patterns. This property
+explains the improvement in recovery rate observed in this
+experiment. We can see that there is still gap between the
+curves of the IP-based sparse recovery and the majority voting
+nets with S = 5. The gap might be considered as the price
+we need to pay for obtaining reduction in required computing
+resources.
+
+Fig.7 also shows the recovery rates when k = 8. The length
+of the original signal is n = 256. In Fig.7, we can see the same
+tendency that has been observed in the previous experimental
+result in Fig.6. The performance of sparse recovery tends to
+increase as the number of component networks grows. At m =
+120, the recovery rate is improved from 20% (with the single
+network) to 95% (with 7 component networks).
+
+Table I presents statistics on computation time required for
+sparse recovery of 10000 instances for n = 256, k = 8. It
+can be seen that sparse recovery algorithms based on neural
+networks runs order of several magnitude faster than the IP
+sparse recovery method. Of course, computation time depends
+on the computing environment and implementation but the
+result can be seen as an evidence that supports our claim
+that the proposed network structure is advantageous to reduce
+required computing resources.
+
+V. CONCLUDING SUMMARY
+
+In this paper, we proposed sparse signal recovery schemes
+based on neural networks for binary compressed sensing. Our
+empirical study shows a choice of the loss function used for
+
+The present study was supported by Grant-in-Aid for
+Scientiﬁc Research (B) (grant number 16H02878) from JSPS.
+We used the optimization problem solver CPLEX Optimizer
+and the distributed numerical computation framework Tensor-
+ﬂow in this work. We gratefully acknowledge IBM Academic
+Initiative and Google.
+
+REFERENCES
+
+[1] A. K. Fletcher, S. Rangan and V. K. Goyal, “On-off random access
+
+channels: a compressed sensing framework,” arXiv:0903.1022, 2009.
+
+[2] M. Kaneko, W. Hu, K. Hayashi and H. Sakai, “Compressed sensing-
+based tag identiﬁcation protocol for a passive RFID system,” IEEE
+Commun. Lett., vol. 18, no. 11, pp. 2023–2026, 2014.
+
+[3] P. Boufounos and R. Baraniuk, “1-bit compressive sensing,” 42nd
+Annual Conference on Information Sciences and Systems (CISS), pp.
+16–21, 2008.
+
+[4] Y. Plan and R. Vershynin, “One-bit compressed sensing by linear
+programming,” Communications on Pure and Applied Mathematics
+66.8, pp. 1275–1297, 2013.
+
+[5] P. Boufounos, “Greedy sparse signal reconstruction from sign measure-
+ments” Asilomar Conf. on Signals Systems and Comput., pp. 1305–
+1309, 2009.
+
+[6] L. Jacques, J. Laska, P. Boufounos, and R. Baraniuk, “Robust 1-bit
+compressive sensing via binary stable embeddings of sparse vectors,”
+IEEE Transactions on Information Theory 59.4, 2082–2102, 2013.
+J. Laska, Z. Wen, W. Yin and R. Baraniuk, “Trust but verify: fast and
+accurate signal recovery from 1-bit compressive measurements,” IEEE
+Trans. Signal Process., vol. 59, no. 11, pp. 5289–5301, 2011.
+
+[7]
+
+[8] T. Blumensath and M. Davies, “Iterative hard thresholding for com-
+pressive sensing,” Appl. Comput. Harmon. Anal., vol. 27, no. 3, pp.
+265–274, 2009.
+
+[9] L. Deng, G. Hinton and B. Kingsbury, “New types of deep neural
+network learning for speech recognition and related applications: an
+overview,” International Conference on Acoustics, Speech, and Signal
+Processing (ICASSP), pp. 8599–8603, 2013.
+
+[10] K. Simonyan and A. Zisserman, “Very deep convolutional networks for
+
+large-scale image recognition,” arXiv:1409.1556, 2014.
+
+[11] D. P. Kingma and J. L. Ba, “Adam: a method for stochastic optimiza-
+
+[12]
+
+tion,” arXiv:1412.6980, 2014.
+“TensorFlow: large-scale machine learning on heterogeneous systems,”
+http://tensorﬂow.org/ 2015. Software available from tensorﬂow.org.
+
+[13] G. Orchard, J. G. Vogelstein and R. Etienne-Cummings, “Fast neu-
+romimetic object recognition using FPGA outperforms GPU implemen-
+tation,” IEEE Trans. Neural Networks Learn. Syst., vol. 24, no. 8, pp.
+1239–1252, 2013.
+
+[14] S. B. Cho and J. H. Kim, “Combining multiple neural networks by
+fuzzy integral for robust classigication,” IEEE Trans. Systems Man and
+Cybernetics, vol. 25, no. 2, pp. 380–384, 1995.
+
+

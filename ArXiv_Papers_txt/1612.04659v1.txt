@@ -1,0 +1,2245 @@
+6
+1
+0
+2
+
+ 
+c
+e
+D
+4
+1
+
+ 
+
+ 
+ 
+]
+E
+N
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+9
+5
+6
+4
+0
+
+.
+
+2
+1
+6
+1
+:
+v
+i
+X
+r
+a
+
+Stable Memory Allocation in the Hippocampus:
+
+Fundamental Limits and Neural Realization
+
+Wenlong Mou∗
+
+Zhi Wang†
+
+Liwei Wang‡
+
+December 15, 2016
+
+Abstract
+
+It is believed that hippocampus functions as a memory allocator in brain, the mechanism of
+which remains unrevealed. In Valiant’s neuroidal model [19], the hippocampus was described as
+a randomly connected graph, the computation on which maps input to a set of activated neuroids
+with stable size. Valiant proposed three requirements for the hippocampal circuit to become
+a stable memory allocator (SMA): stability, continuity and orthogonality. The functionality of
+SMA in hippocampus is essential in further computation within cortex, according to Valiant’s
+model.
+
+In this paper, we put these requirements for memorization functions into rigorous mathemat-
+ical formulation and introduce the concept of capacity, based on the probability of erroneous
+allocation. We prove fundamental limits for the capacity and error probability of SMA, in
+both data-independent and data-dependent settings. We also establish an example of stable
+memory allocator that can be implemented via neuroidal circuits. Both theoretical bounds and
+simulation results show that the neural SMA functions well.
+
+1 Introduction
+
+It is well known that the computational speed of human brain is several orders of magnitude slower
+than that of current computer, while almost everything human can do easily are still beyond the
+capability of the most powerful computers. Thus, the investigation into computational mechanisms
+of human brains leads a promising direction for theoretical aspect of computation, machine learning
+and neuroscience. In particular, the formation of memory, during which the neural circuit creates
+a representation for an object, was not fully understood, though it has been observed that the
+hippocampus plays a signiﬁcant role in this process.
+
+A research line developed by Valiant [15, 16, 18, 20] focused on the connectivity structure
+of neuroids, i.e., the computational abstraction of neurons, on which local computation can be
+performed. This formal and conservative model assumes the brain to be a randomly connected
+graph of neuroids. Each of them can be either active or inactive, depending on the states of
+neighbors that have a directed edge to it. Biological constraints are also taken into consideration,
+such as weak synaptic connections and sparsity of graphs. With biological evidences, this model
+captures the capability of realistic neurons. Speciﬁc supervised and unsupervised learning tasks
+such as inductive learning, rational expressions, and reasoning are viable in this model, using the
+vicinal algorithms [17, 18, 7]. In Valiant’s model, those complicated processes are based on basic
+
+∗Key Laboratory of Machine Perception, School of EECS, Peking University. Email: mouwenlong@pku.edu.cn
+†Key Laboratory of Machine Perception, School of Mathematics, Peking University. Email: zhiwpku@gmail.com
+‡Key Laboratory of Machine Perception, School of EECS, Peking University. Email: wanglw@cis.pku.edu.cn
+
+1
+
+operations of JOIN and LIN K. Recently, a new operation called P JOIN , namely, predictive
+JOIN , was proposed for unsupervised learning of patterns [14, 13]. All those operations, as well as
+experimental evidences from neuroscience, requires the representation for an item to be allocated
+with a stable amount of neurons, which is done by hippocampus, before the computation in cortex.
+Valiant [19] ﬁrst discussed the role and computational mechanisms of hippocampus in this
+model. The paper stated that the function of hippocampus is to ”identify the set of neurons in
+cortex at which a new compound concept or chunk will be represented, and to enable that set of
+neurons to take on that role”. The stability of the amount of neurons allocated plays a key role in
+Valiant’s neuroidal models in order to control each new chunk within a limited range so as to avoid
+the overall system becoming unstable. To guarantee this, three requirements for stable memory
+allocators (SMA) was proposed in their paper, namely, stability, continuity and orthogonality.
+Valiant pointed out the direction by discussing biological constraints and proposing an example in
+his paper, yet rigorous mathematical treatment is still in need. Our systematic analysis of stable
+memory allocators is therefore important in the neuroidal model.
+
+Memorization process creates neural representation for arbitrary set of input item, either ran-
+domly or through learning from samples. Performance and characteristics of such mapping functions
+have been vastly studied in machine learning, theoretical computer science and computational neu-
+roscience. For example, in [1], a sign-consistent sparse JL transform is constructed to explain the
+formation of memory, under a diﬀerent model of neurons. [3] proposed a neuron-friendly random
+projection for robust concept learning via dimension reduction. Hopﬁeld networks [8] dynamically
+adjust network weights to create memory for new items. Locality sensitive hashing [9] and binary
+embeddings [21] randomly maps input vector into a discrete space while preserving locality. Our
+work relates to them in terms of compression of information and preservation of locality.
+
+In this paper, we ﬁrst manage to put Valiant’s idea into a rigorous mathematical formula-
+tion. We give basic theoretical results and a simple construction in Section 2. By introducing
+concepts of error probability and capacity into our formulation, we are able to better characterize
+the fundamental possibilities and impossibilities of memory allocation. Their theoretical bounds
+are discussed under both data-dependent and data-independent settings; see Section 3. While the
+network designed by Valiant works in special cases [19], it could not be generalized to the scale of
+real hippocampus. That’s why we propose, in Section 4, a feed-forward neural network model to re-
+alize stable memory allocation in hippocampus, and at the same time consistent with the biological
+constraints. In contrast to subtractive models [19], the inhibition patterns of neurons are divisive
+in our design. We show that this stable memory allocator can better achieves the requirements
+with reasonable capacity.
+
+2 Formulation of SMA
+
+In this section, we will ﬁrst reﬁne the requirements for the stable memory allocation task [19], and
+put it into mathematical formulations.
+
+2.1 Basic requirements and motivation
+
+As proposed in [19], a valid stable memory allocator (SMA) for the cortex should subject to three
+basic requirements: stability, continuity and orthogonality. In the following we present high-level
+ideas in the formulation of SMA, and discuss basic requirements for a stable memory allocator to
+function well in Valiant’s model.
+
+• Stability: The mapping is stable in that for inputs within a wide range of activity levels,
+
+2
+
+the output will have activity level diﬀering little. This condition is fundamental in vicinal
+algorithms in the cortex, and also reasonable in neural representation of abstract concepts.
+• Continuity: A noise in the input pattern should not cause huge variations in the output.
+Continuity can provide neural systems with robustness (error-correcting) and help to realize
+pattern recognition functions (nearest-neighbor search).
+
+• Orthogonality: With this property, distinct items will not be confused. Pairs of inputs that
+diﬀer by much will be mapped to outputs that also diﬀer suﬃciently, so that they can be
+treated by cortex as distinct. We weaken the orthogonality requirement in [19] and broaden
+the class of stable memory allocators, yet the biological functionality can still be guaranteed.
+
+The randomness of mapping function plays an essential role in a stable memory allocator, since
+any data-independent deterministic allocation function will fail upon adversarial inputs: Suppose
+we have a ﬁxed SMA which maps vectors in {0, 1}n to a stable number of activated neurons. By
+pigeon-hole principle there must be 2Ω(n) vectors mapped to the same set of neurons. Among those
+colliding inputs, there must be a pair of vectors with Hamming distance Ω(n), which leads to the
+failure of orthogonality. On the contrary, a randomized SMA, like random projections, can fulﬁll
+these requirements for arbitrary input set of bounded size, with high probability. This observation
+is important and triggers the concept of error probability in our framework. We can thereby deﬁne
+the concept of capacity as the maximal number of objects that a stable memory allocator can
+handle with low error probability. In other words, the capacity of stable memory allocator stands
+for the number of items one can memorize without being confused.
+
+2.2 Mathematical formulation
+
+In our framework, SMA is formulated as a series of distributions with respect to size n over function
+space. Although the growth of synapses is quite random, there are some underlying rules that govern
+the formation of random graph so that almost everyone can allocate memory for new incoming
+items without any diﬃculty, no matter the diﬀerence of inner connections for each individual.
+We therefore demand the three properties here to hold uniformly with high probability, which
+guarantees more robustness than the model based on expected value [19]. It is also worth noticing
+that we do not make any assumptions on the structure or distribution of input vectors.
+Deﬁnition 1. A series of distributions {Hn} over function space {0, 1}n → {0, 1}n is called a
+stable memory allocator (SMA) with parameter (cid:104)δ, µ, κ, An, Bn, rn(cid:105) and capacity Kn, if ∀ε > 0,
+∃N ∈ N s.t. ∀n > N ∀Sn ⊂ {0, 1}n \ {x||x| ≤ κn} ,|Sn| ≤ Kn, the following three properties hold
+
+{∀x ∈ Sn,|h(x)| ∈ ((1 − δ)rn, (1 + δ)rn)} > 1 − ε
+{∀x ∈ Sn, y ∈ {0, 1}n, dH (h(x), h(y)) ≤ µdH (x, y)} > 1 − ε
+{∀x, y ∈ Sn, dH (x, y) > An, dH (h(x), h(y)) > Bn} > 1 − ε
+
+P r
+h∼Hn
+P r
+h∼Hn
+P r
+h∼Hn
+
+(1)
+
+It is natural to assume ∀x, y ∈ Sn, dH (x, y) > An according to our interpretation of orthogo-
+nality. There are some requirements for parameters of SMA: as the output vector is stably sparse,
+the number of activated neurons in the output rn should satisfy rn/n (cid:28) 1. Also, An and Bn
+should increase with respect to size n and one typical assumption is that they grow linearly:
+An = an, Bn = brn. Notice that a is also a small number compared to 1, otherwise only few items
+are considered ”truly diﬀerent” and orthogonality would fail.
+
+3
+
+Not all SMAs have good performance. When judging a SMA, we should ﬁrst consider those
+parameters that deﬁne it: smaller Lipschitz factor µ in the continuity requirement means better
+preservation of input information and stronger error-correcting functions. SMA with larger Bn
+and smaller An can distinguish items better. The parameter κ represents the lowest input density
+required. The following discussion, without pointing out explicitly, regards elements in Sn as not too
+sparse (with density larger than κ) for all the Sn mentioned. A small δ stands for good performance
+in stability. The extreme case is that δ = 0, which is a strong version that realize stability precisely:
+
+(cid:110)∀x ∈ Sn, h(x) ∈ T (rn)
+(cid:9) and we call a speciﬁc allocator function h(x) strong
+
+> 1 − ε
+
+(cid:111)
+
+(2)
+
+n
+
+Strong stability
+
+n (cid:44) (cid:8)x ∈ {0, 1}n(cid:12)(cid:12)|x| = rn
+
+P r
+h∼Hn
+
+where T (rn)
+stable with respect to input set Sn if ∀x ∈ Sn, h(x) ∈ T (rn)
+
+n
+
+.
+
+An SMA that satisﬁes the strong stability deﬁned above is called a strong SMA.
+
+2.3 Relating error probability to capacity
+
+The key issue involved within capacity is error probability. The more items are there to be allocated,
+the more conﬂicts are likely to be happen in the outputs. Thus, one target of designing SMA is to
+maximize its capacity, i.e. to avoid the possible conﬂicts.
+
+Theorem 1 reveals the relationship between pairwise error probability and capacity, in order to
+fulﬁll the requirements uniformly with high probability. In the design and analysis of SMA, this
+theorem serves as a useful tool to guarantee capacity.
+Theorem 1. If a series of distributions {Hn} over function space {0, 1}n → {0, 1}n satisﬁes the
+following properties:
+
+• For ∀x ∈ {0, 1}n ﬁxed ,with probability at least 1 − εn:
+
+|h(x)| ∈ ((1 − δ)rn, (1 + δ)rn)
+
+• For ∀x ∈ {0, 1}n ﬁxed, with probability at least 1 − εn:
+
+∀y ∈ {0, 1}n , dH (h(x), h(y)) ≤ µdH (x, y)
+
+• For ∀x, y ∈ {0, 1}n ﬁxed, dH (x, y) > An, we have:
+
+{dH (h(x), h(y)) > Bn} > 1 − εn
+
+P r
+h∼Hn
+
+(3)
+
+(4)
+
+(5)
+
+where lim
+n→0
+least o(1)√
+εn
+
+εn = 0. Then {Hn} is a strong SMA with parameters (cid:104)µ, An, Bn, rn(cid:105) and capacity at
+, as n goes to inﬁnity.
+
+The proof of this theorem estimates the overall error probability for a given set of items via
+
+union bound, the technical detail of which is deferred to the Appendix.
+
+4
+
+2.4 A simple example for SMA
+
+The following simple construction serves as a proof for the existence of SMA. The basic idea is that
+we ﬁrst randomly select 2rn bits from the input item, then ﬂip each of these bits with probability
+1
+2 .
+Suppose that {i1, i2,··· , i2rn} is uniformly distributed on all the 2rn-sized subsets of {1, 2,··· , n},
+and that b1, b2,··· , b2rn
+operation ⊕ denoting the modulo 2 addition.
+
+(cid:1). We deﬁne h(x) along with its distribution Hn as follows, with
+
+i.i.d.∼ B(cid:0)1, 1
+
+2
+
+(cid:26) bj ⊕ xk
+
+k = ij
+
+(6)
+We argue that ∀a, p, δ ∈ (0, 1), the construction above is an SMA with parameter (cid:104)δ, 0, 1, An =
+
+a · n, (1 − δ)pAn, rn = p · n(cid:105) and capacity at least o(1)e2pa2δ2n, according to Theorem 1.
+
+otherwise
+
+h(x)k =
+
+0
+
+Apparently, the ﬂips would not change Hamming distance and naturally meet the requirement
+
+of continuity. As ∀x ∈ {0, 1}n,|h(x)| ∼ B(cid:0)2rn, 1
+
+(cid:1), we know stability by using Chernoﬀ bound.
+(cid:8)dH (h(x), h(y)) ≤ (1 − δ) 2rn
+
+n d(cid:9) ≤ e−4rn( d
+
+2
+
+For orthogonality, let d = dH (x, y). According to Chv´atal’s estimation on tail probability of
+hypergeometric distribution [4], we have P rh∼Hn
+
+n )2δ2
+
+However, this example is still far from actual memorization mechanisms, since it could not be
+
+ﬁt into a biologically plausible neural realization.
+
+3 Theoretical analysis
+
+In this section, we will consider the theoretical bounds for capacity and error probability of SMA,
+which are two important characteristics to judge its performance other than those parameters that
+deﬁne it. Lower bound of error probability and upper bound of capacity are ﬁrst proposed. We also
+consider a diﬀerent scheme where the memory allocator can be learned from input, and establish
+upper and lower bounds for the capacity.
+
+3.1 Lower bound of pairwise error probability
+
+Lower bounds for pairwise error probability is important, since it indicates what capacity bound
+we can get via Theorem 1. In this subsection, we consider a slightly modiﬁed scheme, where the
+orthogonality condition is strengthened in Lipschitz form, and combined with continuity condition
+to constitute a bi-Lipschitz condition on the input set, as in Valiant’s paper [19].
+Theorem 2. If {Hn} is a series of distribution over functions that satisﬁes the following require-
+ments
+
+• ∀h ∈ supp(Hn),
+• ∀x, y ∈ {0, 1}nﬁxed, with probability at least 1 − εn:
+
+∈ (1 − δ, 1 + δ)
+
+|h(x)|
+rn
+
+then we have the lower bound for error
+
+λdH (x, y) ≤ dH (h(x), h(y)) ≤ µdH (x, y)
+
+(cid:32)(cid:20)
+
+(cid:18)
+
+(cid:19)(cid:21)−( µ−λ
+
+µ+λ )2 1
+
+logn
+
+(cid:33)
+
+εn = Ω
+
+2rnδ
+
+n
+
+rn(1 + δ)
+
+(7)
+
+(8)
+
+Basically, the theorem states information-theoretic limitations on a random mapping which can
+compress {0, 1}n to a much smaller one while preserving distance. The proof is based on reduction
+to one-way public-coin randomized communication complexity, which is deferred to Appendix.
+
+5
+
+3.2 Upper bound of capacity
+
+The following theorem gives an upper bound for the capacity when strong stability holds. This
+results mainly captures the limitations against achieving orthogonality posed by stability require-
+ment.
+
+Theorem 3. For an SMA with parameters (cid:104)0, 0, µ, An, Bn, rn(cid:105), if max(cid:8)|Sn|(cid:12)(cid:12)∀x, y ∈ Sn, dH (x, y) >
+(cid:9) ≥ Kn, then the capacity is upper bounded with:
+
+An
+
+log Kn ≤
+
+H(α) − αH(β) − (1 − α)H
+
++ o(1)
+
+n
+
+(9)
+
+(cid:19)
+
+(cid:18) αβ
+
+1 − α
+
+(cid:19)
+
+(cid:18)
+
+where α = rn
+
+n , β = Bn
+4rn
+
+and H(·) indicates entropy.
+
+This theorem also discussed information-theoretic limitations on stable memory allocator, from
+a diﬀerent perspective: the output space can only contain a limited number of ”truly diﬀerent”
+objects. The proof uses ”sphere packing” arguments, which is deferred to the Appendix.
+
+3.3 Theretical results for data-dependent allocators
+
+Till now, our discussions are data-independent without exploring whether the memory allocator can
+adjust according to data. We focus in this part on the theoretical possibilities for a data-dependent
+memory allocator which can learn from items. Though it is impossible for hippocampus to be aware
+of all the items to encounter beforehand, our theoretical analysis in data-dependent setting reveals
+the possibilities and limits for online learning in memory allocation, where the memory allocator
+can adjust its mapping function after seeing each instance. In the following we propose both upper
+and lower bounds for the capacity in the data-dependent setting.
+The deﬁnition of SMA indicates that, for each ﬁxed input set with limited size, there is at
+least one allocator h that satisﬁes the three conditions regardless of the distribution Hn on the
+function space. Therefore, ∀Sn,∃ h dependent on Sn such that ∀x, y ∈ Sn, dH (x, y) > An ⇒
+dH (h(x), h(y) ≥ Bn. An equivalent description of Theorem 3 from a data-dependent perspective
+is as follows:
+
+If an allocator function is strong stable, then the number of ”truly diﬀerent” items it can
+
+discriminate would be upper bounded with:
+
+exp
+
+H(α) − αH(β) − (1 − α)H
+
++ o(1)
+
+n
+
+(10)
+
+(cid:19)
+
+(cid:18) αβ
+
+1 − α
+
+(cid:19)
+
+(cid:27)
+
+(cid:26)(cid:18)
+
+Conversely, we consider that for a given set of ”truly diﬀerent” items Sn, whether an SMA that
+guarantees strong stability, orthogonality and uniform Lipschitz continuity exists. The following
+theorem guarantees the existence of data-dependent memory allocator with high capacity. We defer
+the technical proof to Appendix.
+
+Theorem 4. Given input set Sn ⊂ {0, 1}n that satisﬁes ∀x, y ∈ Sn, dH (x, y) > An. If log |Sn| ≤
+n, then there exists a function hn : {0, 1}n → {0, 1}n such
+
+H(α) − αH(β) − (1 − α)H
+
+(cid:17)(cid:17)
+
+(cid:16) αβ
+
+1−α
+
+(cid:16)
+
+1
+2
+that
+
+∀x ∈ Sn, h(x) ∈ T (rn)
+
+n
+
+;∀x, y ∈ Sn, dH (hn(x), hn(y)) > Bn;
+
+∀x ∈ Sn,∀y ∈ {0, 1}n, dH (hn(x), hn(y)) ≤ 8rn
+An
+
+where rn = |Sn|, α = rn
+
+n , β = Bn
+2rn
+
+and H(·) is the entropy.
+
+dH (x, y)
+
+(11)
+
+6
+
+Notice that the number of input items in Theorem 4 is approximately the square root of the
+
+upper bound indicated by Theorem 3. The lower bound is strong in this sense.
+
+4 A feedforward neural network for SMA
+
+In this section, we propose a feedforward neural network model that realizes SMA functionality.
+Compared with Valiant’s previous neural circuits [19], not only does our construction achieve better
+performance of SMA, with capacity guarantees, but also it is biologically more reasonable, in terms
+of number of synapse connected to a neuron and their strengths.
+
+4.1 Biologically reasonable assumptions
+
+We adopt the randomly-connected feed-forward network architecture and unmodiﬁable synapse in
+Valiant’s paper [19]. Actually, as Valiant has suggested in his paper [19], there are also experimental
+evidences supporting this architecture. The information ﬂow within hippocampus appears to be uni-
+directional, with much less reciprocal connections [2]; it has also been reported that both modiﬁable
+and unmodiﬁable synapse exists in the hippocampus [5]. As in Valiant’s paper, our theory focuses
+on explaining the mechanism of memory allocation component, with conservative assumptions on
+neurons, though the overall infrastructure of hippocampus can be much more complicated.
+
+A major diﬀerence we made in the design of neural circuit is that, the inhibition patterns of
+neurons are divisive, instead of subtractive. Whether the way of inhibition is subtractive or divisive
+is an important open question in neuroscience [6, 12]. In divisive inhibition model, each neuron is
++ Wi to the sum of all the
+
+activated if and only if the ratio of its total positive synaptic inputs(cid:80)
+synaptic weights that come from input neurons ((cid:80)
+
++ Wi) + ((cid:80)− Wi) is larger than the threshold
+
+(cid:80)
++ Wi+(cid:80)− Wi
+
++ Wi
+
+(cid:80)
+
+value C, i.e.
+> C. For the purpose of memory allocation, subtractive models [19]
+have to narrow down the range of density in each layer and use contraction mapping theorem for
+stability. Divisive inhibition, on the contrary, enables us to control the expected level of activity in
+second layer directly, for a wide range of input density.
+
+4.2 Description of the network
+
+Our neural realization is based on a unidirectional three-layer network architecture. For simplicity
+we assume each layer has n neurons. Firing neurons in the ﬁrst layer represents the input vector
+x ∈ {0, 1}n, and the output h(x) is taken from the third layer. For k ∈ {1, 2}, the edges from k-th
+layer to (k +1)-th layer is randomly and independently connected: each edge exists with probability
+2p, and the chances for it to become positive and inhibitive are both p. The threshold value in
+divisive inhibition is denoted as C1 and C2, for second and third layer neurons respectively.
+
+4.3 Proof of SMA functionality
+
+In this subsection, we give proofs on the validity of our construction as a stable memory allocator,
+with reasonable parameters and capacity.
+
+We ﬁrst give the following technical lemmas needed in our analysis. Lemma 1, 2, 3 and 4
+described the consequences of passing through one layer in our network model. We defer the proofs
+for the lemmas and theorem to Appendix.
+
+7
+
+Lemma 1. For ∀x ∈ {0, 1}n ﬁxed, let β ∈ Rn with all entries i.i.d., P r{βi = 1} = P r{βi = −1} =
+p, P r{βi = 0} = 1 − 2p. Then we have:
+
+0 ≤ 1
+2
+
+− P r{βT x > 0} ≤
+
+e−2(2 ln 2−1)p|x|
+
+1
+2
+
+(12)
+
+2(cid:112)πp|x| +
+
+1
+
+The following lemma estimates how one-bit diﬀerence in the input inﬂuence the output.
+
+Lemma 2. For ∀x, y ∈ {0, 1}n ﬁxed, with dH (x, y) = 1, let β ∈ Rn with all entries i.i.d., P r{βi =
+1} = P r{βi = −1} = p, P r{βi = 0} = 1 − 2p. For ∀v ∈ {0, 1}n, let g(v) = I[βT v] > 0. Then we
+have:
+
+(cid:114) p
+π|x| + 2pe−2(2 ln 2−1)p|x|
+
+P r {g(x) (cid:54)= g(y)} ≤ 2
+
+For a more general case, we cannot write the probability of changed bits in closed form, while
+its asymptotic behavior can be estimated using central limit theorem, as stated in the following
+two lemmas.
+Lemma 3. For ∀x, y ∈ {0, 1}n ﬁxed, with dH (x, y) = L, let β ∈ Rn with all entries i.i.d.,
+P r{βi = 1} = P r{βi = −1} = p, P r{βi = 0} = 1 − 2p. For ∀v ∈ {0, 1}n, let g(v) = I[βT v] > 0.
+Then we have:
+
+P r {g(x) (cid:54)= g(y)} ≈ 1
+π
+
+cos−1
+
+|x ∩ y|
+
+(cid:112)|x| · |y|
+
+i=1 with P r{xi = 1} =
+Lemma 4. For n independent and identically distributed pairs {(xi, yi)}n
+P r{yi = 1} ≈ 1
+2 and P r{xi (cid:54)= yi} = η, we concatenate them and get two random vectors x, y ∈
+{0, 1}n. Let β ∈ Rn with all entries i.i.d., P r{βi = 1−c} = P r{βi = −c} = p, P r{βi = 0} = 1−2p.
+For ∀v ∈ {0, 1}n, let g(v) = I[βT v] > 0. We have P r{g(x) (cid:54)= g(y)} is approximately equal to:
+
+(cid:90)
+
+2(cid:113)
+
+1 − 1
+2 η
+
+t(cid:113)
+
+1 − 1
+2 η
+
+ϕ(
+
+R
+
+(cid:12)(cid:12)√
+
+−1√
+
+η
+
+)Φ(
+
+(cid:112)v(c, p)
+√
+2t − (2c − 1)p
+
+n
+
+(cid:12)(cid:12))dt
+
+(ϕ(·) and Φ(·) denotes the density and cumulative density function for N (0, 1), respectively)
+(v(c, p) = (2c2 − 2c + 1)p − (1 − 2c)2p2 is variance of βi)
+
+(13)
+
+(14)
+
+(15)
+
+By combining them together, we conclude the functionality of neural stable memory allocator:
+(cid:1)(cid:113) 2
+Theorem 5. Given rn, An = a·n, s0, ∀γ ∈ (0, 1), we construct the neural network with parameters:
+np . Let H denote the mapping
+p = 1
+function deﬁned by this neural network. There exists a constant b depending solely on a, and
+4 (log n)2 with some absolute constant Z0, such that ∀x, y, z ∈ {0, 1}nwith
+
+µn = Z0rns
+|x|,|y|,|z| ≥ s0n, and dH (x, z) > An), the following hold if n is large enough:
+
+nγ , and C1 = 1
+
+− 1
+0 n− 1+γ
+
+2 , C2 = 1
+
+2 −
+
+√
+2
+
+n
+
+4
+
+s
+
+2−s2 , where s = Φ−1(cid:0) rn
+(cid:19)2(cid:41)
+(cid:40)
+(cid:18)
+(cid:110)−(t ln t − (t − 1))µn
+
+ − log(n/rn)
+s0n1−γ
+
+≤ exp
+
+−2n
+
+(cid:41)
+
+√
+
+P r
+h∼H
+
+(cid:27)
+
+(cid:26)|h(x) − rn|
+(cid:40)
+(cid:112)dH (x, y)
+
+n
+
+dH (h(x), h(y))
+
+> 
+
+≤ exp
+
+≥ tµn
+
+P r
+h∼H
+h∼H{dH (h(x), h(z)) ≤ (b − )rn} ≤ e−2n2
+
+P r
+
+(cid:111)
+(cid:112)dH (x, y)
+
+. ∀t ≥ 1
+
+(16)
+
+8
+
+Assume rn grows linearly with n → +∞, while , b remains absolutely constant, and t = Θ(nδ)
+with small absolute constant δ, the error probabilities in Theorem 5 diminish quasi-exponentially
+as n increases. Combined with Theorem 1, we conclude that the neural stable memory allocator
+achieves a capacity which is exponential in poly(n). The continuity requirement in this neural
+SMA deviates from standard deﬁnition: on the one hand, though the Lipschitz factor tµn grows
+unboundedly as n → +∞, it is much smaller than rn so that error-correcting functions can still be
+performed; on the other hand, the theorem provides more guarantees than Lipschitz constant, since
+
+the number of diﬀerent output bits grows linearly with(cid:112)dH (x, y) instead of dH (x, y), making it
+
+more robust for input errors of more than constant bits.
+
+4.4 Simulation results
+
+In this subsection, we verify the theoretical guarantees via simulating the neural network. Numerical
+results show that, the neural stable memory allocator is consistent with theoretical predictions, and
+thus functions well as an SMA.
+
+We construct three-layer network as described in this section. Guided by Theorem 5, parameters
+
+are set as follows:
+
+n = 105, p = 2.5 × 10−3, C1 = 0.5, C2 = 0.57
+
+To illustrate the stability of allocated neurons, we observe the proportion of activated neurons in
+second and third layer for input density ranging from 0.05 to 0.5, as plotted in Figure 1.a. The
+density of ﬁring neurons is restricted in (0.46, 0.49) in the second layer, and further narrowed down
+in range (0.014, 0.017) in the third layer. By adjusting C2 we can also control the density in output
+layer arbitrarily.
+
+(a) Stability
+
+(b) Expansion rates
+
+Figure 1: Stability and expansion rate of the neural SMA
+
+Figure 1.b shows the relationship between expansion rate dH (h(x),h(y))
+
+and the proportion of
+activated input neurons, which demonstrates continuity and orthogonality properties of our mem-
+ory allocator. The values shown in the ﬁgure is by taking average from 10 randomly chosen inputs.
+Diﬀerent curves stand for the behaviors of expansion rate for dH (x, y) = 1, 3, 10, 30, 100, respec-
+tively. As the ﬁgure shows, diﬀerence in inputs for a few bits will not cause the large Hamming
+
+dH (x,y)
+
+9
+
+0.10.20.30.40.50.0100.0150.0200.0250.0300.035Layer 1 (input)Layer 3 (output)0.4650.4700.4750.4800.485Layer 2Layer 2Layer 30.10.20.30.40.501020304050Input DensityExpansion Rate0.050.150.250.350.455101520253035404550dH(x, y)131030100distance between outputs, which veriﬁes continuity. On the other hand, the expansion rate is lower
+bounded with some positive constant, which illustrates orthogonality.
+It is also worth noticing
+that expansion rate decreases as dH (x, y) increases, which is consistence with continuity result in
+Theorem 5. Therefore, our experimental results verify the validity of Theorem 5, and demonstrate
+the performance of our construction as a stable memory allocator.
+
+5 Conclusion and open questions
+
+In this paper we give deﬁnitions, fundamental limits and a neural realization for stable memory
+allocation in the hippocampus, under Valiant’s neuroidal framework. We ﬁrst push ahead rigorous
+formulations from the three properties of SMA that Valiant has proposed in his paper [19]. Some
+important characteristics of SMAs in our deﬁnition such as capacity and error probability are
+discussed with their upper and lower bounds presented. We also explore the theoretical possibilities
+of memory allocators which can learn from input items.
+
+We explicitly construct a stable memory allocator based on a randomly-connected feed-forward
+neural network with biologically sound parameters. We use divisive inhibition of neurons in our
+model, which allows us to obtain arbitrary level of stability and preserves continuity better. Rigor-
+ous proofs are given for the performance of this SMA. We also verify our theory through computer
+simulations.
+
+There are a lot of promising future works we can do. By making full use of the three conditions in
+deﬁnition, we can possibly give tighter bounds for theoretical limits of SMAs. On the other hand,
+though we have constructed a neural network model that realizes SMA, it is far from optimal.
+The question whether we can construct a neural stable memory allocator with constant Lipschitz
+factor for continuity remains open. Besides, it is worthwhile to investigate more complicated
+computational functions of the hippocampus, such as the interaction between hippocampus and
+cortex, and the retrieval of allocated memory.
+
+Appendix
+
+Proof of Theorem 1
+
+Proof. We bound the overall error probability using pairwise error probabilities via union bound.
+For orthogonality, we have:
+
+{∀x, y ∈ Sn, dH (x, y) > An, dH (h(x), h(y)) > Bn}
+
+{∃x, y ∈ Sn, dH (x, y) > An, dH (h(x), h(y)) < Bn}
+
+P r
+h∼Hn
+
+=1 − P r
+h∼Hn
+
+=1 − P r
+h∼Hn
+
+≥1 −
+
+
+(cid:88)
+
+(cid:91)
+
+x,y∈Sn,dH (x,y)>An
+
+≥1 − |Sn|2εn
+
+
+
+{dH (h(x), h(y)) < Bn}
+
+x,y∈Sn,dH (x,y)>An
+
+{dH (h(x), h(y)) < Bn}
+
+P r
+h∼Hn
+
+Similarly, for continuity and stability we have:
+
+{∀x ∈ Sn, y ∈ {0, 1}n, dH (x, y) ≤ µdH (x, y)} ≥ 1 − |Sn|εn
+
+(17)
+
+P r
+h∼Hn
+
+10
+
+{∀x ∈ Sn,|h(x)| ∈ (rn(1 − δ), rn(1 + δ))} ≥ 1 − |Sn|εn
+
+(18)
+
+P r
+h∼Hn
+
+For any sequence ξn → 0, let |Sn| = Kn = ξn
+ments is O(ξn), which goes to zero. Therefore, the capacity of this SMA is at least o(1)√
+n
+
+. The probability of violating any of the require-
+
+1√
+εn
+
+.
+
+Proof of Theorem 2
+
+Proof. The proof is based on the lower bound of one-way randomized approximate communication
+complexity of Hamming distance by [10]. They showed that: If Alice has vector x of length n, and
+Bob has vector y of length n, to estimate dH (x, y) within a factor of 1± δ with probability at least
+
+We can use SMA to construct an one-way communication protocol: For a given SMA described
+in the theorem, a common hashing function h ∼ Hn for Alice and Bob is sampled ﬁrst. Upon
+receiving the vector x, Alice computes h(x) and sends it to Bob. Bob has vector y and gets h(x),
+
+1 − ε, Alice has to send at least Ω(cid:0) 1
+ε logn(cid:1) bits to Bob.
+so he can compute dH (h(x), h(y)). Because there are (cid:80)rn(1+δ)
+(cid:19)(cid:19)
+
+δ2 log 1
+
+(cid:18)
+
+(cid:18)
+
+j=rn(1−δ)
+
+(cid:0)n
+(cid:1) ≤ 2rnδ(cid:0)
+
+j
+
+n
+
+rn(1+δ)
+
+(cid:1) diﬀerent
+
+possible values for h(x), the number of bits needed to encode these values is at least:
+
+K = log
+
+2rnδ
+
+n
+
+rn(1 + δ)
+
+We can write the Lipschitz condition in normalized form:
+
+)dH (x, y) ≤ 2
+
+dH (h(x), h(y)) ≤ (1 +
+
+(cid:18)
+(1 − µ − λ
+
+µ + λ
+
+P r
+h∼Hn
+
+(19)
+
+(cid:19)
+
+)dH (x, y)
+
+µ − λ
+µ + λ
+
+> 1 − εn
+
+(20)
+
+By plugging into the result of [10], we have
+
+By combining equation (19)(21), we have
+
+(cid:19)
+
+logn
+
+(
+
+µ + λ
+µ − λ
+
+)2log
+
+1
+εn
+
+µ + λ
+
+K = Ω
+
+(cid:18)
+(cid:18)(cid:2)2rnδ
+
+(cid:18)
+
+εn = Ω
+
+n
+
+rn(1 + δ)
+
+(cid:19)(cid:3)−( µ−λ
+
+µ+λ )2 1
+
+logn
+
+(cid:19)
+
+(21)
+
+(22)
+
+Proof of Theorem 3
+
+Proof. For a strong SMA with An not too large, max(cid:8)|Sn|(cid:12)(cid:12)∀x, y ∈ Sn, dH (x, y) > An
+
+can select set of input items Sn ⊆ {0, 1}n that satisﬁes |Sn| = Kn and ∀x, y ∈ Sn, dH (x, y) > An.
+According to the deﬁnition of strong SMA, there exists a hashing function h such that ∀x ∈
+Sn, h(x) ∈ T (rn)
+
+(cid:9) ≥ Kn, we
+
+n
+
+and ∀x, y ∈ Sn, dH (x, y) > Bn.
+|dH (x, x(cid:48)) ≤ r
+
+x(cid:48) ∈ T (rn)
+
+n
+
+Let U (x, r) denote
+
+(cid:110)
+
+Thus, we have
+
+(cid:18)
+
+∀x, y ∈ Sn, U
+
+h(x),
+
+(cid:18)
+
+(cid:12)(cid:12)U
+
+(cid:88)
+
+x∈Sn
+
+h(x),
+
+Bn
+2
+
+, we have
+
+(cid:111)
+(cid:18)
+(cid:19)
+(cid:19)(cid:12)(cid:12) ≤ |T (rn)
+
+∩ U
+
+n
+
+B
+2
+
+h(y),
+
+| =
+
+(cid:19)
+(cid:18) n
+
+B
+2
+
+rn
+
+11
+
+= ∅
+
+(cid:19)
+
+(23)
+
+(24)
+
+To estimate the number of elements in set(cid:12)(cid:12)U(cid:0)h(x), Bn
+(cid:18)rn
+4(cid:88)
+
+(cid:18)
+
+Bn
+
+2
+
+(cid:1)(cid:12)(cid:12), notice that to guarantee h(x) ∈ T (rn)
+(cid:18)n − rn
+(cid:19)
+
+(cid:19)
+
+n
+
+we can change k ≤ Bn/4 bits at most from 0 to 1 and from 1 to 0 at the same time. Therefore,
+
+,
+
+(cid:12)(cid:12)(cid:12)(cid:12)U
+
+(cid:19)(cid:12)(cid:12)(cid:12)(cid:12) =
+
+h(x),
+
+Bn
+2
+
+·
+
+k
+
+k=1
+
+k
+
+(n − rn − rn
+2
+
+) (cid:29) 1
+
+(cid:0) rn
+(cid:0)rn
+
+(cid:1) ·(cid:0)n−rn
+(cid:1)
+(cid:1) =
+(cid:1) ·(cid:0)n−rn
+
+k+1
+
+Also,
+
+The sparsity of output suggests that rn (cid:28) n, hence
+
+Bn ≤ dH (h(x), h(y)) ≤ 2rn =⇒ k ≤ Bn
+4
+
+≤ rn
+2
+
+k
+
+k
+
+1
+
+k+1
+
+and
+
+(k + 1)2 (rn − k)(n − rn − k) ≥
+(cid:18)n − rn
+(cid:18) rn
+(cid:19)
+(cid:18)
+(cid:19)
+≤(cid:12)(cid:12)U
+is a good estimation for(cid:12)(cid:12)U(cid:0)h(x), Bn
+(cid:1)(cid:12)(cid:12) ,and we have
+(cid:0) n
+(cid:1)
+(cid:1) ·(cid:0)n−rn
+(cid:0) rn
+
+|Sn| ≤
+
+Bn
+4
+
+Bn
+4
+
+rn
+
+·
+
+2
+
+(cid:1)
+
+Bn
+4
+
+Bn
+4
+
+( rn
+
+2
+
+1
+
+2 + 1)2 · rn
+(cid:19)(cid:12)(cid:12)
+
+Bn
+2
+
+h(x),
+
+rn
+
+(cid:1):
+(cid:0) n
+Similar results can be derived for(cid:0) rn
+
+= (− rn
+n
+
+(cid:18) n
+
+(cid:19)
+
+rn
+n
+
+log
+
+log
+
+rn
+
+(25)
+
+(26)
+
+(27)
+
+(28)
+
+(29)
+
+(30)
+
+As n, rn and Bn are large, we can use Stirling’s formula log n! = n log n−n+O(log n) to approximate
+
+− (1 − rn
+n
+
+(cid:1) and(cid:0)n−rn
+
+)log(1 − rn
+n
+
+) + o(1))n = (H(α) + o(1))n
+
+(cid:1). By using inequality (29), we get
+
+Bn
+4
+
+Bn
+4
+
+(cid:18) αβ
+
+(cid:19)
+
+(cid:19)
+
+(cid:18)
+
++ o(1)
+
+n
+
+(31)
+
+log Kn ≤
+
+H(α) − αH(β) − (1 − α)H
+
+1 − α
+and H(p) = −p log p − (1 − p) log (1 − p).
+
+where α = rn
+
+n , β = Bn
+4rn
+
+Proof of Theorem 4
+Proof. Let U denotes the uniform distribution on all the function that maps from Sn to T (rn)
+.
+˜hn ∼ U indicates that given x, y, ˜hn(x) and ˜hn(y) are independently and uniformly distributed on
+
+n
+
+12
+
+T (rn)
+n
+
+. We have
+
+From equation (27) in the proof of Theorem 3, we know that
+
+(cid:1)
+
+(cid:111)
+
+x(cid:54)=y∈S
+
+(cid:110)
+
+<
+
+<
+
+P r
+˜hn∼U
+
+P r
+˜hn∼U
+
+= P r
+˜hn∼U
+
+P r
+˜hn∼U
+
+(cid:80) Bn
+
+dH (˜hn(x), ˜hn(y)) ≤ Bn
+
+dH (˜hn(x), ˜hn(y)) ≤ Bn
+
+{dH (˜hn(x), ˜hn(y)) ≤ Bn}
+
+x(cid:54)=y∈Sn
+|Sn|2
+2
+|Sn|2
+2
+
+(cid:110)∃x (cid:54)= y ∈ Sn, dH (˜hn(x), ˜hn(y)) ≤ Bn
+
+ (cid:91)
+(cid:111)
+≤ (cid:88)
+(cid:110)
+(cid:1) ·(cid:0)n−rn
+(cid:0)rn
+(cid:1)
+(cid:0) n
+(cid:1) ·(cid:0)n−rn
+(cid:1)
+(cid:0) n
+(cid:1)
+
+(cid:1) ·(cid:0)n−rn
+2(cid:88)
+(cid:0) n
+(cid:1)
+(cid:19)
+(cid:18)
+(cid:18) αβ
+(cid:111)
+(cid:110)∃x (cid:54)= y ∈ Sn, dH (˜hn(x), ˜hn(y)) ≤ Bn
+
+H(α) − αH(β) − (1 − α)H
+
+(cid:0) rn
+
+1 − α
+
+(cid:0)rn
+
+k
+
+≤ 2
+
+Bn
+2
+
+k=0
+
+rn
+
+2
+
+k=0
+
+k
+
+k
+
+Bn
+2
+
+rn
+
+rn
+
+k
+
+(cid:1)
+
+Bn
+
+(cid:111)
+
+(32)
+
+(cid:19)
+
++ o(1)
+
+n,
+
+(33)
+
+< 1
+
+(34)
+
+By using the condition in the statement
+
+we derive
+
+log |Sn| ≤ 1
+2
+
+P r
+˜hn∼U
+
+n
+
+,∀x, y ∈ Sn, dH (ˆhn(x), ˆhn(y)) > Bn
+
+⇒∃ˆhn : Sn → T (rn)
+Notice that ˆhn has Lipschitz constant 2rn
+An
+Kirszbraun theorem [11].
+
+Consider the Euclidean space Rn and its subspace W n−1 = {x ∈ Rn−1|(cid:80)n
+tionship between Euclidean distance and Hamming distance is that d(x, y) =(cid:112)dH (x, y),∀x, y ∈
+
+on Sn. To extend ˆhn to hn deﬁned on {0, 1}n, we use
+i=1 xi = 0}. The rela-
+n 1n, then we have ω◦ ˆhn : Sn → Wn−1 is a Lipschitz-
+Sn. Let ω denote the translation ω(x) = x− rn
+continuous map from the subset Sn of Hilbert space (Rn, d) to Hilbert space (Wn−1, d) with Lipschitz
+constant
+. According to Kirszbraun theorem, there exists a Lipschitz-continuous map h0 that
+extends ω ◦ ˆhn and has the same Lipschitz constant: h0 : Rn → W n−1
+
+(cid:113) 2rn
+
+An
+
+∀x, y ∈ Rn, d(h0(x), h0(y)) ≤
+
+d(x, y)
+
+(cid:114) 2rn
+
+An
+
+We deﬁne hn on {0, 1}n as follows:
+∀x ∈ {0, 1}n, hn(x)i =
+
+(cid:26) 0 |h0(x)i + rn
+
+1 |h0(x)i + rn
+
+Given an arbitrary y ∈ Sn, we have ∀x ∈ {0, 1}n,
+|h0(x)i − h0(y)i| <
+1
+2
+
+13
+
+n |
+n | ≤ |h0(x)i − n−rn
+n | 1 ≤ i ≤ n
+n | > |h0(x)i − n−rn
+
+⇒ hn(x)i = hn(y)i
+
+(35)
+
+(36)
+
+(37)
+
+Let k denote the number of bits such that |h0(x)i − h0(y)i| ≥ 1
+
+2 , we have
+
+(cid:114)
+
+k
+4
+
+(cid:114) 2rn
+
+An
+
+n(cid:88)
+
+i=1
+
+≤ d(h0(x), h0(y)) ≤
+
+d(x, y) ⇒ k ≤ 8rn
+An
+
+dH (x, y)
+
+|hn(x)i − hn(y)i| ≤ k ≤ 8rn
+An
+
+dH (x, y)
+
+(38)
+
+(39)
+
+(40)
+
+(41)
+
+Therefore
+
+dH (hn(x), hn(y)) =
+
+Proof of Theorem 5
+
+Theorem 5 guarantees stable memory allocation properties of a three-layer neural circuit with
+divisive inhibition. Key issue in the proof is to estimate high probability upper and lower bounds
+for output-layer proportion of activation, as well as expansion rates. From a high level point of
+view, the second layer of this network makes it possible for a wide range of input density to have
+approximately the same output density, while in the third layer, the parameter for divisive inhibition
+enables us to control the output density at an arbitrary level. The continuity and orthogonality
+condition is satisﬁed since random projection preserves locality.
+Lemma 1 describes the probability of activation in the second layer:
+
+Proof of Lemma 1. By symmetry, the probability of βT x > 0 and βT x < 0 is equal. So we have
+P r{βT x > 0} = 1
+
+(cid:0)1 − P r{βT x > 0}(cid:1) . We can then write this probability as:
+
+2
+
+P r{βT x = 0} =
+
+p2i(1 − 2p)|x|−2i
+
+(cid:98)|x|/2(cid:99)(cid:88)
+
+(cid:18)|x|
+(cid:19)(cid:18)2i
+
+(cid:19)
+
+2i
+
+i
+
+i=1
+
+By applying Chernoﬀ bound in relative entropy form, we have:
+
+(cid:98)|x|/2(cid:99)(cid:88)
+
+(cid:19)
+(cid:18)|x|
+
+22ip2i(1 − 2p)|x|−2i ≤ e−2(2 ln 2−1)p|x|
+
+2i
+
+i=2p|x|+1
+
+For the ﬁrst 2p|x| terms, we use Stirling approximation 2−k(cid:0)2k
+(cid:19)
+(cid:18)|x|
+2p|x|(cid:88)
+
+(cid:18)|x|
+(cid:19)(cid:18)2i
+
+ﬁrst p|x| terms are smaller than terms with k ∈ [p|x| + 1, 2p|x|], we have
+
+(cid:1) = 1√
+
+2p|x|(cid:88)
+
+(cid:19)
+
+k
+
+πk
+
+p2i(1 − 2p)|x|−2i ≤
+
+2(cid:112)πp|x|
+
+2i
+
+i
+
+i=1
+
+i=p|x|+1
+
+2i
+
++ O( 1
+
+k ) for each term. Since
+
+(2p)2i(1 − 2p)|x|−2i ≤
+
+1(cid:112)πp|x|
+
+(42)
+
+which concludes the proof of this lemma.
+Proof of Lemma 2. Let q be the index where xq (cid:54)= yq, we assume xq = 0, yq = 1 without loss of
+generality. On such circumstance, the only chance to make g(x) (cid:54)= g(y) is (cid:104)βq = 1, βT x = 0(cid:105) or
+(cid:104)βq = −1, βT x = 1(cid:105). Using the estimate in Lemma 1 we can obtain the probability of such events,
+which leads directly to the result.
+
+Proof of Lemma 3 and Lemma 4. In the proof we use Gaussian approximation for binomial vari-
+ables, the error term can be estimated via Berry-Esseen bound.
+Let the common bits of x and y be vector w = x ∩ y, we have x = w + ˜x, y = w + ˜y. We obtain
+
+14
+
+independent random variables βT w, βT ˜x, βT ˜y. By applying bivariate central limit theorem to them,
+we have
+
+(cid:20)βT x
+
+(cid:21)
+
+βT y
+
+(cid:18)
+
+(cid:20)|x|
+(cid:21)
+
+|y|
+
+(cid:20)|x|
+
+|w|
+
+(cid:21)(cid:19)
+
+|w|
+|y|
+
+∼ N
+
+p(1 − 2c)
+
+, v(c, p)
+
+(43)
+
+Then the probability can be written as quadrant integral of bivariate Gaussian distribution, as
+appears in the lemmas.
+
+(cid:90) (cid:90)
+
+(cid:18)
+
+(cid:20)|x|
+(cid:21)
+
+|y|
+
+(cid:20)|x|
+
+|w|
+
+(cid:21)(cid:19)
+
+|w|
+|y|
+
+, v(c, p)
+
+dudv
+
+(44)
+
+P r {g(x) (cid:54)= g(y)} ≈
+
+N
+
+u·v<0
+
+p(1 − 2c)
+
+The integral in Lemma 3 centers at origin and admits a closed-form solution. While in Lemma 4
+we write it as univariate integral with CDF and PDF of Gaussian. Later we will estimate its value
+given speciﬁc parameters.
+Gaussian approximator is bounded with O( E[|βi|3]
+√
+
+According to Berry-Esseen inequality, the error introduced in cumulative density functions by
+
+n ) = O( 1√
+
+pn ).
+
+var(βi)1.5
+
+Now we proceed to prove Theorem 5.
+
+Stability: Let s1 denote the probability for middle-layer neurons to ﬁre. According to Lemma 1,
+
+Proof of Theorem 5. We give proofs for three requirements one by one:
+s1 is restricted in a narrow range: 0 ≤ 1
+Now that each unit in third layer depends upon the sum of several i.i.d. random variables. By
+applying central limit theorem to the sum, we can estimate the probability for a output-layer
+neuron to ﬁre is approximately
+
+2 e−2(2 ln 2−1)p|x|.
+
+2 − s1 ≤
+
+πp|x| + 1
+
+√
+
+1
+
+2
+
+P r{h(x)i = 1} ≈ Φ
+
+(cid:32)√
+
+(1 − 2c)ps1
+
+(cid:33)
+(cid:112)v(c, ps1)
+(cid:1)(cid:113) 2
+2−s2 and s = Φ−1(cid:0) rn
+
+n
+
+n
+
+≤ rn
+n
+
+− P r{h(x)i = 1} ≤ log(n/rn)
+s0n1−γ
+
+√
+
+(45)
+
+(46)
+
+By plugging in the parameter C2 = 1
+
+2 − s
+√
+
+2
+
+np , we can show that
+
+Since all output units are i.i.d. with respect to randomness of last layer, we can therefore apply
+Chernoﬀ’s bound to conclude the stability argument.
+
+Continuity: The technique used in our proof is based on bounding the output diﬀerence
+between two vector who has exact one diﬀerent bit. Fix dH (x, y) = L, we construct a sequence
+x = v0, v1, v2,··· , vL = y with dH (vi−1, vi) = 1.
+For vi−1 and vi, consider the probability for each second-layer neuron to be diﬀerent. According to
+√|vi|·|vi−1| . By union bound we have the
+|vi−1∩vi|
+Lemma 2, we can estimate P r{g(vi) (cid:54)= g(vi−1)} ≈ 1
+following probabilistic triangle inequality:
+
+π cos−1
+
+P r{g(x) (cid:54)= g(y)} ≤ P r{ L(cid:91)
+
+g(vi) (cid:54)= g(vi−1)} ≤ L(cid:88)
+
+i=1
+
+i=1
+
+Lemma 1 tells us that both x and y activate approximately n
+satisﬁes the requirement of Lemma 4. By applying Lemma 4 with η = O(L
+
+2 neurons in the middle layer, which
+s0n ), we derive the
+
+P r{g(vi) (cid:54)= g(vi − 1)}
+
+(47)
+
+(cid:113) p
+
+15
+
+following (approximate) upper bound for probability of changed bits in third layer:
+
+(cid:90)
+
+(cid:32)
+
+(cid:33)
+
+O(1) ·
+
+ϕ(t)Φ
+
+R
+
+1
+
+− (s0n1+γ)
+4√
+L
+
+|t − Φ−1(
+
+rn
+n
+
+)|
+
+dt
+
+(48)
+
+We estimate the integral by dividing it into three parts:
+Let t1, t2 = Φ−1( rn
+
+respectively. We have
+
+√
+(cid:32)
+n ) ± 2 log n
+
+L
+1
+(s0n1+γ )
+4
+
+ϕ(t)Φ
+
+(t1,t2)
+
+1
+
+− (s0n1+γ)
+4√
+L
+
+|t − Φ−1(
+
+)|
+
+dt ≤
+
+(cid:33)
+
+(cid:90)
+
+(t1,t2)
+
+φ(t)dt ≤ 1√
+2π
+
+For the integral value outside this interval, we bound it with Gaussian tail:
+
+(cid:90)
+
+(cid:90)
+
+(cid:32)
+
+ϕ(t)Φ
+
+t>t2
+
+1
+
+− (s0n1+γ)
+4√
+L
+
+|t − Φ−1(
+
+rn
+n
+
+)|
+
+dt ≤
+
+ϕ(t)Φ (−2 log n) dt = O
+
+(For t < t1, we have very similar bounds)
+Summarizing the calculation above, we can get an approximate upper bound
+
+rn
+n
+
+(cid:33)
+
+(cid:32)
+
+(cid:90)
+
+t>t2
+
+√
+
+P r{h(x)i (cid:54)= h(y)i} = O
+
+log n
+L
+1
+(s0n1+γ)
+4
+
+ϕ(Φ−1(
+
+rn
+n
+
+))
+
+(t2 − t1)
+
+(49)
+
+(cid:18) 1
+
+(cid:19)
+
+n2
+
+(50)
+
+(51)
+
+√
+n . We then apply
+
+(cid:33)
+
+So the probability for each output neuron to diﬀer is upper bounded with µn
+the Chernoﬀ bound in relative entropy form and conclude the probabilistic upper bound.
+Orthogonality: For x, y ∈ {0, 1}n such that dH (x, y) ≥ an, we have
+
+L
+
+(cid:115)|x ∩ y|
+|x ∪ y| ≤ √
+
+1 − a
+
+|x ∩ y|
+
+(cid:112)|x| · |y| ≤
+
+(52)
+
+(53)
+
+(54)
+
+(55)
+
+According to Lemma 3, the probability of making diﬀerences at second layer is at least
+
+Then we apply Lemma 4 with η = b1:
+
+P r{h(x)i (cid:54)= h(y)i} ≥
+
+P r{g(x) (cid:54)= g(y)} ≥ b1 (cid:44) 1
+π
+
+√
+
+cos−1
+
+1 − a
+
+(cid:90)
+
+t(cid:113)
+
+1 − 1
+
+2 b1
+
+ϕ(
+
+)Φ(
+
+|t − Φ−1(rn/n)|
+
+√
+
+b1
+
+)dt
+
+R
+
+Assuming b1 constant, we can obtain the following lower bound for this integral:
+
+P r{h(x)i (cid:54)= h(y)i} ≥
+
+≥
+
+≥
+
+(cid:90)
+(cid:90)
+(cid:90)
+
+t(cid:113)
+
+ϕ(
+
+R
+
+|t−Φ−1( rn
+
+|t−Φ−1( rn
+
+)Φ(
+
+1 − 1
+
+b1
+
+2 b1
+
+ϕ(
+
+n )|≤√
+
+t(cid:113)
+t(cid:113)
+ Φ−1(rn/n) +
+n )|≤√
+(cid:113)
+
+ϕ(
+
+b1
+
+1 − 1
+
+2 b1
+
+≥Φ(−1)Φ
+
+≥ brn
+n
+
+16
+
+|t − Φ−1(rn/n)|
+
+√
+
+b1
+
+)dt
+
+|t − Φ−1(rn/n)|
+
+√
+b1
+
+)dt
+
+)Φ(
+
+1 − 1
+
+2 b1
+
+1 − 1
+2 b1
+√
+
+b1
+
+)Φ(−1)dt
+
+ − Φ(−1)Φ
+
+ Φ−1(rn/n) − √
+(cid:113)
+
+
+
+b1
+
+1 − 1
+
+2 b1
+
+The value of b depends upon neither rn nor n, but only b1, which is assumed to be a constant. So
+we have proved a lower bound for the probability of third-layer nodes to be diﬀerent. Since those
+nodes are i.i.d. with respect to the randomness in the last layer. By applying Chernoﬀ bound we
+can get this result.
+
+References
+
+[1] Zeyuan Allen-Zhu, Rati Gelashvili, Silvio Micali, and Nir Shavit. Sparse sign-consistent
+johnson–lindenstrauss matrices: Compression with neuroscience-based constraints. Proceed-
+ings of the National Academy of Sciences, 111(47):16872–16876, 2014.
+
+[2] Per Andersen, Richard Morris, David Amaral, Tim Bliss, and John O’Keefe. The hippocampus
+
+book. Oxford University Press, USA, 2006.
+
+[3] Rosa I. Arriaga and Santosh Vempala. An algorithmic theory of learning: Robust concepts
+
+and random projection. In Proc. of FOCS, pages 616–623, 1999.
+
+[4] Vaˇsek Chv´atal. The tail of the hypergeometric distribution. Discrete Mathematics, 25(3):285–
+
+287, 1979.
+
+[5] Dominique Debanne, Beat H G¨ahwiler, and Scott M Thompson. Heterogeneity of synaptic
+plasticity at unitary ca3–ca1 and ca3–ca3 connections in rat hippocampal slice cultures. The
+Journal of Neuroscience, 19(24):10664–10671, 1999.
+
+[6] Brent Doiron, Andr´e Longtin, Neil Berman, and Leonard Maler. Subtractive and divisive
+inhibition: eﬀect of voltage-dependent inhibitory conductances and noise. Neural Computation,
+13(1):227–248, 2001.
+
+[7] Vitaly Feldman and Leslie G. Valiant. Experience-induced neural circuits that achieve high
+
+capacity. Neural Computation, 21(10):2715–2754, 2009.
+
+[8] John J Hopﬁeld. Neural networks and physical systems with emergent collective computational
+
+abilities. Proceedings of the national academy of sciences, 79(8):2554–2558, 1982.
+
+[9] Piotr Indyk and Rajeev Motwani. Approximate nearest neighbors: towards removing the curse
+
+of dimensionality. In Proc. of STOC, pages 604–613. ACM, 1998.
+
+[10] T. S. Jayram and David P. Woodruﬀ. Optimal bounds for johnson-lindenstrauss transforms
+and streaming problems with subconstant error. ACM Transactions on Algorithms, 9(3):26,
+2013.
+
+[11] M Kirszbraun. ¨Uber die zusammenziehende und lipschitzsche transformationen. Fundamenta
+
+Mathematicae, 1(22):77–108, 1934.
+
+[12] Jorge F Mejias, Alexandre Payeur, Erik Selin, Leonard Maler, and Andr´e Longtin. Subtractive,
+divisive and non-monotonic gain control in feedforward nets linearized by noise and delays.
+Frontiers in computational neuroscience, 8, 2014.
+
+[13] Christos H. Papadimitriou and Santosh S. Vempala. Cortical computation. In Proceedings of
+the 2015 ACM Symposium on Principles of Distributed Computing, PODC 2015, Donostia-San
+Sebasti´an, Spain, July 21 - 23, 2015, pages 1–2, 2015.
+
+17
+
+[14] Christos H Papadimitriou and Santosh S Vempala. Cortical learning via prediction. In Proc.
+
+of COLT, 2015.
+
+[15] Leslie G. Valiant. Circuits of the mind. Oxford University Press, 1995.
+
+[16] Leslie G Valiant. A neuroidal architecture for cognitive computation. Journal of the ACM
+
+(JACM), 47(5):854–882, 2000.
+
+[17] Leslie G. Valiant. Memorization and association on a realistic neural model. Electronic Collo-
+
+quium on Computational Complexity (ECCC), (004), 2005.
+
+[18] Leslie G Valiant. A quantitative theory of neural computation. Biological cybernetics,
+
+95(3):205–211, 2006.
+
+[19] Leslie G. Valiant. The hippocampus as a stable memory allocator for cortex. Neural Compu-
+
+tation, 24(11):2873–2899, 2012.
+
+[20] Leslie G Valiant. What must a global theory of cortex explain? Current opinion in neurobi-
+
+ology, 25:15–19, 2014.
+
+[21] Xinyang Yi, Constantine Caramanis, and Eric Price. Binary embedding: Fundamental limits
+
+and fast algorithm. In Proc. of ICML, pages 2162–2170, 2015.
+
+18
+
+

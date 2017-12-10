@@ -1,0 +1,658 @@
+A Taxonomy and Library for Visualizing Learned Features
+
+in Convolutional Neural Networks
+
+6
+1
+0
+2
+
+ 
+
+n
+u
+J
+ 
+
+4
+2
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+7
+5
+7
+7
+0
+
+.
+
+6
+0
+6
+1
+:
+v
+i
+X
+r
+a
+
+Felix Gr¨un
+Technische Universit¨at M¨unchen, Germany
+Christian Rupprecht
+Technische Universit¨at M¨unchen, Germany, Johns Hopkins University, Baltimore, USA
+Nassir Navab
+Technische Universit¨at M¨unchen, Germany, Johns Hopkins University, Baltimore, USA
+Federico Tombari
+Technische Universit¨at M¨unchen, Germany, University of Bologna, Italy
+
+NAVAB@CS.TUM.EDU
+
+TOMBARI@IN.TUM.DE
+
+FELIX.GRUEN@TUM.DE
+
+CHRISTIAN.RUPPRECHT@IN.TUM.DE
+
+Abstract
+
+Over the last decade, Convolutional Neural Net-
+works (CNN) saw a tremendous surge in perfor-
+mance. However, understanding what a network
+has learned still proves to be a challenging task.
+To remedy this unsatisfactory situation, a number
+of groups have recently proposed different meth-
+ods to visualize the learned models. In this work
+we suggest a general taxonomy to classify and
+compare these methods, subdividing the litera-
+ture into three main categories and providing re-
+searchers with a terminology to base their works
+on. Furthermore, we introduce the FeatureVis
+library for MatConvNet: an extendable, easy to
+use open source library for visualizing CNNs. It
+contains implementations from each of the three
+main classes of visualization methods and serves
+as a useful tool for an enhanced understanding
+of the features learned by intermediate layers, as
+well as for the analysis of why a network might
+fail for certain examples.
+
+1. Introduction
+In recent years, research in the ﬁeld of artiﬁcial neural
+networks (ANN) has made tremendous progress in many
+diverse areas (Taigman et al., 2014; Hannun et al., 2014;
+He et al., 2015). Fueled by GPU accelerated learning and
+the development of regularization techniques like dropout
+
+Proceedings of the 33 rd International Conference on Machine
+Learning, New York, NY, USA, 2016. JMLR: W&CP volume
+48. Copyright 2016 by the author(s).
+
+(Hinton et al., 2012; Srivastava et al., 2014), activation
+functions like rectiﬁed linear units (ReLU) (Glorot et al.,
+2011), LeakyReLUs (Maas et al., 2013), and parametric
+ReLUs (He et al., 2015), and larger labeled datasets (Deng
+et al., 2009; Lin et al., 2014), natural image classiﬁcation
+with convolutional neural networks (CNN) has become a
+ﬂagship example (Yosinski et al., 2015) for the advance-
+ments in supervised learning using neural networks.
+Yet, understanding the learned models is still an unsolved
+problem. Even the researchers who developed new tech-
+niques to improve CNN performance relied largely on trial
+and error (Zeiler & Fergus, 2013). Historically, the inner
+units of a network were regarded as a black box (Yosinski
+et al., 2015), appropriately affording them the name hidden
+layers. It is therefore not surprising that feature visualiza-
+tion for neural networks is a very young area of research.
+The ﬁrst approaches aimed at visualizing CNNs were made
+in 2013, ﬁrst by Zeiler & Fergus (2013) and only one month
+later by Simonyan et al. (2013). Since then, a number
+of visualization methods have been proposed. Gaining an
+overview of the differences and similarities between the
+methods and the advantages and disadvantages of each has
+become a time consuming exercise. However, our care-
+ful analysis of the different methods for feature visualiza-
+tion shows that they can be grouped into just three classes.
+Together, these three classes comprise a novel taxonomy
+for feature visualization methods, which will provide a ter-
+minology in which to discuss existing research and from
+which to develop new directions and techniques.
+Furthermore, we introduce the FeatureVis library1 for the
+
+1The library is freely available at: http://campar.in.tum.de/
+
+Chair/FeatVis
+
+A Taxonomy and Library for Visualizing Learned Features in CNNs
+
+MatConvNet toolbox (Vedaldi & Lenc, 2015), which con-
+tains implementations for several state-of-the-art visualiza-
+tion methods to provide researchers and practitioners with
+an easy way to use the different methods for visualization
+in their own projects. Upon acceptance, the library will
+be publicly accessible and open source. It works with all
+CNNs built from the layers available with the MatConvNet
+toolbox and can easily be extended to incorporate custom
+layer types. The library can aid in the improvement of ex-
+isting network architectures and the search for better mod-
+els, as well as in understanding their performance.
+
+2. A Taxonomy for Feature Visualization
+
+Methods
+
+Our proposal of a taxonomy for feature visualization meth-
+ods consists of three classes which we refer to as Input
+Modiﬁcation methods, Deconvolutional methods, and In-
+put Reconstruction methods. These classes are character-
+ized by both, the goals for which the methods have been
+developed and the algorithms which they use.
+
+2.1. Input Modiﬁcation Methods
+
+Input Modiﬁcation methods are visualization techniques
+which modify, as the name suggests, the input and measure
+the resulting changes in the output or intermediate layers of
+the network. These methods see the network (or all the lay-
+ers before the layer of interest) as a black-box and they are
+designed to visualize properties of the function this black-
+box represents. The resulting visualizations can be used
+to analyze the importance and locality of features in the
+input space. A prime example for this class of visualiza-
+tion methods is the Occlusion method by Zeiler & Fergus
+(2013).
+To ﬁnd the areas of the input image which are most im-
+portant to the classiﬁcation result, Zeiler & Fergus (2013)
+systematically cover up portions of the input image with
+a gray square and measure the change in activations.
+If
+an area of the image which is vital to the classiﬁcation is
+covered up, the activations change noticeably. Covering up
+parts of the image which are unimportant to the computed
+activations, on the other hand, results only in a small dif-
+ference. If the image is occluded systematically by moving
+the gray square with a ﬁxed step width from left to right
+and top to bottom across the whole image, the resulting
+changes in activation form a heat map showing the impor-
+tance of different areas of the input image.
+Zhou et al. (2014) extend the Occlusion method proposed
+by Zeiler & Fergus (2013) by using a patch of randomized
+pixel values for the occlusion instead of a mono colored
+gray square. Since CNNs are very sensitive to edges, a
+mono colored area might contribute in unpredictable ways
+
+Figure 1. Inﬂuences between authors of papers on feature visu-
+alization for CNNs. Dashed lines indicate that one author cited
+another, while solid lines indicate that one author build upon and
+extended the work of another. The ordering is top down by publi-
+cation year.
+
+to the network output. Randomizing the pixel values re-
+duces the risk of accidentally introducing new features into
+the image, which could be picked up by the CNN.
+
+2.2. Deconvolutional Methods
+
+In contrast to Input Modiﬁcation methods, Deconvolutional
+methods see the network as a white-box and use the net-
+work structure itself for their visualizations. The common
+denominator amongst the different methods in this class is
+the idea to determine the contribution of one pixel of the
+input image by starting with the activation of interest and
+iteratively computing the contribution of each unit in the
+next lower layer to this activation. In this way, by mov-
+ing backwards through the network until the input layer is
+reached, the contribution values for each pixel can be ob-
+tained, which together form a visualization of the features
+that are most relevant to the activation of interest.
+The ﬁrst methods of this class were proposed by Zeiler &
+Fergus (2013) and Simonyan et al. (2013). Zeiler & Fergus
+(2013) built on the work of Zeiler et al. (2011) and used
+a multi-layered Deconvolutional Network (Deconvnet) to
+project the activations from the feature space back to the in-
+put space. Deconvnets were originally proposed as a tech-
+nique for unsupervised learning of CNNs, but can also be
+used to reverse the path of excitatory stimuli through the
+network to reveal which pixels and patterns of the input
+image are responsible for the observed activations.
+Simonyan et al. (2013) build on work by Baehrens et al.
+(2010) in the context of Bayesian classiﬁcation to present
+
+A Taxonomy and Library for Visualizing Learned Features in CNNs
+
+ized the Deconvnet approach to work with networks that
+do not have max pooling layers and developed a new tech-
+nique which enhanced the clarity and sharpness of the pro-
+jection, even for networks that do. They named the result-
+ing algorithm Guided Backpropagation.
+Unlike the approaches presented so far, which speciﬁcally
+deal with the visualization of CNNs, Bach et al. (2015) aim
+at ﬁnding a general approach for visualizing classiﬁcation
+decisions of nonlinear classiﬁers. To attain this goal they
+use pixel-wise decomposition to visualize the contributions
+of each pixel to the ﬁnal classiﬁcation decision. In their
+model, the inputs to the ﬁnal classiﬁcation layer have a cer-
+tain relevance to that layer’s activations and their inputs,
+in turn, have a certain relevance for their activations. This
+way, relevance ﬂows from the ﬁnal layer of the network
+down through the layers to the input image, where it can
+be mapped to pixels to show the relevance of each pixel for
+the classiﬁcation result.
+Despite the differences in the initial idea and the language
+used for description, careful analysis of this approach re-
+vealed that the algorithm which Bach et al. (2015) devel-
+oped can be compared to the Deconvnet, Backpropagation
+of activations and Guided Backpropagation approaches de-
+scribed above. In fact, the main differences between the
+different approaches falling in the Deconvolutional meth-
+ods class are the different ways in which they propagate
+the contribution values through ReLU and convolutional
+layers.
+While Backpropagation uses the information from the orig-
+inal activations of the lower layer to decide which values
+to mask out during the pass through a ReLU layer, the
+Deconvnet approach uses the deconvolved activities from
+the higher layer. In other words, while Backpropagation
+uses information from the lower layers and the input image
+to determine which of the pixel values were important in
+computing the activations of the higher layers, the Decon-
+vnet approach uses (gradient) information from the higher
+layers to determine which of the pixels from the input im-
+age had a beneﬁcial effect on the activations of the units
+of interest. Guided Backpropagation combines the two ap-
+proaches by masking out the value of any unit that had ei-
+ther a negative activation during the forward pass or a neg-
+ative contribution value during the backward pass. Figure
+2 provides an overview over how ReLU layers affect con-
+tribution values for the different methods.
+The last contribution to the class of Deconvolutional meth-
+ods is made by Zhou et al. (2015). Their approach requires
+a CNN which performs global average pooling on the con-
+volutional feature maps just before the ﬁnal output layer.
+By using the spatial information of the activation maps be-
+fore the pooling operation and the values of the output layer
+weights they construct a Class Activation Map showing
+
+Figure 2. Different ways in which the pass through a ReLU layer
+affects contribution values for the Deconvnet method, Backprop-
+agation, and Guided Backpropagation. The forward pass through
+the ReLU layer is shown for comparison.
+
+a variation of the Deconvnet approach. They reason that
+the derivative of the class score in the input space deﬁnes
+the relative importance of the input pixels for the result-
+ing class score. Intuitively, this is equal to ﬁnding those
+pixels that have to be changed the least for the greatest ef-
+fect on the class score of interest. The underlying assump-
+tion is that the pixels that make up an object of a class in
+the input image have a greater contribution than pixels that
+constitute unrelated objects. To ﬁnd the derivative of the
+class score with respect to the input image Simonyan et al.
+(2013) backpropagate the class scores from the last layer
+down through the network up to the input layer.
+In the following year Springenberg et al. (2014) improved
+upon the previous two methods. They designed a CNN
+using only convolutional layers. To visualize the features
+learned by the resulting network they looked to the De-
+convnet technique of Zeiler & Fergus (2013). Central to
+this approach of visualization are discriminative patterns
+encoded in the max pooling layers of the network. They
+contain the information on which pixels in the input space
+are of the highest importance for the resulting feature acti-
+vations. Since the CNN developed by Springenberg et al.
+(2014) does not have max pooling layers, the original ap-
+proach would not work.
+Building on the work of Zeiler & Fergus (2013) and Si-
+monyan et al. (2013), Springenberg et al. (2014) general-
+
+A Taxonomy and Library for Visualizing Learned Features in CNNs
+
+Figure 3. Comparing different visualization methods for two images. Both images where classiﬁed correctly with high conﬁdence by
+the network. The image classes are: indigo bunting, indigo ﬁnch, indigo bird, Passerina cyanea and sax, saxophone. Visualizations for
+the respective image class using a VGG-16 network and an epsilon value of 0.001 for the Relevance Propagation method.
+
+A Taxonomy and Library for Visualizing Learned Features in CNNs
+
+which areas of the input image were important for the out-
+put class of interest. Speciﬁcally, a Class Activation Map
+is the sum of all activation maps before the average pooling
+operation weighted by the output layer weights connecting
+the features to the class of interest.
+
+2.3. Input Reconstruction Methods
+
+Input Re-
+The methods belonging to the third class, i.e.
+construction methods, follow the idea that reconstructing
+an input, which either maximally activates a unit of interest
+or leads to the same activations as a natural image prior,
+reveals which features are important to the associated ﬁl-
+ters. Here, we take a closer look at three of the proposed
+methods from this category.
+Long et al. (2014) developed a new way of visualizing the
+feature detection abilities of a CNN to ﬁnd out if CNNs
+learn interclass correspondence. They built on the HOG-
+gles approach (Vondrick et al., 2013) of feature visualiza-
+tion for object detectors, but use replacement with the top-k
+nearest neighbors in feature space instead of paired dictio-
+nary learning. Intuitively, they replace patches of the orig-
+inal input image with patches from other images that lead
+to the same activations at the layer of interest. This al-
+lowed them to evaluate the extent to which CNNs are able
+to abstract from the input image and recognize higher level
+features at different layers in the network.
+Simonyan et al. (2013) on the other hand propose a gener-
+ative class model visualization method which builds upon
+work done by Erhan et al. (2009) in the context of visu-
+alizing deep belief networks (DBN) and deep unsupervised
+auto-encoders. They use gradient descent in the input space
+to iteratively ﬁnd an image which maximally activates a
+unit of choice. To ﬁnd the gradient, they backpropagate
+the difference between the actual activation and the desired
+activation to the input layer without changing the network
+itself. The resulting image contains all the features that the
+associated ﬁlters selects for.
+In the following year, Mahendran & Vedaldi (2014) tried
+to invert the image representation encoded in the network
+output to obtain a reconstruction of the input image. An-
+alyzing which features were present and absent in the re-
+constructed image would enable a better understanding of
+the information processed by the network. To this end, they
+built on the generative class model visualization method of
+Simonyan et al. (2013) and made a number of important
+contributions.
+The Input Reconstruction method of Simonyan et al. (2013)
+and Mahendran & Vedaldi (2014) needs strong regularizers
+so that the resulting images and the features which they
+contain can be recognized and interpreted by the human
+observer. While Simonyan et al. (2013) used the L2 norm
+
+as a regularizer, Mahendran & Vedaldi (2014) found out,
+that an Lp norm with higher values for p leads to clearer
+images. In addition to that, they introduce total variation as
+a second regularizer to be used in conjunction with the Lp
+norm. This markedly improved the quality of the end result
+and lead to more natural looking images.
+In contrast to the two methods above using replacement and
+gradient descent, Dosovitskiy & Brox (2015) use genera-
+tive networks, i.e. CNNs turned upside down (Dosovitskiy
+et al., 2014), to invert the image representation. A gener-
+ative network receives the representation of an image, e.g.
+the output of a “normal” CNN, as input and computes a
+reconstruction of the original image. A drawback of this
+method is that each generative network has to be trained to
+invert a speciﬁc representation before it can be used. This is
+balanced by the beneﬁt of computing reconstructions sev-
+eral orders of magnitude faster than using gradient descent,
+after training is complete.
+
+3. The FeatureVis library
+To facilitate the use of feature visualization methods
+for CNNs, we developed an open source library named
+FeatureVis, built on top of the popular MatConvNet tool-
+box. MatConvNet implements CNNs for MATLAB and
+provides different layer types as building blocks that allow
+for fast prototyping of new CNN architectures (Vedaldi &
+Lenc, 2015).
+The FeatureVis library is continually growing and already
+implements functions for many popular feature visualiza-
+tion methods from all three classes. For the deconvolu-
+tion approach three different methods for the propagation
+of activations through ReLUs, Deconvnet (Zeiler & Fer-
+gus, 2013), Backpropagation (Simonyan et al., 2013) and
+Guided Backpropagation (Springenberg et al., 2014), and
+two different methods for the propagation of activations
+through convolutional layers, Backpropagation and Rele-
+vance Propagation (Bach et al., 2015), have been imple-
+mented. For the occlusion approach the size of the occlud-
+ing box and the stride rate can be speciﬁed independently
+for the two dimensions. Experiments with the FeatureVis
+library showed that the color of the occlusion box matters
+in determining the importance of occluded features. There-
+fore, as an improvement over Zeiler & Fergus (2013), the
+occluded area will either be ﬁlled with a color manually
+chosen by the user or random values as used by Zhou et al.
+(2014). For the input reconstruction approach using gradi-
+ent descent the user can choose and combine the Lp norm
+regularizer (Mahendran & Vedaldi, 2014; Simonyan et al.,
+2013) and total variation (Mahendran & Vedaldi, 2014).
+Figure 3 shows a comparison of different visualization
+methods included in the FeatureVis library applied to two
+
+A Taxonomy and Library for Visualizing Learned Features in CNNs
+
+Figure 4. Comparative visualizations of different networks for two images. Both images where classiﬁed correctly with high conﬁdence
+by all networks. Visualizations for the respective image class using Guided Backpropagation. The image classes are: wombat and space
+shuttle.
+
+A Taxonomy and Library for Visualizing Learned Features in CNNs
+
+example images. The visualizations were created us-
+ing a VGG-16 network trained on the 1000 classes of
+the ImageNet Large Scale Visual Recognition Challenge
+(ILSVRC) (Russakovsky et al., 2015). The images very
+clearly show the progress in Deconvolutional methods,
+with Guided Backpropagation offering the sharpest visu-
+alizations of the features important for the classiﬁcation of
+the input images.
+An interesting use-case of the FeatureVis library is the
+comparison of different network architectures. Figure 4
+shows visualizations of two images for four different net-
+work architectures: AlexNet (ILSVRC top-1 error rate
+of 41.8%), GoogLeNet (34.2%), VGG-16 (28.5%), and
+ResNet-101 (23.4%). It is interesting to see that smaller
+error rates go hand in hand with more sharply focused fea-
+tures contributing to the ﬁnal classiﬁcation results. This
+can be seen best in the black and white visualizations of
+the pixel contributions for the space shuttle image.
+This is a very good example of how visualization methods
+can facilitate the understanding of the performance of dif-
+ferent network architectures. Additionally, it is noteworthy
+that most visualization techniques are not conﬁned to clas-
+siﬁcation tasks. FeatureVis is agnostic to the loss-layer of
+the network and can therefore also be used for networks
+with regression tasks such as human pose estimation, fa-
+cial landmark detection, semantic segmentation, and depth
+prediction.
+
+4. Conclusion
+In this paper we have proposed a taxonomy for feature visu-
+alization techniques for deep networks, subdividing the lit-
+erature into three main classes. For each class, we have de-
+scribed its deﬁning characteristics and summarized the re-
+lated literature. Together with the taxonomy we have intro-
+duced the open source library FeatureVis for MatConvNet.
+The library contains implementations of a number of popu-
+lar feature visualization methods, to be used with any CNN
+designed using the standard MatConvNet layers with no
+further setup required. It thus provides a useful tool for the
+visual analysis of deep models and for direct improvements
+of a user’s network architecture.
+While the FeatureVis library can already be used to visu-
+alize CNNs using a variety of different methods, more re-
+mains to be done. We will focus our efforts on extend-
+ing the FeatureVis library to incorporate more visualization
+methods and provide interactive real-time visualizations to
+assist the comparison of different methods and visualize the
+inﬂuence of different parameters.
+
+References
+Bach, Sebastian, Binder, Alexander, Montavon, Gr´egoire,
+Klauschen, Frederick, M¨uller, Klaus-Robert,
+and
+Samek, Wojciech. On pixel-wise explanations for non-
+linear classiﬁer decisions by layer-wise relevance propa-
+gation. PLoS ONE, 10(7):1–46, 07 2015. doi: 10.1371/
+journal.pone.0130140. URL http://dx.doi.org/10.1371%
+2Fjournal.pone.0130140.
+
+Baehrens, David, Schroeter, Timon, Harmeling, Stefan,
+Kawanabe, Motoaki, Hansen, Katja, and M¨uller, Klaus-
+Robert. How to explain individual classiﬁcation de-
+cisions. J. Mach. Learn. Res., 11:1803–1831, August
+2010. ISSN 1532-4435. URL http://dl.acm.org/citation.
+cfm?id=1756006.1859912.
+
+Deng, J., Dong, W., Socher, R., Li, L. J., Li, Kai, and
+Fei-Fei, Li. Imagenet: A large-scale hierarchical image
+database. In Computer Vision and Pattern Recognition,
+2009. CVPR 2009. IEEE Conference on, pp. 248–255,
+June 2009. doi: 10.1109/CVPR.2009.5206848.
+
+Dosovitskiy, Alexey and Brox, Thomas. Inverting convo-
+lutional networks with convolutional networks. CoRR,
+abs/1506.02753, 2015. URL http://arxiv.org/abs/1506.
+02753.
+
+Dosovitskiy, Alexey, Springenberg, Jost Tobias, and Brox,
+Thomas. Learning to generate chairs with convolutional
+neural networks. CoRR, abs/1411.5928, 2014. URL http:
+//arxiv.org/abs/1411.5928.
+
+Erhan, Dumitru, Bengio, Yoshua, Courville, Aaron, and
+Vincent, Pascal. Visualizing higher-layer features of a
+deep network. University of Montreal, 1341, 2009.
+
+Glorot, Xavier, Bordes, Antoine, and Bengio, Yoshua.
+Deep sparse rectiﬁer neural networks. In International
+Conference on Artiﬁcial Intelligence and Statistics, pp.
+315–323, 2011.
+
+Hannun, Awni Y., Case, Carl, Casper, Jared, Catanzaro,
+Bryan C., Diamos, Greg, Elsen, Erich, Prenger, Ryan,
+Satheesh, Sanjeev, Sengupta, Shubho, Coates, Adam,
+and Ng, Andrew Y. Deep speech: Scaling up end-to-end
+speech recognition. CoRR, abs/1412.5567, 2014. URL
+http://arxiv.org/abs/1412.5567.
+
+He, Kaiming, Zhang, Xiangyu, Ren, Shaoqing, and Sun,
+Jian. Delving deep into rectiﬁers: Surpassing human-
+level performance on imagenet classiﬁcation. CoRR,
+abs/1502.01852, 2015. URL http://arxiv.org/abs/1502.
+01852.
+
+Hinton, Geoffrey E., Srivastava, Nitish, Krizhevsky, Alex,
+Sutskever, Ilya, and Salakhutdinov, Ruslan.
+Improv-
+ing neural networks by preventing co-adaptation of fea-
+
+A Taxonomy and Library for Visualizing Learned Features in CNNs
+
+Vondrick, Carl, Khosla, Aditya, Malisiewicz, Tomasz, and
+Torralba, Antonio. Hoggles: Visualizing object detec-
+tion features. In Proceedings of the IEEE International
+Conference on Computer Vision, pp. 1–8, 2013.
+
+Yosinski, Jason, Clune, Jeff, Nguyen, Anh Mai, Fuchs,
+Understanding neu-
+Thomas, and Lipson, Hod.
+CoRR,
+ral networks through deep visualization.
+abs/1506.06579, 2015. URL http://arxiv.org/abs/1506.
+06579.
+
+Zeiler, M. D., Taylor, G. W., and Fergus, R. Adaptive de-
+convolutional networks for mid and high level feature
+learning. In Computer Vision (ICCV), 2011 IEEE Inter-
+national Conference on, pp. 2018–2025, Nov 2011. doi:
+10.1109/ICCV.2011.6126474.
+
+Zeiler, Matthew D. and Fergus, Rob.
+
+Visualizing
+CoRR,
+and understanding convolutional networks.
+abs/1311.2901, 2013. URL http://arxiv.org/abs/1311.
+2901.
+
+Zhou, Bolei, Khosla, Aditya, Lapedriza,
+
+`Agata, Oliva,
+Aude, and Torralba, Antonio. Object detectors emerge
+in deep scene cnns. CoRR, abs/1412.6856, 2014. URL
+http://arxiv.org/abs/1412.6856.
+
+Zhou, Bolei, Khosla, Aditya, Lapedriza,
+
+`Agata, Oliva,
+Aude, and Torralba, Antonio. Learning deep features
+for discriminative localization. CoRR, abs/1512.04150,
+2015. URL http://arxiv.org/abs/1512.04150.
+
+ture detectors. CoRR, abs/1207.0580, 2012. URL http:
+//arxiv.org/abs/1207.0580.
+
+Lin, Tsung-Yi, Maire, Michael, Belongie, Serge J., Bour-
+dev, Lubomir D., Girshick, Ross B., Hays, James, Per-
+ona, Pietro, Ramanan, Deva, Doll´ar, Piotr, and Zitnick,
+C. Lawrence. Microsoft COCO: common objects in con-
+text. CoRR, abs/1405.0312, 2014. URL http://arxiv.org/
+abs/1405.0312.
+
+Long, Jonathan, Zhang, Ning, and Darrell, Trevor. Do
+convnets learn correspondence? CoRR, abs/1411.1091,
+2014. URL http://arxiv.org/abs/1411.1091.
+
+Maas, Andrew L, Hannun, Awni Y, and Ng, Andrew Y.
+Rectiﬁer nonlinearities improve neural network acoustic
+models. In Proc. ICML, volume 30, pp. 1, 2013.
+
+Mahendran, Aravindh and Vedaldi, Andrea. Understanding
+deep image representations by inverting them. CoRR,
+abs/1412.0035, 2014. URL http://arxiv.org/abs/1412.
+0035.
+
+Russakovsky, Olga, Deng, Jia, Su, Hao, Krause, Jonathan,
+Satheesh, Sanjeev, Ma, Sean, Huang, Zhiheng, Karpa-
+thy, Andrej, Khosla, Aditya, Bernstein, Michael, Berg,
+Alexander C., and Fei-Fei, Li.
+ImageNet Large Scale
+Visual Recognition Challenge. International Journal of
+Computer Vision (IJCV), 115(3):211–252, 2015. doi:
+10.1007/s11263-015-0816-y.
+
+Simonyan, Karen, Vedaldi, Andrea, and Zisserman, An-
+drew. Deep inside convolutional networks: Visualising
+image classiﬁcation models and saliency maps. CoRR,
+abs/1312.6034, 2013. URL http://arxiv.org/abs/1312.
+6034.
+
+Springenberg, Jost Tobias, Dosovitskiy, Alexey, Brox,
+Thomas, and Riedmiller, Martin A. Striving for simplic-
+ity: The all convolutional net. CoRR, abs/1412.6806,
+2014. URL http://arxiv.org/abs/1412.6806.
+
+Srivastava, Nitish, Hinton, Geoffrey, Krizhevsky, Alex,
+Sutskever, Ilya, and Salakhutdinov, Ruslan. Dropout: A
+simple way to prevent neural networks from overﬁtting.
+Journal of Machine Learning Research, 15:1929–1958,
+2014.
+URL http://jmlr.org/papers/v15/srivastava14a.
+html.
+
+Taigman, Yaniv, Yang, Ming, Ranzato, Marc’Aurelio, and
+Wolf, Lior. Deepface: Closing the gap to human-level
+In The IEEE Con-
+performance in face veriﬁcation.
+ference on Computer Vision and Pattern Recognition
+(CVPR), June 2014.
+
+Vedaldi, A. and Lenc, K. MatConvNet – convolutional neu-
+ral networks for MATLAB. In Proceedings of the ACM
+International Conference on Multimedia, 2015.
+
+

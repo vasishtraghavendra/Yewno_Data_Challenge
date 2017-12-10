@@ -1,0 +1,878 @@
+4
+1
+0
+2
+
+ 
+
+v
+o
+N
+4
+2
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+7
+4
+4
+6
+
+.
+
+1
+1
+4
+1
+:
+v
+i
+X
+r
+a
+
+The Application of Two-level Attention Models in Deep Convolutional Neural
+
+Network for Fine-grained Image Classiﬁcation
+
+Tianjun Xiao1 Yichong Xu2 Kuiyuan Yang3 Jiaxing Zhang3 Yuxin Peng1 Zheng Zhang4
+
+1Institute of Computer Science and Technology, Peking University
+
+2Tsinghua University
+
+3Microsoft Research, Beijing
+4New York University Shanghai
+
+xiaotianjun@pku.edu.cn, xycking@163.com, kuyang@microsoft.com
+
+jiaxz@microsoft.com, pengyuxin@pku.edu.cn, zz@nyu.edu
+
+Abstract
+
+Fine-grained classiﬁcation is challenging because cate-
+gories can only be discriminated by subtle and local dif-
+ferences. Variances in the pose, scale or rotation usually
+make the problem more difﬁcult. Most ﬁne-grained clas-
+siﬁcation systems follow the pipeline of ﬁnding foreground
+object or object parts (where) to extract discriminative fea-
+tures (what).
+
+In this paper, we propose to apply visual attention to ﬁne-
+grained classiﬁcation task using deep neural network. Our
+pipeline integrates three types of attention: the bottom-up
+attention that propose candidate patches, the object-level
+top-down attention that selects relevant patches to a certain
+object, and the part-level top-down attention that localizes
+discriminative parts. We combine these attentions to train
+domain-speciﬁc deep nets, then use it to improve both the
+what and where aspects. Importantly, we avoid using ex-
+pensive annotations like bounding box or part information
+from end-to-end. The weak supervision constraint makes
+our work easier to generalize.
+
+We have veriﬁed the effectiveness of the method on
+the subsets of ILSVRC2012 dataset and CUB200 2011
+dataset. Our pipeline delivered signiﬁcant improvements
+and achieved the best accuracy under the weakest super-
+vision condition. The performance is competitive against
+other methods that rely on additional annotations.
+
+Figure 1. Illustration of the difﬁculty of ﬁne-grained classiﬁcation
+: large intra-class variance and small inter-class variance.
+
+1. Introduction
+
+Fine-grained classiﬁcation is to recognize subordinate-
+level categories under some basic-level category, e.g., clas-
+sifying different bird types [20], dog breeds [11], ﬂower
+species [14], aircraft models [13] etc. This is an important
+problem with wide applications. Even in the ILSVRC2012
+
+1K categories, there are 118 and 59 categories under the
+dog and bird class, respectively. Counter intuitively, intra-
+class variance can be larger than inter-class, as shown in
+Figure 1. Consequently, ﬁne-grained classiﬁcation are tech-
+nically challenging.
+
+Speciﬁcally, the difﬁculty of ﬁne-grained classiﬁcation
+comes from the fact that discriminative features are local-
+
+1
+
+Artic_TernCaspian_TernCommon_TernFosters_Ternized not just on foreground object, but more importantly on
+object parts [5] (e.g. the head of a bird). Therefore, most
+ﬁne-grained classiﬁcation systems follow the pipeline: ﬁnd-
+ing foreground object or object parts (where) to extract dis-
+criminative features (what).
+
+For this to work, a bottom-up process is necessary to
+propose image regions (or patches) that have high object-
+ness, meaning they contain parts of certain objects. Selec-
+tive search [17] is an unsupervised process that can propose
+such regions at the order of thousands. This starting point is
+used extensively in recent studies [10, 24], which we adopt
+as well.
+
+The bottom-up process has high recall but very low pre-
+cision.
+If the object is relatively small, most patches are
+background and do not help classifying the object at all.
+This poses problems to the where part of the pipeline, lead-
+ing to the need of top-down attention models to ﬁlter out
+noisy patches and select the relevant ones. In the context
+of ﬁne-grained classiﬁcation, ﬁnding foreground object and
+object parts can be regarded as a two-level attention pro-
+cesses, one at object-level and another at part-level.
+
+Most existing methods rely on strong supervision to deal
+with the attention problem. They heavily rely on human
+labels, using bounding box for object-level and part land-
+marks for part-level. The strongest supervision settings
+leverage both in training as well as testing phase, whereas
+the weakest setting uses neither. Most works are in between
+(see Section 4 for an in-depth treatment).
+
+Since labeling is expensive and non-scalable, the focus
+of this study is to use the weakest possible supervision. Rec-
+ognizing the granularity differences, we employ two sepa-
+rate pipelines to implement object-level and part-level atten-
+tion, but pragmatically leverage shared components. Here
+is a high level summary of our approach:
+
+• We turn a Convolutional Neural Net (CNN) pre-trained
+on ILSVRC2012 1K category into a FilterNet. Filter-
+Net selects patches relevant to the basic-level category,
+thus processes the object-level attention. The selected
+patches drive the training of another CNN into a do-
+main classiﬁer, called DomainNet.
+
+• Empirically, we observe clustering pattern in the in-
+ternal hidden representations inside the DomainNet.
+Groups of neurons exhibit high sensitivity to discrimi-
+nating parts. Thus, we choose the corresponding ﬁlters
+as part-detector to implement part-level attention.
+
+In both steps, we require only image-level labeling.
+
+The next key step is to extract discriminative features
+from the regions/patches selected by these two attentions.
+Recently, there have been convincing evidence that fea-
+tures derived by CNN can deliver superior performance
+over hand-crafted ones [23, 15, 7, 24]. Following the two
+
+attention pipelines outlined above, we adopt the same gen-
+eral strategies. At the object-level, the DomainNet directly
+output multi-view predictions driven by multiple relevant
+patches of an image. At the part-level, activations in the
+CNN hidden layers driven by detected parts yield another
+prediction through a part-based classiﬁer. The ﬁnal clas-
+siﬁcation merges results from both pipelines to utilize the
+advantage of the two level attentions.
+
+Our preliminary results demonstrate the effectiveness of
+this design. With the weakest supervision, we improve the
+ﬁne-grained classiﬁcation in the dog and bird class of the
+ILSVRC2012 dataset from 40.1% and 21.1% to 28.1% and
+11.0%, respectively. On the CUB200-2011 [19] dataset, we
+reach 69.7%, competitive to other methods that use stronger
+supervisions. Our technique improves naturally with better
+networks, for example the accuracy reaches nearly to 78%
+using VGGNet [16].
+
+The rest of the paper is organized as follows. We ﬁrst de-
+scribe the pipeline utilizing object-level and part-level atten-
+tions for ﬁne-grained classiﬁcation in Section 2. Detailed
+performance study and analysis are covered in Section 3.
+Related works are covered in Section 4. Finally, We discuss
+what we learned, future work and conclusion in Section 5.
+
+2. Methods
+
+Our design is based on a very simple intuition: perform-
+ing ﬁne-grained classiﬁcation requires ﬁrst to “see” the ob-
+ject and then the most discriminative parts of it. Finding a
+Chihuahua in an image entails the process of ﬁrst seeing a
+dog, and then focusing on its important features that tell it
+apart from other breeds of dog.
+
+For this to work our classiﬁer should not work on the raw
+image but rather its constitute patches. Such patches should
+also retain the most objectness that are relevant to the recog-
+nition steps.
+In the example above, the objectness of the
+ﬁrst step is at the level of dog class, and that of the second
+step is at the parts that would differentiate Chihuahua from
+other breeds (e.g. ear, head, tail). Crucially, recognizing
+the fact that detailed labeling are expensive to get and difﬁ-
+cult to scale, we opt to use the weakest possible labels. Our
+pipeline uses only the image-level labels.
+
+The raw candidate patches are generated in a bottom-up
+process, grouping pixels into regions that highlight the like-
+lihood of parts of some objects. In this process, we adopt
+the same approaches as [24] and uses selective search [17]
+to extract patches (or regions) from input images. This step
+will provide multi-scale and multi-view of the original im-
+age. However, the bottom-up method will provide patches
+of high recall and low precision. Top-down attention need
+to be applied to select the relative patches useful for classi-
+ﬁcation.
+
+2
+
+Figure 2. Object-level top-down attention. An object-level FilterNet is introduced to decide whether to proceed a patch proposed by the
+bottom-up method to the next steps. The FilterNet only cares whether a patch is related to the basic level category, and targets ﬁltering out
+background patches.
+
+2.1. Object-Level Attention Model
+Patch selection using object-level attention This step
+ﬁlters the bottom-up raw patches via a top-down, object-
+level attention. The goal is to remove noisy patches that
+are not relevant to the object. We do this by converting
+a CNN trained on the 1K-class ILSVR2012 dataset into a
+object-level FilterNet. We summarize the activations of all
+the softmax neurons belonging to the parent class of a ﬁne-
+grained category (e.g. for Chihuahua the parent class is the
+dog) as the selection conﬁdence score, and then set a thresh-
+old on the score to decide whether a given patch should be
+selected. This is shown in Figure 2. Through this way, the
+advantage of multi-scale and multi-view has been retained
+and also the noise has been ﬁltered out.
+
+Training a DomainNet The patches selected by the Fil-
+terNet are used to train a new CNN from scratch after proper
+warping. We call this second CNN the DomainNet because
+it extracts features relevant to the categories belonging to a
+speciﬁc domain (e.g., dog, cat, bird).
+
+We note that from a single image many such patches are
+made available, and the net effect is a boost of data aug-
+mentation. Unlike other data augmentation such as random
+cropping, we have a higher conﬁdence that the patches are
+relevant. The amount of data also drives training of a big-
+ger network, allowing it to build more features. This has
+two beneﬁts. First, the DomainNet is a good ﬁne-grained
+classiﬁer itself. Second, its internal features now allow us
+to build part detectors, as we will explain next.
+
+Classiﬁcation using object-level attention The patch se-
+lection using object-level attention can be naturally applied
+to the testing phase. To get the predicted label of an im-
+age, we provide the DomainNet with the patches selected
+by the FilterNet to feed forward. Then compute the average
+classiﬁcation distribution of the softmax output for all the
+patches. Finally we can get the prediction on the averaged
+
+softmax distribution.
+
+2.2. Part-Level Attention Model
+
+Building the part detector The work of DPD [25] and
+Part-RCNN [24] strongly suggest that certain discrimina-
+tive local features (e.g.
+head and body) are critical to
+ﬁne-grained classiﬁcation. Instead of using the strong la-
+bels on parts and key points, as is done in many related
+works [25, 24, 4], we are inspired by the fact that hidden
+layers of the DomainNet have shown clustering patterns.
+For example, there are groups of neurons respond to bird
+head, and others to bird body, despite the fact they may cor-
+respond to different poses. In hindsight, this is not at all
+surprising, given that these features indeed “stand out” and
+“speak for” a category.
+
+Figure 3 shows conceptually what this step performs.
+Essentially, we perform spectral clustering on the similar-
+ity matrix S to partition the ﬁlters in a middle layer into k
+groups, where S(i, j) denotes the cosine similarity of the
+weights of two mid-layer ﬁlters Fi and Fj in the Domain-
+Net. In our experiments, our network is essentially the same
+as the AlexNet [12], and we pick neurons from the 4th con-
+volution layer with k set to 3. Each cluster acts as a part
+detector. Raw patches extracted from the image (using se-
+lective search) are warped to ﬁt the receptive size of these
+neurons, and the clusters now vote and generate a ﬁnal de-
+tection score.
+
+Some detection results of the dog and bird class are
+shown on Figure 4.
+It’s clear that one group of ﬁlters in
+bird DomainNet pay specially attention to bird head, and
+the other group to bird body. Similarly, for the dog Domain-
+Net, one group of ﬁlters pay attention to dog head, and one
+to dog legs. According to our practicing experience, ﬁlters
+detect background noise will be clustered into one group.
+We can use the ﬁlter visualization technique or use a vali-
+dation set at testing time to ﬁnd it out to prevent the noise
+disturbing performance.
+
+3
+
++Finch?Sparrow?Tern?Tanager?Bird?Object-level FilterNetFigure 3. Part-level top-down Attention: The ﬁlters in the DomainNet shows special interests on speciﬁc object parts and clustering pattern
+can be found among ﬁlters according to their interested parts. We use spectral clustering to ﬁnd the groups, then use the ﬁlters in a group
+to serve as part detector. In this ﬁgure, mid-level CNN ﬁlters can be served as head detector, body detector and leg detector for birds.
+
+lects multiple views that (hopefully) focus on the object as
+a whole; these patches drive the DomainNet. On the other
+hand, the part-based classiﬁer selects and works exclusively
+on patches containing discriminate and local features. Fi-
+nally, we merge the prediction results of the two level at-
+tention methods to utilize the advantage of the two. Even
+though some patches are admitted by both classiﬁers, their
+features have different representation in each and can po-
+tentially enrich each other.
+
+Figure 5 shows the complete pipeline and when we
+
+merge the results of the two level attention classiﬁers.
+
+3. Experiment
+
+This section presents performance evaluations and anal-
+ysis of our proposed method on three ﬁne-grained classiﬁ-
+cation tasks:
+
+• Classiﬁcation of two subsets in ILSVRC2012,
+
+the
+dog dataset (ILSVRC2012 Dog) and the bird dataset
+(ILSVRC2012 bird). The ﬁrs contains 153,773 im-
+ages of 118 breeds of dog, and the second contains
+79,491 images of 59 types of bird. The train/test
+split follows standard protocol of ILSVRC2012. Both
+datasets are weakly annotated, where only class labels
+are available.
+
+• The widely-used ﬁne-grained classiﬁcation benchmark
+Caltech-UCSD Birds dataset [19] (CUB200-2011),
+with 11,788 images of 200 types of birds. Each Image
+
+4
+
+Figure 4. Part-level top-down attention detection results. One
+group of ﬁlters in bird DomainNet pay specially attention to bird
+head, and the other group to bird body. Similarly, for the dog Do-
+mainNet, one group of ﬁlters pay attention to dog head, and one to
+dog legs
+
+Building the part-based classiﬁer The patches that se-
+lected by the part detector generate activations inside the
+DomainNet. We concatenate these activations and train a
+SVM as the part-based classiﬁer.
+2.3. The Complete Pipeline
+
+The domainNet classiﬁer and the part-based classiﬁer are
+both ﬁne-grained classiﬁers. However, their functionality
+and strength differ, primarily because they admit patches
+of different nature. The bottom-up process using selec-
+tive search are raw patches. From them, the FilterNet se-
+
+            Bottom-Up Proposal                  Part DetectionDetection ScorePart1 DetectorPart2 DetectorPart3 DetectorCNN Filters on Conv-layer 4Spectral ClusteringDog Part 1Dog Part 2Bird Part 1Bird Part 2Figure 5. The complete classiﬁcation pipeline of our method. Two levels of top-down attentions are applied on the bottom-up proposals.
+One conducts object-level ﬁltering to select patches relevant to bird to feed into the classiﬁer. The other conducts part-level detection to
+detect parts for classiﬁcation. DomainNet can provide the part detectors for part-level method and also the feature extractor for both of
+the two level classiﬁers. The prediction results of the two classiﬁers are merged in later phase to combine the advantages of the two level
+attentions.
+
+in CUB200-2011 has detailed annotations, including
+image level label, bounding box and part landmarks.
+
+3.1. Implementation Details
+
+Our CNN architecture is the popular Alex Net et al. [12],
+with 5 convolutional layers and 3 fully connected layers. It
+is used in all experiments, except the number of neurons
+of the output layer is set as number of categories when re-
+quired. For a fair comparison, we try to reproduce results of
+other approaches on the same network architecture. When
+using CNN as feature extractor, the activations of the ﬁrst
+fully-connected layer are outputted as features. Finally, to
+demonstrate that our method is agnostic to network archi-
+tecture and can improve with it, we also try to use the more
+recent VGGNet [16] in the feature extraction phase. Due
+to time limit, we have not replicated all results using the
+VGGNet.
+3.2. Results on ILSVRC2012 Dog/Bird
+
+In this task, only image-level class labels are available.
+Therefore, ﬁne-grained methods requiring detailed annota-
+tions are not applicable. For brevity, we will only report
+results on dog; results of bird are qualitatively similar.
+
+The baselines are performance of CNN but trained with
+
+two different strategies, including:
+
+• CNN domain: The network is trained only on images
+from dog categories. In the training phase, randomly
+cropped 224 × 224 patches from the whole image are
+used to avoid overﬁtting. In testing phase, softmax out-
+puts of 10 ﬁxed views (the center patch, the four corner
+patches, and their horizonal reﬂections) are averaged
+as the ﬁnal prediction. In this method, no speciﬁc at-
+tention is used and patches are equally selected.
+
+• CNN 1K: The network is trained on all images of
+
+5
+
+ILSVRC2012 1K categories, then the softmax neurons
+not belong to dog are removed. Other settings are the
+same as above. This is a multi-task learning method
+that simultaneously learns all models, including dog
+and bird. This strategy utilizes more data to train a
+single CNN, and resist overﬁtting better, but has the
+tradeoff of wasting capacity on unwanted categories.
+
+These baseline numbers are compared with three strategies
+of our approach: using object-level and part-level attention
+only, and the combination of both. Selective search pro-
+poses several hundred number of patches, and we let Filter-
+Net to select roughly 40 of them, using a conﬁdence score
+of 0.9.
+
+Table 1 summarizes the top-1 error rates of all ﬁve strate-
+gies. It turns out the two baselines perform about the same.
+However, our attention based methods achieves much lower
+error rates. Using object-level attention only drops the er-
+ror rate by 9.3%, comparing against CNN trained with ran-
+domly cropped patches. This clearly demonstrates the ef-
+fectiveness of object-level attention:
+the DomainNet now
+focuses on learning domain speciﬁc features from fore-
+ground objects. Combining part-level attention, the error
+rate drops to 28.1%, which is signiﬁcantly better than the
+baselines. The result of using part-level attention alone is
+not as good as object-level attention, as there are still more
+ambiguities in part level. However, it achieves pose normal-
+ization to resist large pose variations, and is complementary
+to the object-level attention.
+
+3.3. Results on CUB200-2011
+
+For this task, we begin with a demonstration of the per-
+formance advantage of learning deep feature based on ob-
+ject level attention. We then present full results against other
+state-of-the-art methods.
+
+     Bottom-Up ProposalObject-level Filtering      Object-Filted PatchesPart-level DetectionPart 1Part 2OriginClassification ResultObject-level ClassifierPart-level ClassifierDomainNetTable 1. Top-1 error rate on ILSVRC2012 Dog/Bird validation set.
+
+ILSVRC2012 Dog
+
+ILSVRC2012 Bird
+
+Method
+CNN domain
+CNN 1K
+Object-level attention
+Part-level attenion
+Two-level attention
+
+40.1
+39.5
+30.3
+35.2
+28.1
+
+21.1
+19.2
+11.9
+14.6
+11.0
+
+the bird DomainNet
+
+Advantage on Learning Deep Feature We have shown
+that
+trained with object-level at-
+tention delivers superior classiﬁcation performance on
+ILSVRC2012 Bird. It is reasonable to assume that part of
+the gain comes from the better learned features.
+In this
+experiment, we use the domainNet as feature extractor on
+CUB200-2011 to verify the advantage of those features.
+We compare against two baseline feature extractors, one
+is hand-crafted kernel descriptors [3] (KDES) which was
+widely used in ﬁne-grained classiﬁcation before using CNN
+feature, the other is the CNN feature extractor pre-trained
+from all the data in ILSVRC2012 [15]. We compared the
+feature extractors under two classiﬁcation pipelines and the
+features are fed in a SVM classiﬁer. The ﬁrst one uses
+bounding boxes, the second one is proposed in Zhang el
+al. [25] (DPD) which relies on deformable part based de-
+tector [8] to ﬁnd object and its parts. In this experiment,
+no CNN is ﬁnetuned on CUB200-2011. As shown in Fig-
+ure 6, DomainNet based feature extractor achieves the best
+results on both pipelines. This further demonstrates that us-
+ing object-level attention to ﬁlter relevant patches is an im-
+portant condition for CNN to learn good features.
+
+Figure 6. Comparision of different feature extractors by attentions
+provided by bounding box and DPD.
+
+Advantage of the Classiﬁcation Pipeline
+In this exper-
+iment, the DomainNet is ﬁne-tuned using CUB200-2011
+with patches generated by object-level attention. The mean
+
+6
+
+accuracies are reported in Table 2, along with how much
+annotations are used. These methods are grouped into three
+sets. The ﬁrst set is our attention-based methods, the second
+uses the same DomainNet feature extractor as the ﬁrst set
+but with different pipeline and annotations, and the third set
+includes the state-of-the-art results from recent literatures.
+We ﬁrst compare the results of the ﬁrst two set where
+the used feature extractor is the same, and the performance
+difference is attributed to different attention models. Using
+original image only achieves the lowest accuracy (58.8%).
+which demonstrates the importance of object and part level
+attention in ﬁne-graind image classiﬁcation.
+In compari-
+son, our attention-based methods achieved signiﬁcant im-
+provement, and the two-level attention delivers even better
+results than using human labelled bounding box (69.7% vs.
+68.4%), and is comparable to DPD (70.5%). The DPD re-
+sult is based on implementation using our feature extrac-
+tor, it used deformable part-based detector trained with ob-
+ject bounding box. The standard DPD pipeline also need
+bounding box at testing time to produce relatively good per-
+formance. To the best of our knowledge, 69.7% is the best
+result under the weakest supervision.
+
+The third set summarizes the state-of-the-art methods.
+Our results is much better than the ones using only bound-
+ing boxes in training and testing, but still has gap to the
+methods using part-level annotation.
+
+Our results can be improved by using more powerful fea-
+ture extractors. If we use the VGGNet [16] to extract fea-
+ture, the baseline method without attention by only using
+original image can be improved to 72.1%. Adding object-
+level attention, part-level attention, and the combined atten-
+tions boost the performance to 76.9%, 76.4% and 77.9%,
+respectively.
+
+4. Related Work
+
+Fine-grained classiﬁcation has been extensively studied
+recently [19, 20, 11, 3, 5, 22, 25, 2, 4]. Previous works have
+aimed at boosting the recognition accuracy from three main
+aspects: 1. object and part localization, which can also be
+treated as object/part level attention; 2. feature representa-
+tion for detected objects or parts; 3. human in the loop [18].
+Since our goal is automatic ﬁne-grained classiﬁcation, we
+focus on the related work of the ﬁrst two.
+
+0.00%10.00%20.00%30.00%40.00%50.00%60.00%70.00%80.00%Bounding BoxDPDAccuracy KDESCNN_ 1KDomainNetMethod
+Object-level attention
+Part-level attention
+Two-level attention
+DomainNet without attention
+BBox + DomainNet
+DPD [25] + DomainNet
+Symbiotic [5]
+Alignment [9]
+DeCAF6 [7]
+CNNaug-SVM [15]
+Part RCNN [24]
+Pose Normalized CNN [4]
+POOF [2]
+Part RCNN [24]
+POOF [2]
+
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+
+4.1. Object/Part Level Attention
+
+In ﬁne-grained classiﬁcation tasks, discriminative fea-
+tures are mainly localized on foreground object and even
+on object parts, which makes object and part level atten-
+tion be the ﬁrst important step. As ﬁne-grained classiﬁca-
+tion datasets are often using detailed annotations of bound-
+ing box and part landmarks, most methods rely on some of
+these annotations to achieve object or part level attention.
+
+The strongest supervised setting is using bounding box
+and part landmarks in both training and testing phase, which
+is often used to test performance upbound [2]. To verify
+CNN features on ﬁne-grained task, bounding boxes are as-
+sumed given in both training and testing phase [7, 15]. Us-
+ing provided bounding box, several methods proposed to
+learn part detectors in unsupervised or latent manner [21, 5].
+To further improve the performance, part level annotation is
+also used in training phase to learn strongly-supervised de-
+formable part-based model [1, 25] or directly used to ﬁne-
+tune pre-trained CNN [4].
+
+Our work is also closely related to recently proposed
+object detection method (R-CNN) based on CNN fea-
+ture [10]. R-CNN works by ﬁrst proposing thousands can-
+didate bounding boxes for each image via some bottom-up
+attention model [17, 6], then selecting the bounding boxes
+with high classiﬁcation scores as detection results. Based on
+R-CNN, Zhang et al. has proposed Part-based R-CNN [24]
+to utilize deep convolutional network for part detection.
+
+4.2. Feature Representation
+
+The other aspect to directly boost up the accuracy is
+to introduce more discriminative feature to represent im-
+age regions. Ren et al. has proposed Kernel Descrip-
+
+Table 2. Accuracy Comparison between methods using bounding box
+
+Training phase
+
+Testing phase
+
+BBox Info
+
+Part Info BBox Info
+
+Part Info Accuracy (%)
+
+67.6
+64.9
+69.7
+58.8
+68.4
+70.5
+61.0
+62.7
+58.8
+61.8
+73.5
+75.7
+56.8
+76.7
+73.3
+
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+
+(cid:88)
+(cid:88)
+(cid:88)
+
+(cid:88)
+
+tors [3] and were widely used in ﬁne-grained classiﬁcation
+pipelines [25, 21]. Some recent works try to learn feature
+descriptions from the data, Berg et al. has proposed the
+part-based one-vs-all features library POOF [2] as the mid-
+level features. CNN feature extractors pre-trained from Im-
+ageNet data also showed signiﬁcant performance improve-
+ment on ﬁne-grained datasets [15, 7]. Zhang et al. further
+improved the performance of CNN feature extractor by ﬁne-
+tuning on ﬁne-grained dataset [24].
+
+Our approach adopts the same general principle. We
+also share the same strategy of taking region proposals in a
+bottom-up process to drive the classiﬁcation pipeline, as is
+done in R-CNN and Part R-CNN. One difference is that we
+enrich the object-level pipeline with relevant patches that
+offer multiple views and scales. More importantly, we opt
+for the weakest supervision throughout the model, relying
+solely on CNN features to implement attention, detect parts
+and extract features.
+
+5. Conclusions
+
+In this paper, we propose a ﬁne-grained classiﬁcation
+pipeline combining bottom-up and two top-down atten-
+tions. The object-level attention feeds the network with
+patches relevant to the task domain with different views and
+scales. This leads to better CNN feature for ﬁne-grained
+classiﬁcation, as the network are driven by domain-relevant
+patches that are also rich with shift/scale variances. The
+part-level attention focuses on local discriminate patterns
+and also achieves pose normalization. Both levels of atten-
+tion can bring signiﬁcant gains, and they compensate each
+other nicely with late fusion. One important advantage of
+our method is that, the attention is derived from the CNN
+
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+(cid:88)
+
+7
+
+trained with classiﬁcation task, thus it can be conducted un-
+der the weakest supervision setting where only class label is
+provided. This is in sharp contrast with other state-of-the-
+art methods that require object bounding box or part land-
+mark to train or test. To the best of our knowledge, we get
+the best accuracy on CUB200-2011 dataset under the weak-
+est supervision setting.
+
+These results are promising. At the same time, the expe-
+rience points out a few lessons and future directions, which
+we summarize as the followings:
+
+• Dealing with ambiguities in part level attention. Our
+current method does not fully utilize what has been
+learned in CNN. Filters of different layers should be
+considered as a whole to facilitate robust part detec-
+tion, since part feature may appear in different layers
+due to the scale issue.
+
+• A closer integration of the object-level and part-level
+attention. One advantage of object-level attention is
+that it can provide large amount of relevant patches
+to help resist variance to some extend. However,
+this is not leveraged by the current part-level attention
+pipeline. We may borrow the idea of multi-patch test-
+ing to part-level attention method to derive more effec-
+tive pose normalization.
+
+We are actively pursuing the above directions.
+
+References
+[1] H. Azizpour and I. Laptev. Object detection us-
+In
+
+ing strongly-supervised deformable part models.
+ECCV. 2012.
+
+[2] T. Berg and P. N. Belhumeur. POOF: Part-based one-
+vs.-one features for ﬁne-grained categorization, face
+veriﬁcation, and attribute estimation. In CVPR, 2013.
+[3] L. Bo, X. Ren, and D. Fox. Kernel descriptors for
+
+visual recognition. In NIPS, 2010.
+
+[4] S. Branson, G. Van Horn, S. Belongie, and P. Per-
+ona. Bird species categorization using pose nor-
+arXiv preprint
+malized deep convolutional nets.
+arXiv:1406.2952, 2014.
+
+[5] Y. Chai, V. Lempitsky, and A. Zisserman. Symbiotic
+segmentation and part localization for ﬁne-grained
+categorization. In ICCV, 2013.
+
+[6] M.-M. Cheng, Z. Zhang, W.-Y. Lin, and P. Torr.
+BING: Binarized normed gradients for objectness es-
+timation at 300fps. In CVPR, 2014.
+
+[7] J. Donahue, Y. Jia, O. Vinyals, J. Hoffman, N. Zhang,
+E. Tzeng, and T. Darrell. DeCAF: A Deep Convolu-
+tional Activation Feature for Generic Visual Recogni-
+tion. Technical report, 2013.
+
+[8] P. F. Felzenszwalb, R. B. Girshick, D. McAllester, and
+D. Ramanan. Object detection with discriminatively
+trained part-based models. PAMI, 2010.
+
+[9] E. Gavves, B. Fernando, C. G. Snoek, A. W. Smeul-
+ders, and T. Tuytelaars. Fine-grained categorization
+by alignments. In ICCV, 2013.
+
+[10] R. Girshick, J. Donahue, T. Darrell, and J. Malik. Rich
+feature hierarchies for accurate object detection and
+semantic segmentation. In CVPR, 2014.
+
+[11] A. Khosla, N. Jayadevaprakash, B. Yao, and F.-F.
+Li. Dataset for ﬁne-grained image categorization. In
+First Workshop on Fine-Grained Visual Categoriza-
+tion, CVPR, 2011.
+
+[12] A. Krizhevsky, I. Sutskever, and G. Hinton.
+
+Ima-
+geNet classiﬁcation with deep convolutional neural
+networks. NIPS, 2012.
+
+[13] S. Maji, J. Kannala, E. Rahtu, M. Blaschko, and
+A. Vedaldi. Fine-grained visual classiﬁcation of air-
+craft. Technical report, 2013.
+
+[14] M.-E. Nilsback and A. Zisserman. Automated ﬂower
+classiﬁcation over a large number of classes. In Pro-
+ceedings of the Indian Conference on Computer Vi-
+sion, Graphics and Image Processing, 2008.
+
+[15] A. S. Razavian, H. Azizpour, J. Sullivan, and S. Carls-
+son. CNN Features off-the-shelf: an Astounding Base-
+line for Recognition. arXiv preprint arXiv:1403.6382,
+2014.
+
+[16] K. Simonyan and A. Zisserman. Very deep convo-
+lutional networks for large-scale image recognition.
+arXiv preprint arXiv:1409.1556, 2014.
+
+[17] J. R. Uijlings, K. E. van de Sande, T. Gevers, and
+A. W. Smeulders. Selective search for object recog-
+nition. IJCV, 2013.
+
+[18] C. Wah, S. Branson, P. Perona, and S. Belongie. Mul-
+ticlass recognition and part localization with humans
+in the loop. In ICCV, 2011.
+
+[19] C. Wah, S. Branson, P. Welinder, P. Perona, and S. Be-
+longie. The Caltech-UCSD Birds-200-2011 dataset.
+2011.
+
+[20] P. Welinder, S. Branson, T. Mita, C. Wah, F. Schroff,
+S. Belongie, and P. Perona. Caltech-UCSD birds 200.
+2010.
+
+[21] S. Yang, L. Bo, J. Wang, and L. G. Shapiro. Unsuper-
+vised template learning for ﬁne-grained object recog-
+nition. In NIPS, pages 3122–3130, 2012.
+
+[22] B. Yao, G. Bradski, and L. Fei-Fei. A codebook-free
+and annotation-free approach for ﬁne-grained image
+categorization. In CVPR, 2012.
+
+[23] M. D. Zeiler and R. Fergus. Visualizing and un-
+arXiv
+
+derstanding convolutional neural networks.
+preprint arXiv:1311.2901, 2013.
+
+8
+
+[24] N. Zhang, J. Donahue, R. Girshick, and T. Darrell.
+Part-based r-cnns for ﬁne-grained category detection.
+In ECCV. 2014.
+
+[25] N. Zhang, R. Farrell, F. Iandola, and T. Darrell. De-
+formable part descriptors for ﬁne-grained recognition
+and attribute prediction. In ICCV, 2013.
+
+9
+
+

@@ -1,0 +1,843 @@
+7
+1
+0
+2
+
+ 
+
+b
+e
+F
+3
+
+ 
+
+ 
+ 
+]
+L
+C
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+4
+1
+2
+3
+0
+
+.
+
+1
+0
+7
+1
+:
+v
+i
+X
+r
+a
+
+An Empirical Comparison of Simple Domain Adaptation Methods for
+
+Neural Machine Translation
+
+Chenhui Chu1 , Raj Dabre2, and Sadao Kurohashi2
+
+1Japan Science and Technology Agency
+
+2Graduate School of Informatics, Kyoto University
+
+chu@pa.jst.jp, raj@nlp.ist.i.kyoto-u.ac.jp, kuro@i.kyoto-u.ac.jp
+
+Abstract
+
+In this paper, we propose a novel do-
+main adaptation method named “mixed
+ﬁne tuning” for neural machine transla-
+tion (NMT). We combine two existing ap-
+proaches namely ﬁne tuning and multi do-
+main NMT. We ﬁrst train an NMT model
+on an out-of-domain parallel corpus, and
+then ﬁne tune it on a parallel corpus which
+is a mix of the in-domain and out-of-
+domain corpora. All corpora are aug-
+mented with artiﬁcial tags to indicate spe-
+ciﬁc domains. We empirically compare
+our proposed method against ﬁne tuning
+and multi domain methods and discuss its
+beneﬁts and shortcomings.
+
+1 Introduction
+
+One of the most attractive features of neural ma-
+chine translation (NMT) (Bahdanau et al., 2015;
+Cho et al., 2014; Sutskever et al., 2014) is that it
+is possible to train an end to end system without
+the need to deal with word alignments, translation
+rules and complicated decoding algorithms, which
+are a characteristic of statistical machine transla-
+tion (SMT) systems. However, it is reported that
+NMT works better than SMT only when there is an
+abundance of parallel corpora. In the case of low
+resource domains, vanilla NMT is either worse
+than or comparable to SMT (Zoph et al., 2016).
+
+Domain adaptation has been shown to be
+effective for low resource NMT. The conventional
+domain adaptation method is ﬁne tuning,
+in
+which an out-of-domain model is further trained
+on in-domain data (Luong and Manning, 2015;
+Servan et al., 2016;
+Sennrich et al., 2016b;
+Freitag and Al-Onaizan, 2016).
+However, ﬁne
+tuning tends to overﬁt quickly due to the small
+size of the in-domain data. On the other hand,
+multi domain NMT (Kobus et al., 2016) involves
+
+training a single NMT model for multiple do-
+mains. This method adds tags “<2domain>”
+by modifying the parallel corpora to indicate
+domains without any modiﬁcations to the NMT
+system architecture. However, this method has not
+been studied for domain adaptation in particular.
+
+Motivated by these two lines of studies, we
+propose a new domain adaptation method called
+“mixed ﬁne tuning,” where we ﬁrst train an NMT
+model on an out-of-domain parallel corpus, and
+then ﬁne tune it on a parallel corpus that is a
+mix of the in-domain and out-of-domain corpora.
+Fine tuning on the mixed corpus instead of the in-
+domain corpus can address the overﬁtting prob-
+lem. All corpora are augmented with artiﬁcial tags
+to indicate speciﬁc domains. We tried two differ-
+ent corpora settings:
+
+• Manually created resource poor corpus: Us-
+ing the NTCIR data (patent domain; resource
+rich) (Goto et al., 2013) to improve the trans-
+lation quality for the IWSLT data (TED talks;
+resource poor) (Cettolo et al., 2015).
+
+• Automatically extracted resource poor cor-
+pus: Using the ASPEC data (scientiﬁc do-
+main; resource rich) (Nakazawa et al., 2016)
+to improve the translation quality for the Wiki
+data (resource poor). The parallel corpus of
+the latter domain was automatically extracted
+(Chu et al., 2016a).
+
+We observed that “mixed ﬁne tuning” works sig-
+niﬁcantly better than methods that use ﬁne tuning
+and domain tag based approaches separately. Our
+contributions are twofold:
+
+• We propose a novel method that combines the
+best of existing approaches and have shown
+that it is effective.
+
+• To the best of our knowledge this is the ﬁrst
+work on an empirical comparison of various
+domain adaptation methods.
+
+Source-Target  
+(out-of-domain) 
+
+Source-Target   
+
+(in-domain) 
+
+NMT 
+
+NMT 
+
+e  
+
+I n i t i a li z
+
+Model 
+
+(out-of-domain) 
+
+Model  
+
+(in-domain) 
+
+3.3 Mixed Fine Tuning
+
+The proposed mixed ﬁne tuning method is a com-
+bination of the above methods (shown in Figure
+2). The training procedure is as follows:
+
+Figure 1: Fine tuning for domain adaptation.
+
+2 Related Work
+
+Besides ﬁne tuning and multi domian NMT us-
+ing tags, another direction for domain adapta-
+tion is using in-domain monolingual data. Ei-
+ther training an in-domain recurrent neural lan-
+guage (RNN) language model for the NMT de-
+coder (G¨ulc¸ehre et al., 2015) or generating syn-
+thetic data by back translating target in-domain
+monolingual data (Sennrich et al., 2016b) have
+been studied.
+
+3 Methods for Comparison
+
+All the methods that we compare are simple and
+do not need any modiﬁcations to the NMT system.
+
+3.1 Fine Tuning
+Fine tuning is the conventional way for domain
+adaptation, and thus serves as a baseline in this
+study. In this method, we ﬁrst train an NMT sys-
+tem on a resource rich out-of-domain corpus till
+convergence, and then ﬁne tune its parameters on
+a resource poor in-domain corpus (Figure 1).
+
+3.2 Multi Domain
+The multi domain method is originally motivated
+by (Sennrich et al., 2016a), which uses tags to
+control the politeness of NMT translations. The
+overview of this method is shown in the dotted
+section in Figure 2. In this method, we simply con-
+catenate the corpora of multiple domains with two
+small modiﬁcations: a. Appending the domain tag
+“<2domain>” to the source sentences of the re-
+spective corpora.1 This primes the NMT decoder
+to generate sentences for the speciﬁc domain. b.
+Oversampling the smaller corpus so that the train-
+ing procedure pays equal attention to each domain.
+We can further ﬁne tune the multi domain model
+on the in-domain data, which is named as “multi
+domain + ﬁne tuning.”
+
+1We veriﬁed the effectiveness of the domain tags by com-
+paring against a setting that does not use them, see the “w/o
+tags” settings in Tables 1 and 2.
+
+1. Train an NMT model on out-of-domain data
+
+till convergence.
+
+2. Resume training the NMT model from step
+1 on a mix of in-domain and out-of-domain
+data (by oversampling the in-domain data) till
+convergence.
+
+By default, we utilize domain tags, but we also
+consider settings where we do not use them (i.e.,
+“w/o tags”). We can further ﬁne tune the model
+from step 2 on the in-domain data, which is named
+as “mixed ﬁne tuning + ﬁne tuning.”
+
+Note that in the “ﬁne tuning” method, the vo-
+cabulary obtained from the out-of-domain data is
+used for the in-domain data; while for the “multi
+domain” and “mixed ﬁne tuning” methods, we use
+a vocabulary obtained from the mixed in-domain
+and out-of-domain data for all the training stages.
+
+4 Experimental Settings
+
+We conducted NMT domain adaptation experi-
+ments in two different settings as follows:
+
+4.1 High Quality In-domain Corpus Setting
+
+Chinese-to-English translation was the focus of
+the high quality in-domain corpus setting. We
+utilized the resource rich patent out-of-domain
+data to augment the resource poor spoken lan-
+guage in-domain data. The patent domain MT
+was conducted on the Chinese-English subtask
+(NTCIR-CE) of the patent MT task at the NTCIR-
+10 workshop2 (Goto et al., 2013). The NTCIR-
+CE task uses 1000000, 2000, and 2000 sentences
+for training, development, and testing, respec-
+tively. The spoken domain MT was conducted on
+the Chinese-English subtask (IWSLT-CE) of the
+TED talk MT task at the IWSLT 2015 workshop
+(Cettolo et al., 2015). The IWSLT-CE task con-
+tains 209,491 sentences for training. We used the
+dev 2010 set for development, containing 887 sen-
+tences. We evaluated all methods on the 2010,
+2011, 2012, and 2013 test sets, containing 1570,
+1245, 1397, and 1261 sentences, respectively.
+
+2http://ntcir.nii.ac.jp/PatentMT-2/
+
+NMT 
+
+Model  
+
+(out-of-domain) 
+
+Source-Target  
+(out-of-domain) 
+
+Append out-of-domain  
+tag (<2out-of-domain>) 
+
+Source-Target 
+
+(in-domain) 
+
+Append in-domain 
+tag (<2in-domain>) 
+
+Oversample the smaller  
+
+in-domain corpus 
+
+merge 
+
+NMT 
+
+I n i t i a l i z e  
+
+e  
+
+I n iti a li z
+
+Model 
+(mixed) 
+
+NMT 
+
+Model 
+
+(in-domain) 
+
+Figure 2: Mixed ﬁne tuning with domain tags for domain adaptation (The section in the dotted rectangle
+denotes the multi domain method).
+
+4.2 Low Quality In-domain Corpus Setting
+Chinese-to-Japanese translation was the focus of
+the low quality in-domain corpus setting. We
+utilized the resource rich scientiﬁc out-of-domain
+data to augment
+the resource poor Wikipedia
+(essentially open) in-domain data. The scien-
+tiﬁc domain MT was conducted on the Chinese-
+(ASPEC-CJ)3
+Japanese paper excerpt corpus
+(Nakazawa et al., 2016), which is one subtask
+of the workshop on Asian translation (WAT)4
+(Nakazawa et al., 2015).
+The ASPEC-CJ task
+uses 672315, 2090, and 2107 sentences for
+training, development, and testing, respectively.
+The Wikipedia domain task was conducted on a
+Chinese-Japanese corpus automatically extracted
+from Wikipedia (WIKI-CJ) (Chu et al., 2016a) us-
+ing the ASPEC-CJ corpus as a seed. The WIKI-CJ
+task contains 136013, 198, and 198 sentences for
+training, development, and testing, respectively.
+
+4.3 MT Systems
+For NMT, we used the KyotoNMT system5
+(Cromieres et al., 2016). The NMT training set-
+tings are the same as those of the best systems that
+participated in WAT 2016. The sizes of the source
+and target vocabularies, the source and target side
+embeddings, the hidden states, the attention mech-
+anism hidden states, and the deep softmax output
+with a 2-maxout layer were set to 32,000, 620,
+1000, 1000, and 500, respectively. We used 2-
+layer LSTMs for both the source and target sides.
+ADAM was used as the learning algorithm, with
+a dropout rate of 20% for the inter-layer dropout,
+and L2 regularization with a weight decay coef-
+ﬁcient of 1e-6. The mini batch size was 64, and
+
+3http://lotus.kuee.kyoto-u.ac.jp/ASPEC/
+4http://orchid.kuee.kyoto-u.ac.jp/WAT/
+5https://github.com/fabiencro/knmt
+
+sentences longer than 80 tokens were discarded.
+We early stopped the training process when we
+observed that the BLEU score of the development
+set converges. For testing, we self ensembled the
+three parameters of the best development loss, the
+best development BLEU, and the ﬁnal parameters.
+Beam size was set to 100.
+
+For performance comparison, we also con-
+ducted experiments on phrase based SMT (PB-
+SMT). We used the Moses PBSMT system
+(Koehn et al., 2007) for all of our MT experi-
+ments. For the respective tasks, we trained 5-gram
+language models on the target side of the train-
+ing data using the KenLM toolkit6 with interpo-
+lated Kneser-Ney discounting, respectively. In all
+of our experiments, we used the GIZA++ toolkit7
+for word alignment; tuning was performed by min-
+imum error rate training (Och, 2003), and it was
+re-run for every experiment.
+
+For both MT systems, we preprocessed the
+For Chinese, we used Ky-
+data as follows.
+otoMorph8 for segmentation, which was trained
+on the CTB version 5 (CTB5) and SCTB
+(Chu et al., 2016b). For English, we tokenized and
+lowercased the sentences using the tokenizer.perl
+script in Moses. Japanese was segmented using
+JUMAN9 (Kurohashi et al., 1994).
+
+For NMT, we further split
+
+the words into
+sub-words using byte pair encoding (BPE)
+(Sennrich et al., 2016c), which has been shown to
+be effective for the rare word problem in NMT.
+Another motivation of using sub-words is mak-
+ing the different domains share more vocabulary,
+which is important especially for the resource poor
+
+6https://github.com/kpu/kenlm/
+7http://code.google.com/p/giza-pp
+8https://bitbucket.org/msmoshen/kyotomorph-beta
+9http://nlp.ist.i.kyoto-u.ac.jp/EN/index.php?JUMAN
+
+System
+IWSLT-CE SMT
+IWSLT-CE NMT
+NTCIR-CE SMT
+NTCIR-CE NMT
+Fine tuning
+Multi domain
+Multi domain w/o tags
+Multi domain + Fine tuning
+Mixed ﬁne tuning
+Mixed ﬁne tuning w/o tags
+Mixed ﬁne tuning + Fine tuning
+
+NTCIR-CE test 2010
+12.73
+6.75
+3.57
+2.23
+13.93
+13.42
+12.57
+13.18
+15.04
+14.47
+14.40
+
+-
+-
+29.54
+37.11
+17.37
+36.40
+37.32
+14.47
+37.01
+39.67
+32.03
+
+test 2011
+16.27
+9.08
+4.70
+2.83
+18.99
+19.07
+17.40
+18.03
+20.96
+20.53
+19.53
+
+IWSLT-CE
+test 2012
+14.01
+9.05
+4.21
+2.55
+16.12
+16.56
+15.02
+16.41
+18.77
+18.10
+17.65
+
+test 2013
+14.67
+7.29
+4.74
+2.85
+17.12
+17.54
+15.96
+16.80
+18.63
+17.97
+17.94
+
+average
+14.31
+7.87
+4.33
+2.60
+16.41
+16.34
+14.97
+15.82
+18.01
+17.43
+17.11
+
+Table 1: Domain adaptation results (BLEU-4 scores) for IWSLT-CE using NTCIR-CE.
+
+domain. For the Chinese-to-English tasks, we
+trained two BPE models on the Chinese and En-
+glish vocabularies, respectively. For the Chinese-
+to-Japanese tasks, we trained a joint BPE model
+on both of the Chinese and Japanese vocabularies,
+because Chinese and Japanese could share some
+vocabularies of Chinese characters. The number
+of merge operations was set to 30,000 for all the
+tasks.
+
+System
+WIKI-CJ SMT
+WIKI-CJ NMT
+ASPEC-CJ SMT
+ASPEC-CJ NMT
+Fine tuning
+Multi domain
+Multi domain w/o tags
+Multi domain + Fine tuning
+Mixed ﬁne tuning
+Mixed ﬁne tuning w/o tags
+Mixed ﬁne tuning + Fine tuning
+
+ASPEC-CJ WIKI-CJ
+36.83
+18.29
+17.43
+20.01
+37.66
+35.79
+33.74
+34.61
+37.57
+37.23
+37.77
+
+-
+-
+36.39
+42.92
+22.10
+42.52
+40.78
+22.78
+42.56
+41.86
+31.63
+
+5 Results
+
+Tables 1 and 2 show the translation results on
+the Chinese-to-English and Chinese-to-Japanese
+tasks, respectively. The entries with SMT and
+NMT are the PBSMT and NMT systems, respec-
+tively; others are the different methods described
+in Section 3.
+the numbers in
+bold indicate the best system and all systems that
+were not signiﬁcantly different from the best sys-
+tem. The signiﬁcance tests were performed using
+the bootstrap resampling method (Koehn, 2004) at
+p < 0.05.
+
+In both tables,
+
+We can see that without domain adaptation,
+the SMT systems perform signiﬁcantly better than
+the NMT system on the resource poor domains,
+i.e., IWSLT-CE and WIKI-CJ; while on the re-
+source rich domains, i.e., NTCIR-CE and ASPEC-
+CJ, NMT outperforms SMT. Directly using the
+SMT/NMT models trained on the out-of-domain
+data to translate the in-domain data shows bad
+performance. With our proposed “Mixed ﬁne
+tuning” domain adaptation method, NMT signif-
+icantly outperforms SMT on the in-domain tasks.
+Comparing different domain adaptation meth-
+ods, “Mixed ﬁne tuning” shows the best perfor-
+mance. We believe the reason for this is that
+“Mixed ﬁne tuning” can address the over-ﬁtting
+problem of “Fine tuning.” We observed that while
+
+Table 2: Domain adaptation results (BLEU-4
+scores) for WIKI-CJ using ASPEC-CJ.
+
+“Fine tuning” overﬁts quickly after only 1 epoch
+of training, “Mixed ﬁne tuning” only slightly over-
+ﬁts until covergence. In addition, “Mixed ﬁne tun-
+ing” does not worsen the quality of out-of-domain
+translations, while “Fine tuning” and “Multi do-
+main” do. One shortcoming of “Mixed ﬁne tun-
+ing” is that compared to “ﬁne tuning,” it took a
+longer time for the ﬁne tuning process, as the time
+until convergence is essentially proportional to the
+size of the data used for ﬁne tuning.
+
+“Multi domain” performs either as well as
+(IWSLT-CE) or worse than (WIKI-CJ) “Fine tun-
+ing,” but “Mixed ﬁne tuning” performs either sig-
+niﬁcantly better than (IWSLT-CE) or is compara-
+ble to (WIKI-CJ) “Fine tuning.” We believe the
+performance difference between the two tasks is
+due to their unique characteristics. As WIKI-CJ
+data is of relatively poorer quality, mixing it with
+out-of-domain data does not have the same level
+of positive effects as those obtained by the IWSLT-
+CE data.
+
+The domain tags are helpful for both “Multi do-
+main” and “Mixed ﬁne tuning.” Essentially, fur-
+ther ﬁne tuning on in-domain data does not help
+for both “Multi domain” and “Mixed ﬁne tuning.”
+
+We believe the reason for this is that the “Multi
+domain” and “Mixed ﬁne tuning” methods already
+utilize the in-domain data used for ﬁne tuning.
+
+6 Conclusion
+
+In this paper, we proposed a novel domain adapta-
+tion method named “mixed ﬁne tuning” for NMT.
+We empirically compared our proposed method
+against ﬁne tuning and multi domain methods, and
+have shown that it is effective but is sensitive to the
+quality of the in-domain data used.
+
+In the future, we plan to incorporate an RNN
+model into our current architecture to leverage
+abundant in-domain monolingual corpora. We
+also plan on exploring the effects of synthetic data
+by back translating large in-domain monolingual
+corpora.
+
+References
+[Bahdanau et al.2015] Dzmitry Bahdanau, Kyunghyun
+Cho, and Yoshua Bengio. 2015. Neural machine
+translation by jointly learning to align and trans-
+late. In In Proceedings of the 3rd International Con-
+ference on Learning Representations (ICLR 2015),
+San Diego, USA, May. International Conference on
+Learning Representations.
+
+[Cettolo et al.2015] M Cettolo, J Niehues, S St¨uker,
+L Bentivogli, R Cattoni, and M Federico. 2015. The
+iwslt 2015 evaluation campaign. In Proceedings of
+the Twelfth International Workshop on Spoken Lan-
+guage Translation (IWSLT).
+
+[Cho et al.2014] Kyunghyun
+
+Bart
+
+Cho,
+
+van
+Merri¨enboer, C¸ alar G¨ulc¸ehre, Dzmitry Bahdanau,
+Fethi Bougares, Holger Schwenk, and Yoshua
+Bengio.
+2014. Learning phrase representations
+using rnn encoder–decoder for statistical machine
+translation. In Proceedings of the 2014 Conference
+on Empirical Methods in Natural Language Pro-
+cessing (EMNLP), pages 1724–1734, Doha, Qatar,
+October. Association for Computational Linguistics.
+
+[Chu et al.2016a] Chenhui Chu, Raj Dabre, and Sadao
+Kurohashi.
+2016a. Parallel sentence extraction
+from comparable corpora with neural network fea-
+tures.
+In Proceedings of the Tenth International
+Conference on Language Resources and Evaluation
+(LREC 2016), Paris, France, may. European Lan-
+guage Resources Association (ELRA).
+
+[Chu et al.2016b] Chenhui Chu, Toshiaki Nakazawa,
+Daisuke Kawahara, and Sadao Kurohashi. 2016b.
+SCTB: A Chinese treebank in scientiﬁc domain. In
+Proceedings of the 12th Workshop on Asian Lan-
+guage Resources (ALR12), pages 59–67, Osaka,
+Japan, December. The COLING 2016 Organizing
+Committee.
+
+[Cromieres et al.2016] Fabien Cromieres, Chenhui
+Chu, Toshiaki Nakazawa, and Sadao Kurohashi.
+2016. Kyoto university participation to wat 2016.
+In Proceedings of
+the 3rd Workshop on Asian
+Translation (WAT2016), pages 166–174, Osaka,
+Japan, December. The COLING 2016 Organizing
+Committee.
+
+[Freitag and Al-Onaizan2016] Markus
+
+and
+Yaser Al-Onaizan. 2016. Fast domain adaptation
+for neural machine translation.
+arXiv preprint
+arXiv:1612.06897.
+
+Freitag
+
+[Goto et al.2013] Isao Goto, Ka-Po Chow, Bin Lu, Ei-
+2013.
+ichiro Sumita, and Benjamin K. Tsou.
+Overview of the patent machine translation task at
+the ntcir-10 workshop. In Proceedings of the 10th
+NTCIR Conference, pages 260–286, Tokyo, Japan,
+June. National Institute of Informatics (NII).
+
+[G¨ulc¸ehre et al.2015] C¸ aglar G¨ulc¸ehre, Orhan Firat,
+Kelvin Xu, Kyunghyun Cho, Lo¨ıc Barrault, Huei-
+Chi Lin, Fethi Bougares, Holger Schwenk, and
+Yoshua Bengio.
+2015. On using monolingual
+corpora in neural machine translation.
+CoRR,
+abs/1503.03535.
+
+[Kobus et al.2016] Catherine Kobus, Josep Crego, and
+Jean Senellart. 2016. Domain control for neural ma-
+chine translation. arXiv preprint arXiv:1612.06140.
+
+[Koehn et al.2007] Philipp Koehn, Hieu Hoang,
+Alexandra Birch, Chris Callison-Burch, Marcello
+Federico, Nicola Bertoldi, Brooke Cowan, Wade
+Shen, Christine Moran, Richard Zens, Chris Dyer,
+Ondrej Bojar, Alexandra Constantin, and Evan
+Herbst.
+2007. Moses: Open source toolkit for
+statistical machine translation.
+In Proceedings of
+the 45th Annual Meeting of the Association for
+Computational Linguistics Companion Volume
+the Demo and Poster Sessions,
+Proceedings of
+pages 177–180, Prague, Czech Republic, June.
+Association for Computational Linguistics.
+
+[Koehn2004] Philipp Koehn.
+
+2004. Statistical sig-
+niﬁcance tests for machine translation evaluation.
+In Proceedings of EMNLP 2004, pages 388–395,
+Barcelona, Spain, July. Association for Computa-
+tional Linguistics.
+
+[Kurohashi et al.1994] Sadao Kurohashi, Toshihisa
+Nakamura, Yuji Matsumoto, and Makoto Nagao.
+1994. Improvements of Japanese morphological an-
+alyzer JUMAN. In Proceedings of the International
+Workshop on Sharable Natural Language, pages
+22–28.
+
+[Luong and Manning2015] Minh-Thang Luong and
+Christopher D Manning. 2015. Stanford neural
+machine translation systems for spoken language
+domains. In Proceedings of the 12th International
+Workshop on Spoken Language Translation, pages
+76–79, Da Nang, Vietnam, December.
+
+Austin, Texas, USA, November 1-4, 2016, pages
+1568–1575.
+
+[Nakazawa et al.2015] Toshiaki Nakazawa, Hideya
+Mino, Isao Goto, Graham Neubig, Sadao Kuro-
+hashi, and Eiichiro Sumita. 2015. Overview of
+the 2nd Workshop on Asian Translation.
+In Pro-
+ceedings of the 2nd Workshop on Asian Translation
+(WAT2015), pages 1–28, Kyoto, Japan, October.
+
+[Nakazawa et al.2016] Toshiaki Nakazawa, Manabu
+Yaguchi, Kiyotaka Uchimoto, Masao Utiyama, Ei-
+ichiro Sumita, Sadao Kurohashi, and Hitoshi Isa-
+hara. 2016. Aspec: Asian scientiﬁc paper excerpt
+corpus.
+In Proceedings of the Tenth International
+Conference on Language Resources and Evaluation
+(LREC 2016), Paris, France, May. European Lan-
+guage Resources Association (ELRA).
+
+[Och2003] Franz Josef Och. 2003. Minimum error rate
+training in statistical machine translation.
+In Pro-
+ceedings of the 41st Annual Meeting of the Associa-
+tion for Computational Linguistics, pages 160–167,
+Sapporo, Japan, July. Association for Computational
+Linguistics.
+
+[Sennrich et al.2016a] Rico Sennrich, Barry Haddow,
+and Alexandra Birch. 2016a. Controlling politeness
+in neural machine translation via side constraints.
+In Proceedings of the 2016 Conference of the North
+American Chapter of the Association for Computa-
+tional Linguistics: Human Language Technologies,
+pages 35–40, San Diego, California, June. Associa-
+tion for Computational Linguistics.
+
+[Sennrich et al.2016b] Rico Sennrich, Barry Haddow,
+and Alexandra Birch. 2016b. Improving neural ma-
+chine translation models with monolingual data. In
+Proceedings of the 54th Annual Meeting of the As-
+sociation for Computational Linguistics (Volume 1:
+Long Papers), pages 86–96, Berlin, Germany, Au-
+gust. Association for Computational Linguistics.
+
+[Sennrich et al.2016c] Rico Sennrich, Barry Haddow,
+and Alexandra Birch. 2016c. Neural machine trans-
+lation of rare words with subword units. In Proceed-
+ings of the 54th Annual Meeting of the Association
+for Computational Linguistics (Volume 1: Long Pa-
+pers), pages 1715–1725, Berlin, Germany, August.
+Association for Computational Linguistics.
+
+[Servan et al.2016] Christophe Servan, Josep Crego,
+and Jean Senellart. 2016. Domain specialization: a
+post-training domain adaptation for neural machine
+translation. arXiv preprint arXiv:1612.06141.
+
+[Sutskever et al.2014] Ilya Sutskever, Oriol Vinyals,
+2014. Sequence to sequence
+and Quoc V. Le.
+learning with neural networks.
+In Proceedings of
+the 27th International Conference on Neural Infor-
+mation Processing Systems, NIPS’14, pages 3104–
+3112, Cambridge, MA, USA. MIT Press.
+
+[Zoph et al.2016] Barret Zoph, Deniz Yuret, Jonathan
+May, and Kevin Knight. 2016. Transfer learning
+for low-resource neural machine translation. In Pro-
+ceedings of the 2016 Conference on Empirical Meth-
+ods in Natural Language Processing, EMNLP 2016,
+
+

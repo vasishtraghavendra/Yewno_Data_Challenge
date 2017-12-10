@@ -1,0 +1,994 @@
+6
+1
+0
+2
+
+ 
+
+v
+o
+N
+4
+1
+
+ 
+
+ 
+ 
+]
+h
+p
+-
+t
+n
+a
+u
+q
+[
+ 
+ 
+
+1
+v
+8
+2
+5
+4
+0
+
+.
+
+1
+1
+6
+1
+:
+v
+i
+X
+r
+a
+
+Benchmarking Quantum Hardware for Training of
+
+Fully Visible Boltzmann Machines
+
+Dmytro Korenkevych1, Yanbo Xue2, Zhengbing Bian2, Fabian Chudak2,
+
+William G. Macready2, Jason Rolfe2, Evgeny Andriyash2
+
+1 KindredAI, Vancouver, BC, Canada
+
+2 D-Wave Systems, Burnaby, BC, Canada
+
+November 15, 2016
+
+Abstract
+
+Quantum annealing (QA) is a hardware-based heuristic optimization and sampling
+method applicable to discrete undirected graphical models. While similar to simulated
+annealing, QA relies on quantum, rather than thermal, eﬀects to explore complex search
+spaces. For many classes of problems, QA is known to oﬀer computational advantages
+over simulated annealing. Here we report on the ability of recent QA hardware to
+accelerate training of fully visible Boltzmann machines. We characterize the sampling
+distribution of QA hardware, and show that in many cases, the quantum distributions
+diﬀer signiﬁcantly from classical Boltzmann distributions. In spite of this diﬀerence,
+training (which seeks to match data and model statistics) using standard classical gra-
+dient updates is still eﬀective. We investigate the use of QA for seeding Markov chains
+as an alternative to contrastive divergence (CD) and persistent contrastive divergence
+(PCD). Using k = 50 Gibbs steps, we show that for problems with high-energy barriers
+between modes, QA-based seeds can improve upon chains with CD and PCD initializa-
+tions. For these hard problems, QA gradient estimates are more accurate, and allow for
+faster learning. Furthermore, and interestingly, even the case of raw QA samples (that
+is, k = 0) achieved similar improvements. We argue that this relates to the fact that
+we are training a quantum rather than classical Boltzmann distribution in this case.
+The learned parameters give rise to hardware QA distributions closely approximating
+classical Boltzmann distributions that are hard to train with CD/PCD.
+
+1
+
+Introduction
+
+In the early 1980s, a number of authors suggested that certain computations might be
+accelerated with computers making use of quantum resources [Ben80, Deu85]. Feynman’s
+1981 proposal [Fey82] suggested that quantum systems themselves might be more eﬃciently
+modelled with quantum computers. Over a decade later, Peter Shor devised a polynomial-
+time quantum method for factoring large integers. Despite this theoretical promise, progress
+
+1
+
+towards experimental quantum computing platforms remained limited. It was not until 1998,
+with the introduction of quantum annealing (QA) [KN98], that a path to scalable quantum
+hardware emerged. While existing QA machines are not computationally universal, QA
+machines are available now at large scales and oﬀer signiﬁcant speedups for certain problem
+classes [DBI+15]. Here, we explore the potential of QA to accelerate training of probabilistic
+models.
+
+The QA heuristic operates in a manner analogous to simulated annealing (SA), but relies
+on quantum, rather than thermal, ﬂuctuations to foster exploration through a search space.
+Just as thermal ﬂuctuations are annealed in SA, quantum ﬂuctuations are annealed in QA.
+With the exception of [AH15, BGBO16], most applications run on QA hardware have
+used the optimization potential of quantum annealing. In [AH15], the focus is on training a
+4-layer deep belief network. Pre-training of each layer uses restricted Boltzmann machines
+(RBMs) trained using QA via a complete bipartite graph embedding.
+[AH15] tested their
+approach against 1-step contrastive divergence (CD) samples on a coarse-version of MNIST
+and concluded that QA sped up training signiﬁcantly. In [BGBO16], the authors consider
+training a fully connected Boltzmann machine (BM) using QA via a complete graph embed-
+ding on the hardware graph. They report a training speed-up compared to training with
+simulated annealing directly on the complete graph. These studies assume that the quantum
+hardware produces a classical Boltzmann distribution. In contrast, in this paper we do not
+assume the QA samples are Boltzmann. We demonstrate the diﬀerences between classical
+Boltzmann and QA hardware samples, and explore the impact of these diﬀerences in training
+fully-visible BMs in small density estimation tasks. Training of BMs is a natural application
+domain because available QA hardware realizes Boltzmann-like distributions, inference in
+BMs is known to be very hard [LS10], and BMs are a building block of many generative
+probabilistic models [SH09].
+
+We begin with background on QA on the annealing-based quantum system, highlighting
+its practical constraints. We characterize the sampling done by the hardware, which in some
+cases is Boltzmann and in other cases diﬀers signiﬁcantly from Boltzmann. We then describe
+the challenge of learning probabilistic models with BMs, and how QA might accelerate such
+training. We provide benchmark results on the learning of multimodal distributions, and
+quantify the beneﬁts that QA can oﬀer. Lastly, we show the impact of the non-Boltzmann
+nature of the D-Wave system, and how this impacts learning. We conclude with directions
+for future work.
+
+2 Quantum Annealing
+
+QA uses quantum-mechanical processes to minimize and sample from energy-based models.
+The D-Wave machine implements the Ising model energy function:1
+
+E(sss) =
+
+hvsv +
+
+Jv1,v2sv1sv2 with sv ∈ {−1, +1}
+
+(cid:88)
+
+v∈V
+
+(cid:88)
+
+(v1,v2)∈E
+
+with variable connectivity deﬁned by a graph G = (V,E). The 2000-qubit D-Wave system
+allows for up to |V| = 1152 variables with sparse bipartite connectivity. The connectivity
+
+1Vectors are indicated in lowercase bold font, and matrices in uppercase bold font.
+
+2
+
+(a) The C12 Chimera graph consisting of a 12 × 12 array
+of K4,4 bipartite unit cells. Nodes represent problem vari-
+ables with programmable weights h, and edges have a pro-
+grammable J connection.
+
+programming time
+
+25 ms
+
+anneal time
+
+> 5 µs/sample
+
+readout time
+
+260 µs/sample
+
+(b) Typical timing data of the
+2000-qubit D-Wave system.
+
+Figure 1: 2000-qubit D-Wave system parameters.
+
+graph of the D-Wave device is called Chimera, and denoted Cn. Cn consists of an n × n
+array of K4,4 unit cells with connection between unit cells as in Fig. 1a, which shows a C12
+graph. The tree-width of C12 graph is 48, so exact inference is practically impossible. It is
+simple to convert ±1 valued spins sv to Boolean-valued variables xv = (1 + sv)/2 so that
+E(sss) also deﬁnes a BM with energy E(xxx) and the same sparse bipartite connectivity.
+
+Quantum mechanics replaces the energy function with a linear operator acting on states
+sss and returning new states sss(cid:48). This energy operator is described by the Hamiltonian, a
+2|V| × 2|V| matrix HHH whose components are indexed by (sss, sss(cid:48)). The diagonal elements of
+HHH record the energy of the corresponding states, i.e., Hsss,sss = E(sss), and the oﬀ-diagonal
+elements of HHH act to transform states. In the D-Wave machine the only allowed oﬀ-diagonal
+contributions are those which ﬂip bits, i.e. for sss (cid:54)= sss(cid:48)
+
+(cid:40)
+
+Hsss,sss(cid:48) =
+
+∆ if sss and sss(cid:48) diﬀer in one bit
+0
+
+otherwise
+
+.
+
+Quantum processes favor states corresponding to the eigenvectors of low-energy eigenvalues
+of HHH. Thus, at zero temperature when ∆ = 0, quantum evolution corresponds to uniform
+sampling within the eigenspace corresponding to the lowest eigenvalue (energy) of HHH. How-
+ever, ∆ (cid:54)= 0 gives rise to eigenvectors that are linear combinations of basis vectors. These
+states are called superpositions, and are interpreted as follows. An arbitrary superposition
+sss assseeesss where asss is a weight (often called an amplitude), and eeesss is the
+basis vector corresponding to state sss. In superposition vvv any particular state, sss, is observed
+
+is written as vvv ≡ (cid:80)
+
+3
+
+with probability proportional to |asss|2. Thus, the quantum state vvv implicitly encodes O(2|V|)
+degrees of freedom. Superposition states are unavailable in non-quantum devices, and are
+a source of the speedups seen in quantum computations.
+In hardware like the D-Wave
+annealer, superposition states are generated by physical processes and do not need to be
+simulated.
+
+In QA algorithms, HHH is varied over time so that2
+
+Hsss,sss(cid:48)(t) = A(t/τ )∆[sss and sss(cid:48) diﬀer in one bit] + B(t/τ )E(sss)[sss = sss(cid:48)].
+
+Ising energy function HHH(τ ) ∝ diag(cid:0)E(sss)(cid:1). The decreasing quantum eﬀects mediated by
+
+(1)
+The time-dependent weightings A/B are monotonically decreasing/increasing and satisfy
+A(1) = 0 and B(0) = 0, so that we evolve from HHH(0) — which has no diagonal energy
+√
+contribution, and which assigns equal probability to all states (|asss| = 1/
+2|V|) — to the
+A give rise to the name quantum annealing. For certain classes of optimization problems,
+quantum annealing can be dramatically faster than simulated annealing [KYN+15, DBI+15].
+On the 2000-qubit D-Wave system, the annealing time τ is programmable (the default
+anneal time is 20 µs). A single sample is then measured (drawn) at time τ , and the process
+is repeated in an i.i.d. fashion for subsequent anneals. On the ﬁrst anneal, the parameters hhh
+and JJJ must be speciﬁed, requiring a programming time around 25 ms. Further timing data
+of the 2000-qubit D-Wave system are listed in Fig. 1b.
+The Ising Hamiltonian described above is a zero temperature (β = ∞) idealization of
+
+real-world complexities. Important deviations from ideality arise from:
+
+• Finite temperature: QA hardware does not operate at zero temperature.
+
+In units
+where the parameters lie in the interval −1 ≤ hv ≤ 1 and −1 ≤ Jv,v(cid:48) ≤ 1, the eﬀective
+hardware temperature THW is problem dependent and usually between 1/5 and 1.3
+
+• Parameter misspeciﬁcation: During programming the hhh/JJJ parameters are subject to
+additive Gaussian noise having standard deviations σh ≈ 0.03 and σJ ≈ 0.025 respec-
+tively. Additionally, in spite of calibration of the device, small systematic deviations
+from the idealized Ising model arise because the Ising model is only an approximation
+to the true low-energy physics.
+
+• Dynamics: The quantum mechanical evolution of the annealing process cannot be
+simulated at large scales (even for idealized models), and quantum eﬀects can cause
+signiﬁcant deviations from the classical Boltzmann distribution. A better approx-
+imation is obtained using the density matrix of the quantum Boltzmann distribu-
+tion ρρρ = exp(−βHHH)/Z(β), but even this approximation fails to capture the out-of-
+equilibrium eﬀects of rapid annealing within the D-Wave device [RYA16].
+
+In spite of these complexities, it remains true that QA hardware rapidly produces i.i.d. low
+energy samples from programmable Chimera-structured energy models. Here, we explore
+whether this capability can be harnessed for eﬃcient learning of Chimera-structured BMs.
+
+2[p] is Iverson’s bracket deﬁned to be 1 if predicate p is true, and 0 otherwise.
+3The sampling distribution is not Boltzmann so the notion of temperature as it appears in a Boltz-
+mann distribution is ill-deﬁned, and many factors beyond physical temperature contribute to an eﬀective
+“temperature.”
+
+4
+
+Edge
+(a) FCL-1 problem.
+colors represent weights of J
+connections, and all h biases
+are 0.
+
+(b) Probabilities of local optima for 105 QA and MCMC anneal-
+ing samples. Red bars represent exact Boltzmann probabilities
+of local optima, while blue and green bars represent empirical
+probabilities of QA and MCMC samples.
+
+Figure 2: FCL-1.
+
+As our interest is on the sampling aspects of learning, we focus on fully visible models to
+avoid the confounding inﬂuence of multimodal likelihood functions.
+
+3 QA Versus Boltzmann Sampling
+
+expect a Boltzmann distribution B(sss) = exp(cid:0)−βE(sss)(cid:1)/Z(β), and indeed for some problems
+
+To begin, we explore the QA sampling distributions. As a rough characterization, we might
+
+this is a good description. However, the Boltzmann distribution assumes classical statis-
+tics, and numerous experiments have conﬁrmed the quantum nature of the D-Wave systems
+[LPS+14, DBI+15]. With diﬀerent choices of energy functions we can clearly expose its
+quantum properties.
+
+Consider the Ising model illustrated on Fig. 2a. The model consists of 4 unit cells. The
+variables within each unit cell are strongly ferromagnetically4 connected with connection
+weights of Jintra = −2.5. The connections between unit cells form a frustrated loop, and
+have weights Jinter 10 times weaker in magnitude than the intra-cell connections. The h
+weights on all variables are zero. We call this a frustrated loop of clusters problem, and
+reference it as FCL-1.
+
+4Ferromagnetic (Jintra < 0) connections induce neighbouring spins to take the same value in low energy
+
+states.
+
+5
+
+−2.5−0.250.250123456789101112131415Localminima0.000.020.040.060.080.100.120.140.16ProbabilityLocalminimaprobabilitydistributionBoltzmannPHardware,KLD0.0011MCMC+Annealing,KLD0.2222The energy landscape of FCL-1 has 16 local minima corresponding to the 24 possible
+conﬁgurations of four unit cells (each variable within a unit cell takes the same value in
+low-energy states). These 16 local minima are separated by high-energy barriers. To cross a
+barrier, an entire unit cell must be ﬂipped, incurring an energy penalty of 16Jintra. Among
+the 16 local minima, 8 are ground states and 8 are excited states, and the energy gap between
+ground and excited states is 4.
+
+The energy barriers make it very diﬃcult for any single-spin-ﬂip Markov chain Monte
+Carlo (MCMC) algorithm to move between valleys. To draw approximate Boltzmann sam-
+ples from FCL-1, we ran 105 MCMC chains from random initializations, and updated each
+using blocked Gibbs sampling with 104 Gibbs updates, annealed over 1000 temperature
+steps.5 The inverse temperature steps were set uniformly over the interval β = [0.01, 1.0] so
+there are 10 blocked Gibbs updates at each β.
+
+Under FCL-1, we also generated 105 QA samples6, each obtained with a 20µs annealing
+process. To adjust for physical temperature of the hardware, we scaled down the values of
+JJJ by a factor of 2.5, which is a crude estimate of the βHW parameter for this problem. As
+a result, the model programmed on hardware had all JJJ values within the [−1, 1] range as
+required by the 2000-qubit D-Wave system.
+
+The resulting empirical probabilities of 16 local minima under both MCMC (green) and
+QA (blue) sampling are shown in Fig. 2b. The abscissa represents the 16 local minima.
+The ordinate records the probability of each local minimum. Red bars show the probabil-
+ities of local minima under a classical Boltzmann distribution. QA empirical probabilities
+follow the exact Boltzmann probabilities closely, with a Kullback–Leibler (KL) divergence
+of empirical distribution from exact Boltzmann distribution of KL(B(cid:107)PQA) = 0.0011. In
+contrast, MCMC annealing substantially over-samples excited states with corresponding
+KL(B(cid:107)PMCMC) = 0.2222. MCMC chains become trapped in excited minima during the
+anneal, and are not able to cross barriers between states as the temperature decreases.
+
+The failure of the MCMC annealing process is shown more in detail in Fig. 3. Here, the
+abscissa records inverse temperature, and the ordinate records probability. The solid green,
+red, and blue curves represent the exact combined probabilities of all 16 local minima, all 8
+ground states, and all 8 excited states respectively. The dashed lines represent corresponding
+empirical probabilities derived from MCMC chains at each temperature step. Notably, the
+exact probabilities of excited states change non-monotonically during the annealing process.
+At early stages of the anneal at low β values, the probability of excited states increases as a
+function of β as probability ﬂows from the entire solution space into the local minima. As β
+increases further, the dynamics alter. Probability transitions from excited states to ground
+states, and the total probability of excited states decreases as a function of β. The MCMC
+process is able to accurately model probabilities of all states at early stages of the anneal,
+but when the energy barriers between states grow suﬃciently large, the process freezes, and
+the probabilities of local minima do not change. As a result, MCMC over-samples excited
+minima.
+
+It might be argued that a single parameter, β, can be adjusted to provide a close match
+
+5Blocked Gibbs sampling without annealing performed much more poorly.
+6We used 100 random spin-reversal transformations as suggested by D-Wave to mitigate parameter mis-
+
+speciﬁcations.
+
+6
+
+Figure 3: Dynamics of the MCMC annealing process on FCL-1.
+
+between the QA distribution and the corresponding Boltzmann distribution, since there
+are only two relevant distinct energies within FCL-1. To address this concern, we modiﬁed
+FCL-1 by breaking symmetry within the inter-cell frustrated loop connections. The modiﬁed
+problem, FCL-2, is shown on Fig. 4a.
+
+FCL-2 has the same 16 low-energy local optima, but 4 of these are ground states, and the
+remaining 12 excited states have diverse energy values. We repeated the sampling procedures
+described above using the same value of βHW = 2.5 to adjust the J values programmed on
+hardware. The results are presented in Fig. 4b. Again we see that the empirical QA samples
+closely follow the exact Boltzmann distribution, with KL divergence of 0.006, while MCMC
+annealing continues to over-sample excited states, only reaching a KL divergence of 0.28.
+
+Thus far, the QA distributions closely approximate the classical Boltzmann distribution.
+A little digging into the physics yields the reason. During quantum annealing, there is a
+freeze-out analogous to the classical freeze-out seen in Fig. 3. For FCL-1 and FCL-2, the
+equivalence of all intra-cell interactions means that quantum eﬀects at the freeze-out point
+aﬀect all ferromagnetically connected clusters equally. This freeze-out translates to a simple
+energy shift in the classical spectrum, so that the quantum Boltzmann distribution is very
+similar to the classical distribution. In general however, clusters might not freeze at the same
+point. Next, we consider Ising models where the QA distribution deviates from the classical
+Boltzmann. Such models can be obtained by diﬀerentiating among the Jintra couplings.
+Thus, we consider the FCL-3 problem of Fig. 5a.
+
+The results of the same sampling procedure applied to FCL-3 are presented in Fig. 5b.
+Again, red bars represent the classical Boltzmann probabilities of energy local minima, and
+blue and green bars represent empirical probabilities of local minima derived from QA and
+MCMC samples respectively. Now we see that the QA distribution deviates substantially
+from classical Boltzmann with a KL divergence similar to that obtained by a MCMC and
+
+7
+
+0.00.20.40.60.81.0β0.00.20.40.60.81.0ProbabilityThermalannealingof100KMCMCchainsover1000temperaturestepsPofglob.min.Pofloc.min.Pofallmin.Pofglob.min.MCMCPofloc.min.MCMCPofallmin.MCMC(a) Cluster problem with
+modiﬁed inter-cell J cou-
+plings (FCL-2).
+
+(b) Empirical probabilities of local optima obtained from 105 QA
+MCMC samples. Red bars represent the exact Boltzmann prob-
+abilities of local optima, blue and green bars represent empirical
+probabilities derived from QA and MCMC samples respectively.
+
+Figure 4: FCL-2.
+
+anneal procedure (0.11). Clusters with large (strong) |Jintra| freeze earlier in the quantum
+annealing process compared to weak ones [Ami15]. Hence, qubits in strong clusters equili-
+brate under a quantum Boltzmann distribution at a lower energy scale than qubits in weak
+clusters. The result is a distorted distribution that deviates from the classical Boltzmann.
+To conﬁrm this explanation, we applied a classical Redﬁeld simulation of the quantum dy-
+namics [ATA09]. Orange bars in Fig. 5b show empirical probabilities of local minima derived
+using this simulation agree closely with probabilities derived from QA samples.
+
+Lastly, we modiﬁed cluster strengths for an FCL-2 problem (with a broken symmetry
+between excited states) and denoted the resulting problem FCL-4 (Fig. 6a). The sampling
+results are shown in Fig. 6b. The QA distribution again deviates signiﬁcantly from the
+classical Boltzmann, but agrees closely with the quantum simulation.
+
+From a machine learning perspective, these asymmetric cluster problems may appear
+discouraging, as they suggest that the general QA distribution has a complicated form that
+depends on unknown factors, e.g. freeze-out points for diﬀerent qubits. In the next section,
+however, we show that at least in considered cases it is possible to adjust (with simple
+learning rules) hardware parameters to match classical Boltzmann distributions of interest.
+
+8
+
+−2.5−0.5−0.250.380123456789101112131415Localminima0.000.050.100.150.200.25ProbabilityLocalminimaprobabilitydistributionBoltzmannPHardware,KLD0.0063MCMC+Annealing,KLD0.2861(a) Cluster problem with un-
+even cluster strengths (FCL-
+3). Colour represents weights
+of the connections.
+
+(b) The QA distribution deviates substantially from classical
+Boltzmann, but is in a qualitative agreement with the Redﬁeld
+simulation of the quantum dynamics.
+
+Figure 5: FCL-3.
+
+4 Training Boltzmann Machines Using QA
+
+4.1 Fully Visible Boltzmann Machines
+A Boltzmann machine deﬁnes a probability distribution over ±1-valued variables sss as
+
+exp(cid:0)−E(sss|θθθ)(cid:1)
+where the partition function is Z(θθθ) ≡ (cid:80)
+the vector of suﬃcient statistics is given by φφφ(sss) =(cid:2){sv}v∈V ,{svsv(cid:48)}(v,v(cid:48))∈E
+
+sss exp(cid:0)−E(sss|θθθ)(cid:1). For Chimera-structured BMs
+(cid:3). Often, hidden
+
+with E(sss|θθθ) = (cid:104)θθθ, φφφ(sss)(cid:105)
+
+B(sss|θθθ) =
+
+Z(θθθ)
+
+(2)
+
+variables are introduced to increase the modeling ﬂexibility of BMs, but we defer the study
+of hidden variable models because the likelihood surfaces that result become multimodal.
+BMs play an important role in many machine learning algorithms, and serve as building
+blocks for undirected generative models such as deep BMs [SH09].
+
+In fully visible BMs, the parameters θθθ are learned from training data D = {sss(i)}|D|
+
+i=1 by
+
+maximizing the expected log-likelihood L(θθθ) of D:
+
+L(θθθ) = EPD(sss)
+
+(cid:0)ln B(sss|θθθ)(cid:1) = −(cid:10)θθθ, EPD(sss)
+(cid:0)φφφ(sss)(cid:1) + EB(sss|θθθ)
+
+(cid:0)φφφ(sss)(cid:1)(cid:11) − ln Z(θθθ)
+(cid:0)φφφ(sss)(cid:1)
+
+where PD(sss) = (cid:80)|D|
+
+(4)
+i=1[sss = sss(i)]/|D| is the training data distribution. Though L(θθθ) is a
+concave function (making maximization straightforward in principle), neither L nor ∇∇∇L can
+
+∇∇∇L(θθθ) = −EPD(sss)
+
+(3)
+
+9
+
+−2.5−1.5−0.250.250123456789101112131415Localminima0.000.050.100.150.20ProbabilityLocalminimaprobabilitydistributionBoltzmannPHardware,KLD0.0992Redﬁeld,KLD0.0578MCMC+Annealing,KLD0.1186(a) Cluster problem with un-
+even cluster
+strengths and
+modiﬁed inter-cell J cou-
+plings.
+represents
+weights of the connections.
+
+Colour
+
+(b) Sampling results for FCL-4. The QA distribution deviates
+substantially from classical Boltzmann one.
+
+Figure 6: FCL-4.
+
+(cid:0)φφφ(sss)(cid:1) needed for ∇∇∇L(θθθt) at parameter setting θθθt, and θθθt is updated
+
+be determined exactly for models at large scale. Thus, training of practically relevant BMs
+is typically very diﬃcult. The dominant approach to training BMs is stochastic gradient
+ascent, where approximations to ∇∇∇L are used [You98]. MCMC (speciﬁcally Gibbs sampling)
+is used to estimate EB(sss|θθθt)
+(most simply) according to the estimated gradient as θθθt+1 = θθθt + ηt∇∇∇L(θθθt). A variety of
+methods are available for the gradient step size ηt. The eﬃcacy of stochastic gradient ascent
+depends on the quality of the gradient estimates, and two methods are commonly applied
+to seed the MCMC chains with good starting conﬁgurations. Contrastive Divergence (CD)
+[Hin02, CPH05] initializes the Markov chains with the data elements themselves since (at
+least for well-trained models) these are highly likely states. Persistent Contrastive Divergence
+(PCD) [Tie08], improves upon CD by initializing the Markov chains needed for θθθt with
+samples from the previous chain at θθθt−1. If gradient steps on θθθ are small, it is hoped that
+samples from B(sss|θθθt−1) rapidly equilibrate under B(sss|θθθt).
+
+The approaches used in CD and PCD to foster rapid equilibration acutely fail in multi-
+modal probability distributions that have high-energy barriers. However, even simple prob-
+lems at modest sizes can show the eﬀects of poor equilibration under PCD as the problem
+size grows. To demonstrate this, we generated 20 Chimera-structured Ising models with
+v,v(cid:48) randomly sampled from {−1, +1} at sizes C3 (72 variables), C4 (128
+θtrue
+v = 0 and θtrue
+variables), and C5 (200 variables). PCD-estimated gradients used 1000 chains with either
+2, 10, or 50 blocked Gibbs updates, and all models were trained for 500 iterations using
+Nesterov-accelerated gradients [Nes83]. The Nesterov method uses momentum (past gradi-
+ents), and is more susceptible to noisy gradients than stochastic gradient descent [DGN14].
+
+10
+
+−2.5−1.5−0.5−0.250.380123456789101112131415Localminima0.000.050.100.150.200.250.300.350.40ProbabilityLocalminimaprobabilitydistributionBoltzmannPHardware,KLD0.2882Redﬁeld,KLD0.3578MCMC+Annealing,KLD0.1139The learned model θθθlearn results are presented on Fig. 7 (θv,v(cid:48) is learned, and θv is ﬁxed to
+zero). The abscissa represents problem size, and the ordinate represents the log-likelihood-
+
+ratio ln(cid:2)B(sss|θθθtrue)/B(sss|θθθlearn)(cid:3) averaged on test data. Note that this ratio is a sampling-based
+estimate of KL(cid:0)B(sss|θθθtrue)(cid:107)B(sss|θθθlearn)(cid:1). The exact model is recovered when the KL diver-
+
+gence is zero. As expected, models trained using exact samples achieve a KL divergence close
+to 0 on all instances, but PCD requires progressively more Gibbs updates as the problem
+size increases.
+
+Figure 7: Training of random θv,v(cid:48) = Jv,v(cid:48) = ±1 BMs. Models trained with exact samples
+minimize the KL divergence, but models trained with approximate PCD sampling require
+progressively more Gibbs updates to perform well. Solid lines represent the mean value
+across 20 random instances, and dashed lines represent 25th and 75th percentiles.
+
+In subsequent experiments, we explore whether QA may improve upon CD and PCD
+by providing MCMC seeds that more accurately sample low-energy states of B(sss|θθθt) thus
+allowing for faster equilibration and better gradient estimates.
+
+4.2 Experiments
+In training models on QA hardware, it is important to distinguish B(sss|θθθ) from the D-Wave
+QA sampling distribution. By Pk(sss|θθθ) we denote the distribution formed by sampling the QA
+hardware at parameter θθθ/βHW followed by k sweeps of blocked Gibbs updates at parameter
+θθθ. In particular, P0(sss|θθθ) is the raw hardware distribution at θθθ/βHW, and P∞(sss|θθθ) = B(sss|θθθ).
+In the experiments we report, we use k = 50 blocked Gibbs sweeps.
+
+To test QA for BM learning we train fully visible multimodal Chimera-structured models.
+For a variety of problems up to C5 scale (200 variables), we specify θθθtrue, draw exact Boltz-
+
+11
+
+C3C4C5Problemsize0123456KL(Ptrue||Plearn)ExactPCD-2PCD-10PCD-50mann samples7 from θθθtrue, and try to recover θθθ from the samples. We compare the eﬃcacy
+of CD, PCD, and QA-seeded MCMC chains. In all CD/PCD/QA cases, each chain is run
+for 50 blocked Gibbs updates. To assess the accuracy of the learned models, we measure the
+log likelihood on both training and held out test data, and compare these results to known
+optimal values.
+For each FCL problem, we generate a training and a test set of size 5× 105 using an exact
+Boltzmann sampler. All FCL problems have θv = hv = 0 and only θv,v(cid:48) = Jv,v(cid:48) parameters
+are learned. During training, gradients are estimated from 1000 Monte Carlo chains seeded
+with CD, PCD, or QA initializations. The QA seeds are obtained by calling the quantum
+hardware with the standard 20µs anneal. In all cases, 50 block Gibbs updates are performed
+on the seeds. To speed training, we used Nesterov accelerated gradients. The results for
+FCL-1 are presented in Fig. 8. After about 30 iterations, the CD and PCD procedures
+collapse, and the corresponding log likelihoods deteriorate. This occurs when the energy
+barriers between local optima in the learned model energy landscape become too large for
+the MCMC chains to cross eﬃciently with 50 Gibbs updates. As a result, MCMC-based
+procedures obtain biased gradients and the CD/PCD models drift away from the optimal
+region. In contrast, QA-seeded gradients consistently improve the log-likelihood value for
+about 70 updates and stagnate within 10−2 of KL = 0.
+
+Figure 8: Training on FCL-1 using Nesterov-accelerated gradient updates with constant step
+size 0.1 ( = 0.1 in the reformulation of [SMDH13]). Both CD and PCD procedures become
+unstable, but QA-seeded gradients exhibit stable learning.
+
+The poor performance of CD and PCD is due in part to the choice of the Nesterov accel-
+erated gradient updates, which, as mentioned earlier, are more sensitive to noisy gradients
+than stochastic gradient descent updates. Interestingly, increasing the number of Gibbs steps
+
+7We can sample exactly because the treewidth of C5 is 20.
+
+12
+
+050100150200Numberofmodelupdates10−210−1100101102103KL(Ptrue||Plearn)FCL-1problemlearningHardware,NesterovPCD-50,NesterovCD-50,Nesterov(up to 106) does not help either CD or PCD signiﬁcantly. As expected, we found training
+CD/PCD with simple stochastic gradient updates to be more eﬀective over a wide range of
+iteration-independent learning rates ηt = η. A smaller learning rate eﬀectively corresponds
+to a larger number of Gibbs updates at a larger learning rate, and therefore improves the
+quality of estimated gradients, but takes more time. We trained CD/PCD models for 10,000
+iterations, and compared to 200 iterations of training using QA with Nesterov-accelerated
+gradients. The CD/PCD learning rates were varied from η = 0.4, where learning rapidly
+goes unstable, to η = 0.0125 where learning was impractically slow within 10,000 iterations.
+The results are shown in Fig. 9. We found that some of the CD and PCD trained models
+achieved KL values similar to that of QA-based learning, but required 102 times as many
+model updates.
+
+Figure 9: Training on FCL-2. QA is trained using Nesterov updates, while CD/PCD are
+trained using standard stochastic gradient descent with a ﬁxed learning rate. Decreasing the
+learning rate for CD and PCD improves the stability of the procedures, but increases the
+number of iterations required to reach low values of KL divergence.
+
+It is reassuring that QA samples are able to improve upon CD/PCD in FCL-1 and
+FCL-2 where the QA distribution closely follows the classical Boltzmann distribution (see
+Figs. 2b and 4b). However, what about training on FCL-3 where QA exhibits strongly
+non-Boltzmann behavior (see Fig. 5b)? In order for the diﬀerence in cluster strengths to be
+reﬂected in the data, we scaled down all Jintra in FCL-3 by a factor of 3.8 We train a BM
+using QA-seeded gradients and ﬁxed learning rate η = 0.1 on the resulting problem to learn
+parameters θθθlearn.
+To characterize θθθlearn, we determine the occupation of local minima under B(sss|θθθlearn) (in
+
+8The FCL-3 Jintra weights are strong enough that there are negligibly few broken intracluster bonds, and
+
+therefore training data generated for FCL-3 and FCL-1 are almost identical.
+
+13
+
+100101102103104#modelupdates10−210−1100101102103104KLdivergenceFCL-2problemlearningHardware,Nesterovη=1.00e-01PCD-50,SGDη=4.00e-01PCD-50,SGDη=1.00e-01PCD-50,SGDη=5.00e-02PCD-50,SGDη=1.25e-02CD-50,SGDη=4.00e-01CD-50,SGDη=1.00e-01CD-50,SGDη=5.00e-02CD-50,SGDη=1.25e-02red) and P50(sss|θθθlearn) (in blue). In Fig. 10 green bars represent the local minima occupation
+probabilities in the scaled-FCL-3 training data. The occupation probabilities do not sum to
+
+Figure 10: Training on scaled-FCL-3 where Jintra parameters are scaled down from FCL-3
+by a factor of 3. The bars indicate the local minimum probabilities derived from the learned
+model θθθlearn using a Boltzmann distribution (red), and the hardware distribution P50(sss|θθθlearn)
+(blue). Green bars are the probabilities in the training data.
+
+1 as there is signiﬁcant probability of occupying states with broken intracluster bonds. The
+Boltzmann distribution B(sss|θθθlearn) ﬁts the data poorly, but P50(sss|θθθlearn) ﬁts the data well.
+More detailed examination reveals that B(sss|θθθlearn) over-samples the states that are under-
+sampled when the QA hardware is used to sample from FCL-3 (Fig. 5b). The learning
+procedure therefore adjusts the model to compensate for the deviation of QA distribution
+from classical Boltzmann. This suggests two important conclusions. Firstly, the gradients of
+the loss function Eq. (4) used in the training procedure and derived under the assumption of
+classical Boltzmann distribution remain useful in optimizing the model under non-Boltzmann
+QA distribution. Secondly, the parameters of the hardware distribution in this case are
+ﬂexible enough to closely approximate a classical Boltzmann distribution of interest.
+
+5 Assessment of Learned QA Distributions
+
+The results of the previous section suggest that the learned models θθθlearn may not be good
+ﬁts to training data under Boltzmann assumptions, but may be when sampling according
+to Pk(sss|θθθlearn). Ideally, we would quantify this by measuring log likelihood on test data, but
+this is not directly possible because a closed form expression of the hardware distribution
+Instead, we ﬁt a density estimate to data sampled from Pk(sss|θθθlearn), and
+is unavailable.
+evaluate test set log-likelihood using the tractable ﬁt.
+
+14
+
+0123456789101112131415Localminima0.000.010.020.030.040.050.060.070.080.09ProbabilityLocalminimaprobabilitydistributionBoltzmanndistributionEmpiricalhardwaredistributionEmpiricaldatadistribution(a) NADE estimates on test data.
+
+(b) Boltzmann estimates on test data.
+
+Figure 11: Analytic density estimates.
+
+15
+
+−35−30−25−20−15E(s|θtrue)−30−25−20−15−10−50logˆPData−35−30−25−20−15E(s|θtrue)−30−25−20−15−10−50logˆPHardware−35−30−25−20−15E(s|θtrue)−30−25−20−15−10−50logˆPExactdataˆP50(θlearn)B(θlearn)−6.30−6.25−6.20−6.15−6.10LoglikelihoodTestloglikelihood−30−28−26−24−22−20E(s|θtrue)−20−18−16−14−12−10−8logˆPData−30−28−26−24−22−20E(s|θtrue)−20−18−16−14−12−10−8logˆPHardware−30−28−26−24−22−20E(s|θtrue)−20−18−16−14−12−10−8logˆPExactdataˆP50(θlearn)B(θlearn)−6.20−6.18−6.16−6.14−6.12−6.10LoglikelihoodTestloglikelihoodLet ˆPk(sss|θθθ) represent a tractable ﬁt obtained from samples of Pk(sss|θθθ), which approximates
+Pk(sss|θθθ). We require that ˆPk(sss|θθθ) can be evaluated for any sss so that the log likelihood of test
+data may be computed. One choice for ˆPk(sss|θθθ) is the neural autoregressive density estimator
+(NADE) [LM11]. NADE decomposes the joint distribution into a product of conditional
+density estimates, one for each dimension of sss. NADE often outperforms other density
+estimators, but it suﬀers from slow training and the necessity of hyperparameter tuning. We
+made some eﬀort to optimize hyperparameters, but improved values are likely possible.
+Consider again the FCL-3 problem. We denote the FCL-3 parameters by θθθtrue, and the
+parameters of the model learned under QA gradients as θθθlearn. Let B(sss|θθθlearn) and P50(sss|θθθlearn)
+represent the Boltzmann and hardware probability distributions for parameters θθθlearn. We
+compile three data sets each consisting of 104 samples from B(sss|θθθtrue) (data), B(sss|θθθlearn), and
+P50(sss|θθθlearn). The data sets are further split into 5000 training and 5000 test points. To apply
+NADE to the datasets, we use an RBM with 200 hidden units with a learning rate initialized
+to 0.05 and decreased over time t as 1/(1 + t/1000). The NADE optimization is terminated
+when the algorithm sees no performance improvement for 10 consecutive epochs. We validate
+the quality of the resultant NADE models by showing scatter plots of log probability of each
+test point with respect to its energy (ﬁrst three panels of Fig. 11a). The NADE models
+are all roughly Boltzmann with log probability decreasing approximately linearly with E as
+expected. In Fig. 11a we show the average test set log-likelihood of the NADE models trained
+on samples from B(sss|θθθtrue), P50(sss|θθθlearn) and B(sss|θθθlearn). For comparison, the horizontal blue
+line denotes the likelihood of test data under the true model B(sss|θθθtrue). According to NADE,
+the hardware model P50(sss|θθθlearn) is a better ﬁt to test data than B(sss|θθθlearn).
+
+The NADE algorithm is heuristic and introduces its own error in estimating the test
+set log likelihoods, and our hope is that the NADE error is smaller than the diﬀerences in
+test set log likelihoods. For models of unknown structure, we have no better alternative
+than a blackbox approach like NADE, but on these problems where we know the training
+data is Boltzmann distributed we can do better. As all three distributions should be either
+Boltzmann or close to Boltzmann, we ﬁt a Boltzmann distribution to each set of samples.
+Fig. 11b shows analogous results but under a Boltzmann ﬁt rather than a NADE ﬁt. In this
+case we see that ˆP50(sss|θθθlearn) on test data is an excellent ﬁt, and almost matches the true
+test set log likelihood. Thus, the QA-enabled training procedure learns a very good data
+model under the hardware distribution despite the fact that the hardware distribution is
+signiﬁcantly non-Boltzmann. In the rest of the paper, we assume that ˆPk(sss|θθθ) is calculated
+using Boltzmann estimates.
+Lastly, we characterize the relative computational eﬀort of learning on larger problems.
+These problems consist of 200 variables arranged as a 5 × 5 array of unit cell clusters with
+Jintra = −2.5, and with inter-cell couplings that are randomly Jinter = ±0.25. These problems
+have many local minima due to the frustrated loops between clusters, and have high-energy
+barriers between local minima. We indicate a particular realization of this model as θθθtrue and
+create test and training states of 500,000 each by sampling from B(sss|θθθtrue). Parameters θθθlearn
+are learned from the training data using PCD and QA seeded gradients, and approximate
+KL divergence is measured using the test data. In all cases, we use 1000 Monte Carlo chains
+and apply 50 blocked Gibbs updates. In Figs. 12a and 12b we show the number of gradient
+updates required by PCD and QA-seeded gradients to achieve a speciﬁed KL(Ptrue|Plearn)
+under stochastic gradient (SGD) and Nesterov updates. We ran PCD at 9 diﬀerent learning
+
+16
+
+rates ranging from η = 10−1 down to η = 3.9 · 10−4, and QA-seeded gradients at learning
+rates η = 10−1, 5 · 10−2, and 10−2. At each KL divergence, we counted the number of
+gradient updates in the method requiring the fewest number of updates to attain that KL.
+For comparison, we also indicate the rate of learning under exact gradients using a step size
+of 0.1.
+The curves labeled ˆP50(sss|θθθlearn) and B(sss|θθθlearn) are the two variants of hardware-trained
+models. Curves that terminate at ﬁnite KL values indicate that no lower KL divergence was
+found. We see that Nesterov updates using QA gradients result in the most rapid learning.
+
+6 Training Quantum Boltzmann Machines Using QA
+
+(cid:0)φφφ(sss)(cid:1)−EPD(sss)(φφφ(sss)(cid:1) (which assumes a classical Boltzmann
+(cid:0)φφφ(sss)(cid:1) − EPD(sss)(φφφ(sss)(cid:1), and evaluate the generalization of P0(sss|θθθlearn) on test
+
+We have seen that QA-seeded MCMC can speed training of some classical BMs. The learning
+rule we employ, ∇∇∇L(θθθ) = EP50(sss|θθθ)
+sampling distribution), results in models that adapt to the biases arising from deviations
+between the QA sampling distribution and the classical Boltzmann distribution. As a con-
+sequence, ˆPk(sss|θθθlearn) is usually a better model than B(sss|θθθlearn). In light of this, it is natural
+to explore a training procedure that avoids blocked Gibbs postprocessing entirely, namely
+∇∇∇L(θθθ) = EP0(sss|θθθ)
+data.
+
+This may seem a strange learning rule as it is motivated by assuming the QA sampling
+distribution is Boltzmann, which it clearly is not. However, as we show next it can be
+theoretically motivated.
+
+6.1 Fully Visible Quantum Boltzmann Machines
+
+When annealing classically, the dynamics can freeze as the temperature drops below the size
+of relevant energy barriers. We provided an example of this in Fig. 3 for classical annealing
+on FCL-1. A similar eﬀect can occur during quantum annealing where dynamics freeze at
+time t prior to the end of the quantum anneal at t = τ . Thus, a more accurate model of QA
+distribution is described in [Ami15] using a transverse Ising Hamiltonian ¯HHH = HHH(¯t) for the
+Hamiltonian of Eq. (1) and some ¯t < τ . The density matrix of the distribution deﬁned by
+¯H¯H¯H is
+
+ρρρ =
+
+1
+¯Z
+
+exp(− ¯HHH),
+
+where the partition function ¯Z is simply the trace of the matrix exp(− ¯H¯H¯H), and the probability
+of state sss is the sssth diagonal entry of exp(− ¯H¯H¯H)/ ¯Z. Maximizing the log likelihood L of this
+Instead, [AAR+16] proposes to maximize a lower bound ¯L ≤ L
+distribution is diﬃcult.
+obtained using the Golden-Thompson inequality:
+
+¯L(θθθ) = −(cid:10)θθθ, EPD(sss)
+
+∇∇∇ ¯L(θθθ) = −EPD(sss)
+
+(cid:0)φφφ(sss)(cid:1)(cid:11) − ln ¯Z(θθθ, ∆).
+(cid:0)φφφ(sss)(cid:1).
+(cid:0)φφφ(sss)(cid:1) + EP0(sss|θθθ)
+
+17
+
+The gradient of this lower bound can be estimated exactly as in (4) using the raw QA
+samples, that is, using P0(sss|θ):
+
+(5)
+
+(a) Stochastic gradient updates.
+
+Figure 12: Learning on four randomly generated C5 frustrated cluster loop problems.
+
+(b) Nesterov updates.
+
+18
+
+KL(PDtest||Plearn)100101102103104105#modelupdatesPCDExactB(s|θlearn)ˆP50(s|θlearn)KL(PDtest||Plearn)#modelupdatesPCDExactB(s|θlearn)ˆP50(s|θlearn)10−210−1100KL(PDtest||Plearn)100101102103104105#modelupdatesPCDExactB(s|θlearn)ˆP50(s|θlearn)10−210−1100KL(PDtest||Plearn)#modelupdatesPCDExactB(s|θlearn)ˆP50(s|θlearn)SGDKL(PDtest||Plearn)100101102103104105#modelupdatesPCDExactB(s|θlearn)ˆP50(s|θlearn)KL(PDtest||Plearn)#modelupdatesPCDExactB(s|θlearn)ˆP50(s|θlearn)10−210−1100KL(PDtest||Plearn)100101102103104105#modelupdatesPCDExactB(s|θlearn)ˆP50(s|θlearn)10−210−1100KL(PDtest||Plearn)#modelupdatesPCDExactB(s|θlearn)ˆP50(s|θlearn)NesterovFigure 13: Test set performance under annealed learning schedules.
+
+6.2 Experiments
+
+We generated problems as in Section 4.2. We focus on the problem class where QA sampling
+shows the largest deviation from classical Boltzmann sampling, namely a 5 × 5 array of
+clusters with randomly assigned cluster strengths from Jintra ∈ {−1.5,−2.5} as in FCL-
+4, and where all 4 cycles are frustrated, and have otherwise random couplings from Jinter ∈
+{−0.5,−0.25, 0.38}. Training and test sets had size 5×105 points each, generated by an exact
+Boltzmann sampler. On these problems, ˆPk(sss|θθθlearn) provides better ﬁts than B(sss|θθθlearn). As
+mentioned before, we used raw hardware samples (postprocessing oﬀered no improvement)
+and used ˆP0(sss|θθθlearn) to measure performance.
+
+We tested annealed learning using gradient step sizes decaying as ηt = η0/[(t/200) + 1].9
+Both CD and PCD used 10,000 blocked Gibbs updates at each parameter update. Our
+ﬁndings for 5 × 5 cluster problems are summarized in Fig. 13.
+
+KL(cid:0)PDtest(·)(cid:107)B(·|θθθt)(cid:1) for software runs and KL(cid:0)PDtest(·)(cid:107) ˆP0(·|θθθt)(cid:1) for QA runs (the dotted
+
+These plots show the evolution, over the SGD iterations, of test set KL divergences
+red line is the performance of QA using B(sss|θ), for reference). The η0 values shown are the
+best for each algorithm where η0 ∈ {0.1, 0.2, 0.4, 0.7, 1.0}. For these examples, only CD with
+10,000 blocked Gibbs updates was competitive with QA.
+
+9The 200 scaling factor was determined by cross validation to provide good learning under PCD.
+
+19
+
+0200040006000800010000Numberofmodelupdates10−210−1100101102KLFCL-4C5B(s|θt),SGD,η0=1.0ˆP0(s|θt),SGD,η0=1.0Exact,SGD,η0=1.0CD,SGD,N=10000,η0=0.4PCD,SGD,N=10000,η0=0.27 Discussion
+
+In this work, we have studied the utility of quantum annealing in training hard fully visible
+Boltzmann distributions. We have empirically characterized the sampling distribution of
+the D-Wave QA device on a number of problem classes, and shown that, while the device is
+eﬀective at sampling low-energy conﬁgurations, the sampling distribution can diﬀer signiﬁ-
+cantly from classical Boltzmann. In spite of this, a learning procedure that updates model
+parameters as if the sampling distribution were Boltzmann results in excellent models as long
+as samples are drawn from the QA hardware followed by k Gibbs updates. We tested several
+values of k and we noticed improvements over CD and PCD. Interestingly, raw QA samples
+(i.e., k = 0) provided similar improvements. We justify this by relating learning in classical
+BMs and quantum BMs as described in [AAR+16]. We have demonstrated computational
+beneﬁts over PCD and CD by measuring the decrease in the number of parameter updates
+required for training, and shown beneﬁts under both ﬁxed and decaying learning rates.
+
+These promising results justify further exploration. Firstly, the computational beneﬁts
+of QA over CD/PCD were demonstrated in artiﬁcial problems constructed to have high-
+energy barriers between modes, but which were small enough to yield exact results. We
+anticipate that more realistic problems also having large energy barriers would show similar
+QA improvement, but this should be validated. Secondly, we would like to have further
+evidence that the QA model of [AAR+16] or an extension of it can be used to justify the
+parameter update rule of Eq. (5) to raw QA samples. Our motivation is heuristic, and a
+deeper understanding might provide more eﬀective learning updates. Thirdly, the sparsity
+of connections on current QA hardware limits the expressiveness of models, and hidden
+variables are required to model distributions of practical interest. Thus, studies similar
+to this one should characterize performance for QA-based learning in models with hidden
+variables. Lastly, QA hardware is continuously being improved, and new parameters that
+control the quantum annealing path (the A(t/τ ) and B(t/τ ) functions of Eq. (1)) have
+recently been developed. Learning to exploit these additional controls for improved training
+is an important and challenging task.
+
+References
+
+[AAR+16] M. H. Amin, E. Andriyash, J. Rolfe, B. Kulchytskyy, and R. Melko. Quantum
+Boltzmann machine. See https://arxiv.org/abs/1601.02036, January 2016.
+
+[AH15]
+
+S. Adachi and M. Henderson. Application of quantum annealing to training of
+deep neural networks. See https://arxiv.org/abs/1510.06356, October 2015.
+
+[Ami15] M. H. S. Amin. Searching for quantum speedup in quasistatic quantum annealers.
+Phys. Rev. A, 92:052323, November 2015. See https://arxiv.org/abs/1503.
+04216.
+
+[ATA09] M. H. S. Amin, C. J. S. Truncik, and D. V. Averin. Role of single-qubit deco-
+herence time in adiabatic quantum computation. Physical Review A, pages 1–5,
+2009. See http://arxiv.org/abs/0803.1196.
+
+20
+
+[Ben80]
+
+P. Benioﬀ. The computer as a physical system: A microscopic quantum mechani-
+cal Hamiltonian model of computers as represented by Turing machines. Journal
+of statistical physics, 22(5), 1980.
+
+[BGBO16] M. Benedetti, J. Realpe Gomez, R. Biswas, and A. Perdomo Ortiz. Quantum-
+assisted learning of graphical models with arbitrary pairwise connectivity. See
+https://arxiv.org/abs/1609.02542, September 2016.
+
+[CPH05] M. A. Carreira-Perpinan and G. E. Hinton. On contrastive divergence learning.
+In Proc. of the 10th AIStats, pages 33–40, 2005. See http://www.cs.toronto.
+edu/~fritz/absps/cdmiguel.pdf.
+
+[DBI+15] V. S. Denchev, S. Boixo, S. V. Isakov, N. Ding, R. Babbush, V. Smelyanskiy,
+J. Martinis, and H. Neven. What is the computational value of ﬁnite range
+tunneling? See http://arxiv.org/abs/1512.02206, December 2015.
+
+[Deu85]
+
+D. Deutsch. Quantum theory, the Church-Turing principle and the universal
+quantum computer. Proceedings of the Royal Society of London A, 400:97–
+117, 1985.
+See http://people.eecs.berkeley.edu/~christos/classics/
+Deutsch_quantum_theory.pdf.
+
+[DGN14] O. Devolder, F. Glineur, and Y. Nesterov. First-order methods of smooth con-
+vex optimization with inexact oracle. Mathematical Programming, 146(1):37–75,
+2014.
+See http://www.optimization-online.org/DB_FILE/2010/12/2865.
+pdf.
+
+[Fey82]
+
+[Hin02]
+
+[KN98]
+
+R. P. Feynman. Simulating physics with computers. International Journal of
+Theoretical Physics, 21(6/7), 1982. See https://people.eecs.berkeley.edu/
+~christos/classics/Feynman.pdf.
+
+G. E. Hinton. Training products of experts by minimizing contrastive divergence.
+Neural computation, 14(8):1771–1800, 2002.
+
+T. Kadowaki and H. Nishimori. Quantum annealing in the transverse Ising
+model. Phys. Rev. E, 58(5), 1998. See http://www.stat.phys.titech.ac.
+jp/~nishimori/papers/98PRE5355.pdf.
+
+[KYN+15] J. King, S. Yarkoni, M. M. Nevisi, J. P. Hilton, and C. C. McGeoch. Bench-
+marking a quantum annealing processor with the time-to-target metric. See
+http://arxiv.org/abs/1508.05087, August 2015.
+
+[LM11]
+
+H. Larochelle and I. Murray. The neural autoregressive distribution estimator. In
+Proc. of the 14th AISTATS, pages 29–37, 2011. See http://jmlr.csail.mit.
+edu/proceedings/papers/v15/larochelle11a/larochelle11a.pdf.
+
+[LPS+14] T. Lanting, A.J. Przybysz, A. Yu. Smirnov, F.M. Spedalieri, M.H. Amin, A.J.
+Berkley, R. Harris, F. Altomare, S. Boixo, P. Bunyk, N. Dickson, C. Enderud, J.P.
+Hilton, E. Hoskinson, M.W. Johnson, E. Ladizinsky, N. Ladizinsky, R. Neufeld,
+
+21
+
+T. Oh, I. Perminov, C. Rich, M.C. Thom, E. Tolkacheva, S. Uchaikin, A.B.
+Wilson, and G. Rose. Entanglement in a quantum annealing processor. Phys.
+Rev. X, 4:021041, 2014. See https://arxiv.org/abs/1401.3500.
+
+[LS10]
+
+P. M. Long and R. Servedio. Restricted Boltzmann machines are hard to approx-
+imately evaluate or simulate. In Johannes F¨urnkranz and Thorsten Joachims,
+editors, Proceedings of the 27th International Conference on Machine Learning
+(ICML-10), pages 703–710. Omnipress, 2010. See http://www.cs.columbia.
+edu/~rocco/Public/final-camera-ready-icml10.pdf.
+
+[Nes83]
+
+Y. Nesterov. A method of solving a convex programming problem with conver-
+gence rate o(1/k2). Soviet Mathematics Doklady, 27(2):372–376, 1983.
+
+[RYA16]
+
+J. Raymond, S. Yarkoni, and E. Andriyash. Global warming: Temperature esti-
+mation in annealers. Frontiers in ICT, 3:23, 2016.
+
+[SH09]
+
+R. Salakhutdinov and G. Hinton. Deep Boltzmann machines. In Proceedings of the
+International Conference on Artiﬁcial Intelligence and Statistics, volume 5, pages
+448–455, 2009. See http://www.cs.toronto.edu/~fritz/absps/dbm.pdf.
+
+[SMDH13] I. Sutskever, J. Martens, G. E. Dahl, and G. E. Hinton. On the importance of
+initialization and momentum in deep learning. In Sanjoy Dasgupta and David
+Mcallester, editors, Proceedings of the 30th International Conference on Machine
+Learning (ICML-13), volume 28, pages 1139–1147. JMLR Workshop and Con-
+ference Proceedings, May 2013.
+
+[Tie08]
+
+T. Tieleman. Training restricted Boltzmann machines using approximations to
+the likelihood gradient. In Proceedings of the 25th international conference on
+Machine learning, pages 1064–1071. ACM New York, NY, USA, 2008. See http:
+//www.cs.toronto.edu/~tijmen/pcd/pcd.pdf.
+
+[You98]
+
+L. Younes. Stochastic gradient estimation strategies for Markov random ﬁelds.
+Proc. SPIE, 3459:315–325, 1998.
+
+22
+
+

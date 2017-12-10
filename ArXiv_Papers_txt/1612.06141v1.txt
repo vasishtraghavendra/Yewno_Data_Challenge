@@ -1,0 +1,730 @@
+Domain specialization: a post-training domain adaptation
+
+for Neural Machine Translation
+
+Christophe Servan and Josep Crego and Jean Senellart
+
+firstname.lastname@systrangroup.com
+
+SYSTRAN / 5 rue Feydeau, 75002 Paris, France
+
+6
+1
+0
+2
+ 
+c
+e
+D
+9
+1
+
+ 
+
+ 
+ 
+]
+L
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+1
+4
+1
+6
+0
+
+.
+
+2
+1
+6
+1
+:
+v
+i
+X
+r
+a
+
+Abstract
+
+Domain adaptation is a key feature in
+Machine Translation.
+It generally en-
+compasses terminology, domain and style
+adaptation, especially for human post-
+editing workﬂows in Computer Assisted
+Translation (CAT). With Neural Machine
+Translation (NMT), we introduce a new
+notion of domain adaptation that we call
+“specialization” and which is showing
+promising results both in the learning
+speed and in adaptation accuracy. In this
+paper, we propose to explore this approach
+under several perspectives.
+Introduction
+
+1
+Domain adaptation techniques have successfully
+been used in Statistical Machine Translation.
+It
+is well known that an optimized model on a spe-
+ciﬁc genre (litterature, speech, IT, patent...) ob-
+tains higher accuracy results than a “generic” sys-
+tem. The adaptation process can be done before,
+during or after the training process.
+
+We propose to explore a new post-process ap-
+proach, which incrementally adapt a “generic”
+model to a speciﬁc domain by running additional
+training epochs over newly available in-domain
+data.
+
+In this way, adaptation proceeds incrementally
+when new in-domain data becomes available, gen-
+erated by human translators in a post-edition con-
+text. Similar to the Computer Assisted Transla-
+tion (CAT) framework described in (Cettolo et al.,
+2014).
+Contributions The main contribution of this pa-
+per is a study of the new “specialization” ap-
+proach, which aims to adapt generic NMT model
+without a full retraining process. Actually, it con-
+sist in using the generic model in a retraining
+
+phase, which only involves additional in-domain
+data. Results show this approach can reach good
+performances in a far less time than full-retraining,
+which is a key feature to adapt rapidly models in a
+CAT framework.
+
+2 Approach
+
+Following the framework proposed by (Cettolo
+et al., 2014), we seek to adapt incrementally a
+generic model to a speciﬁc task or domain. They
+show incremental adaptation brings new informa-
+tion in a Phrase-Based Statistical Machine Trans-
+lation like terminology or style, which can also be-
+long to the human translator. Recent advances in
+Machine Translation focuses on Neural Machine
+Translation approaches, for which we propose a
+method to adapt incrementally to a speciﬁc do-
+main, in this speciﬁc framework.
+
+The main idea of the approach is to special-
+ize a generic model already trained on generic
+data. Hence, we propose to retrain the generic
+model on speciﬁc data, though several training
+iterations (see ﬁgure 2). The retraining process
+consist in re-estimating the conditional probabil-
+ity p(y1, . . . , ym|x1, . . . , xn) where (x1, . . . , xn)
+is an input sequence of length n and (y1, . . . , ym)
+is its corresponding output sequence whose length
+m may differ from n. This is done without drop-
+ping the previous learning states of the Recurrent
+Neural Network.
+
+The resulting model is considered as adapted or
+
+specialized to a speciﬁc domain.
+
+3 Experiment framework
+
+We create our own data framework described in
+the next section and we evaluate our results us-
+ing the BLEU score (Papineni et al., 2002) and the
+TER (Snover et al., 2006).
+
+The Neural Machine Translation system com-
+
+Type
+
+Train
+
+dev.
+test
+
+Domain
+generic
+emea-0.5K
+emea-5K
+emea-50K
+emea-full
+generic
+emea
+
+#lines
+3.4M
+500
+5K
+50K
+922K
+2K
+2K
+
+#src tokens
+73M
+5.6K
+56.1K
+568K
+10.5M
+43.7K
+35.6K
+
+#tgt tokens
+86M
+6.6K
+66.4K
+670K
+12.3M
+51.3K
+42.9K
+
+Table 1: details of corpora used in this paper.
+
+Models
+generic
+generic+emea-0.5K
+generic+emea-5K
+generic+emea-50K
+generic+emea-full
+
+BLEU
+26.23
+26.48
+28.99
+33.76
+41.97
+
+TER
+62.47
+63.09
+58.98
+53.87
+47.07
+
+Table 2: BLEU score of full trained systems.
+
+ated four training corpora corresponding to several
+amount of documents: 500, 5K, 50K and all the
+lines of the training corpus. These amount of data
+are corresponding roughly to 10% of a document,
+one document and ten documents, respectively.
+
+3.2 Training Details
+The Neural Machine Translation approach we use
+is following the sequence-to-sequence approach
+(Sutskever et al., 2014) combined with attentional
+architecture (Luong et al., 2015). In addition, all
+the generic and in-domain data are pre-processed
+using the byte pair encoding compression algo-
+rithm (Sennrich et al., 2016) with 30K operations,
+to avoid Out-of-Vocabulary words.
+
+We keep the most frequent 32K words for both
+source and target languages with 4 hidden layers
+with 500-dimensional embeddings and 800 bidi-
+rectional Long-Short Term Memory (bi-LSTM)
+cells. During training we use a mini-batch size
+of 64 with dropout probability set to 0.3. We train
+our models for 18 epochs and the learning rate is
+set to 1 and start decay after epoch 10 by 0.5. It
+takes about 8 days to train the generic model on
+our NVidia GeForce GTX 1080.
+
+The models were trained with the open-source
+toolkit seq2seq-attn1 (Kim and Rush, 2016).
+
+3.3 Experiments
+As a baseline, we fully trained ﬁve systems, one
+with the generic data (generic) and the other with
+generic and various amount of in-domain data:
+500 lines (emea-0.5K), 5K lines (emea-5K) and
+
+1https://github.com/harvardnlp/
+
+seq2seq-attn
+
+Figure 1: The generic model
+is trained with
+generic data, then the generic model obtained is
+retrained with in-domain data to generate an spe-
+cialized model.
+
+bines the attention model approach (Luong et al.,
+2015) jointly with the sequence-to-sequence ap-
+proach (Sutskever et al., 2014).
+
+According to our approach, we propose to com-
+pare several conﬁgurations, in which main differ-
+ence is the training corpus. On one hand, we
+consider the generic data and several amounts of
+in-domain data for the training process. On the
+other hand, only the generic data are considered
+for the training process, then several amounts of
+in-domain data are used only for the specializa-
+tion process in a retraining phase. The main idea
+behind these experiment is to simulate an incre-
+mental adaptation framework, which enables the
+adaptation process only when data are available
+(e.g.:
+translation post-editions done by a human
+translator.)
+
+The approach is studied in the light of two ex-
+periments and a short linguistic study. The ﬁrst
+experiment concerns the impact of “specializa-
+tion” approach among several additional epochs;
+then, the second one, focuses on the amount of
+data needed to observe a signiﬁcant impact on the
+translation scores. Finally, we propose to compare
+some translation examples from several outputs.
+
+3.1 Training data
+The table 1 presents all data used in our exper-
+iments. We propose to create a generic model
+with comparable amount of several corpora, which
+each of them belong to a speciﬁc domain (IT, liter-
+ature, news, parliament). All corpora are available
+from the OPUS repository (Tiedemann, 2012).
+
+We propose to specialize the generic model us-
+ing a last corpus, which is a corpus extracted from
+the European Medical Agency (emea). The corpus
+is composed of more than 650 documents, which
+are medicine manuals.
+
+We took apart a 2K lines as test corpus, then, to
+simulate the incremental adding of data, we cre-
+
+Training processGenericmodelRe-training processIn-domainmodelGenericdataIn-domaindataTraining corpus
+
+generic
+generic+emea-0.5K
+generic+emea-5K
+generic+emea-50K
+generic+emea-full
+generic
+generic
+generic
+generic
+
+Specialization
+corpus
+N/A
+N/A
+N/A
+N/A
+N/A
+emea-0.5K
+emea-5K
+emea-50K
+emea-full
+
+BLEU
+
+TER
+
+26.23
+26.48
+28.99
+33.76
+41.97
+27.33
+28.41
+34.25
+39.44
+
+62.47
+63.09
+58.98
+53.87
+47.07
+60.92
+58.84
+53.47
+49.24
+
+Table 3: BLEU and TER scores of the specializa-
+tion approach on the in-domain test set.
+
+Process
+
+Corpus
+
+Train
+
+Speciali-
+zation
+
+generic
+emea-0.5K
+emea-5K
+emea-50K
+emea-full
+
+#lines
+
+3.4M
+500
+5K
+50K
+922K
+
+Process
+#src
+time
+tokens
+8 days
+73M
+<1 min
+5.6K
+≈1 min
+56.1K
+≈6 min
+568K
+10.5M 12.3M 105 min
+
+#tgt
+tokens
+86M
+6.6K
+66.4K
+670K
+
+Table 4: Time spent for each process, the train-
+ing and the specialization process, according to the
+amount of data we have.
+
+more than 8 days.
+
+In our CAT framework, even 1 hour and 45 min-
+utes is too much, the adaptation process need to be
+performed faster with smaller amount of data like
+a part of a document (500 lines) or a full docu-
+ment (5K lines). Considering the time constraint,
+the approach tends to be performed though one ad-
+ditional epoch.
+
+3.3.2 Performances among data size
+The second experiment concerns the observation
+of specialization performances when we vary the
+amount of data. Using the data presented Table 1,
+we apply the specialization process on the generic
+corpus by taking 0.5K, 5K, 50K and all the in-
+domain data (as presented in section 3.1). Accord-
+ing to our previous study (see section 3.3.1), we
+focuses on the results obtained with only one ad-
+ditional epoch.
+
+We can observe that with only 500 lines, the
+improvements reaches more than 1 BLEU points
+and 2 TER points. Then, with 10 time more addi-
+tional data, BLEU and TER scores improved the
+baseline of 2 and nearly 4 points, respectively.
+With more additional data (10 documents), im-
+provements reach 8 points of BLEU and 9 points
+of TER. Finally with all the in-domain data avail-
+able, the specialization increase the baseline of 13
+points of both BLEU and TER scores.
+
+Comparing the approach with retraining all the
+generic data, with the same amount of in-domain
+
+Figure 2: Curve of “specialization” performances
+among epochs.
+
+50K lines (emea-50K). The evaluation is done on
+the in-domain test (emea-tst) and presented in the
+table 2. Without surprises, the more the model is
+trained with in-domain data the more BLEU and
+TER scores are improved. These models are base-
+lines in incremental adaptation experiments.
+
+3.3.1 Performances among training iterations
+The ﬁrst study aims to evaluate the approach
+among additional training iterations (also called
+“epochs”). Figure 2 presents the curve of perfor-
+mances when the specialization approach is ap-
+plied to the generic model by using all in-domain
+data (emea-full).
+
+We compare the results with two baselines: on
+the top of the graphic, we show a line which
+corresponds to the score obtained by the model
+trained with both generic and in-domain data
+(noted generic+emea-full); On the bottom, the
+line is associated to the generic model score,
+which is trained with only generic data (noted
+generic). The curve is done with the generic model
+specialized with ﬁve epochs additional epochs on
+all in-domain data (noted specialized model with
+emea). In the graphic, we can observe that a gap
+obtained with the ﬁrst additional epoch with more
+than 13 points, but then the BLEU score improves
+around 0.15 points with each additional epoch and
+tend to stall after 10 epochs (not shown).
+
+So far,
+
+the specialization approach does not
+replace a full retraining, while the specializa-
+tion curve does not reach the generic+emea-full
+model. But, the retraining time of one additional
+epoch with all in-domain data is around 1 hour
+and 45 minutes, while a full retraining would takes
+
+ 25 30 35 40 45 0 1 2 3 4 5BLEU scoreNbr of additional epochsgeneric+emea-full modelspecialized model with emea-fullgeneric modeldata, it appears our approach reaches nearly the
+same results. Moreover, with 50K of in-domain
+data, the specialization approach performs better
+of 0.5 of BLEU and TER points. But, when we
+have much more in-domain data available, the spe-
+cialization approach does not outperforms the full
+retraining (39.44 against 41.97 BLEU points).
+
+3.4 Discussion
+Focussing on the time constraint of the CAT
+framework, the table 4 presents the time taken to
+process our specialization approach. It goes from
+less than one minutes to more than 1 hour and 45
+minutes. If we compare this table with the table
+3, we observe that this approach enables to gain
+1 BLEU point in less than 1 minute, 2 points in
+1 minute and more than 6 BLEU points in 6 min-
+utes. The ratio of ”time spent” to ”score gained”
+seems impressive.
+
+The table 5 shows an example of the outputs ob-
+tained with the specialization approach. We com-
+pare the generic model compared to the special-
+ized models with respectively 0.5K, 5K and 50K
+lines of in-domain data.
+
+We can clearly see the improvements obtained
+on the translation outputs. Even if the last one
+does not stick strictly to the reference, the trans-
+lation output can be considered as a good trans-
+lation (syntactically well formed and semantically
+equivalent).
+
+This specialization approach can be seen as
+an optimization process (like in classical Phrase-
+Based approach), which aims to tune the model
+(Och, 2003).
+
+4 Related work
+
+Last years, domain adaptation for machine trans-
+lation has received lot of attention and studies.
+These approaches can be processed at three lev-
+els:
+the post-
+processing. In a CAT framework, most of the ap-
+proaches focuses on the pre-processing or on the
+post-processing to adapt models.
+
+the pre-processing,
+
+the training,
+
+Such pre-processing approaches like data se-
+lection introduced by (L¨u et al., 2007) and im-
+proved by (Gao and Zhang, 2002) and many others
+(Moore and Lewis, 2010; Axelrod et al., 2011) are
+effective and their impact studied (Lambert et al.,
+2011; Cettolo et al., 2014; Wuebker et al., 2014).
+But, the main draw back of these approaches is
+they need a full retrain to be effective.
+
+The post-training family concerns methods
+which aims to update the model or to optimize the
+model to a speciﬁc domain. Our approach belongs
+to this category.
+
+This approach is inspired by (Luong and Man-
+ning, 2015), they propose to train a generic model
+and, then, they further a training over a dozen of
+epochs on a full in-domain data (the TED corpus).
+We do believe this approach is under estimated and
+we propose to study its efﬁciency in a speciﬁc CAT
+framework with a few data. On one hand, we pro-
+pose to follow this approach by proposing to use
+a fully trained generic model. But, on the other
+hand, we propose to train further only on small
+speciﬁc data over a few additional epochs (from 1
+to 5). In this way, our approach is slightly differ-
+ent and can be equated to a tuning process (Och,
+2003).
+
+5 Conclusion
+
+In this paper we propose a study of the “specializa-
+tion” approach. This domain adaptation approach
+shows good improvements with few in-domain
+data in a very short time. For instance, to gain 2
+BLEU points, we used 5K lines of in-domain data,
+which takes 1 minute to be performed.
+
+Moreover, this approach reaches the same re-
+sults as a full retraining, when 10 documents are
+available. Within a CAT framework, this approach
+could be a solution for incremental adaptation of
+NMT models, and could be performed between
+two rounds of post-edition. In this way, we pro-
+pose as future work to evaluate our approach in a
+real CAT framework.
+
+References
+[Axelrod et al.2011] Amittai Axelrod, Xiaodong He,
+and Jianfeng Gao. 2011. Domain adaptation via
+In Proceedings
+pseudo in-domain data selection.
+of the 2011 Conference on Empirical Methods in
+Natural Language Processing, pages 355–362, Ed-
+inburgh, Scotland, UK., July. Association for Com-
+putational Linguistics.
+
+[Cettolo et al.2014] Mauro Cettolo, Nicola Bertoldi,
+Marcello Federico, Holger Schwenk, Loic Barrault,
+and Chrstophe Servan. 2014. Translation project
+adaptation for mt-enhanced computer assisted trans-
+lation. Machine Translation, 28(2):127–150, Octo-
+ber.
+
+[Gao and Zhang2002] Jianfeng Gao and Min Zhang.
+Improving language model size reduction
+In Proceedings of
+
+2002.
+using better pruning criteria.
+
+[Snover et al.2006] Matthew Snover, Bonnie Dorr,
+Richard Schwartz, Linnea Micciulla, and John
+Makhoul. 2006. A study of translation edit rate with
+targeted human annotation. In Proceedings of asso-
+ciation for machine translation in the Americas.
+
+[Sutskever et al.2014] Ilya Sutskever, Oriol Vinyals,
+and Quoc V. Le. 2014. Sequence to sequence learn-
+ing with neural networks. In NIPS.
+
+[Tiedemann2012] J¨org Tiedemann. 2012. Parallel data,
+In Proceedings of
+tools and interfaces in opus.
+the 8th International Conference on Language Re-
+sources and Evaluation (LREC’2012).
+
+[Wuebker et al.2014] Joern Wuebker, Hermann Ney,
+Adri`a Mart´ınez-Villaronga, Adri`a Gim´enez, Alfons
+Juan, Christophe Servan, Marc Dymetman, and
+Shachar Mirkin. 2014. Comparison of data selec-
+tion techniques for the translation of video lectures.
+In AMTA.
+
+the 40th Annual Meeting on Association for Com-
+putational Linguistics, ACL ’02, pages 176–182,
+Stroudsburg, PA, USA. Association for Computa-
+tional Linguistics.
+
+[Kim and Rush2016] Yoon Kim and Alexander M.
+Rush. 2016. Sequence-level knowledge distillation.
+In Proceedings of the 2016 Conference on Empirical
+Methods in Natural Language Processing, Austin,
+Texas, November.
+
+[Lambert et al.2011] Patrik Lambert, Holger Schwenk,
+Christophe Servan, and Sadaf Abdul-Rauf. 2011.
+Investigations on translation model adaptation us-
+In Proceedings of the Sixth
+ing monolingual data.
+Workshop on Statistical Machine Translation, pages
+284–293, Edinburgh, Scotland, July. Association for
+Computational Linguistics.
+
+[L¨u et al.2007] Yajuan L¨u, Jin Huang, and Qun Liu.
+2007. Improving statistical machine translation per-
+formance by training data selection and optimiza-
+In Proceedings of the 2007 Joint Confer-
+tion.
+ence on Empirical Methods in Natural Language
+Processing and Computational Natural Language
+Learning (EMNLP-CoNLL), pages 343–350.
+
+[Luong and Manning2015] Minh-Thang Luong and
+Christopher D. Manning. 2015. Stanford neural
+machine translation systems for spoken language
+In IWSLT2015, Da Nang, Vietnam,
+domains.
+December.
+
+[Luong et al.2015] Thang Luong, Hieu Pham, and
+Effective ap-
+Christopher D. Manning.
+proaches to attention-based neural machine trans-
+In Proceedings of the 2015 Conference on
+lation.
+Empirical Methods in Natural Language Process-
+ing, pages 1412–1421, Lisbon, Portugal, September.
+
+2015.
+
+[Moore and Lewis2010] R.C. Moore and W. Lewis.
+2010.
+Intelligent Selection of Language Model
+Training Data. In ACL (Short Papers), pages 220–
+224, Uppsala, Sweden, July.
+
+[Och2003] Franz Josef Och. 2003. Minimum error rate
+In Pro-
+training in statistical machine translation.
+ceedings of the 41st Annual Meeting on Associa-
+tion for Computational Linguistics - Volume 1, pages
+160–167.
+
+[Papineni et al.2002] Kishore Papineni, Salim Roukos,
+Todd Ward, and Wei-Jing Zhu.
+Bleu:
+a Method for Automatic Evaluation of Machine
+In Proceedings of the 41st Annual
+Translation.
+Meeting of the Association for Computational Lin-
+guistics, pages 311–318, Philadelphia, Pennsylva-
+nia, USA, July.
+
+2002.
+
+[Sennrich et al.2016] Rico Sennrich, Barry Haddow,
+and Alexandra Birch. 2016. Improving neural ma-
+chine translation models with monolingual data. In
+Proceedings of the 54th Annual Meeting of the As-
+sociation for Computational Linguistics (Volume 1:
+Long Papers), pages 86–96, Berlin, Germany, Au-
+gust. Association for Computational Linguistics.
+
+Source:
+Reference:
+generic model
+specialization emea-0.5K Quel b´en´eﬁce SSonVue a-t-il montr´e lors des ´etudes ?
+specialization emea-5K
+specialization emea-50K
+
+What beneﬁt has SonoVue shown during the studies ?
+Quel est le b´en´eﬁce d´emontr´e par SonoVue au cours des ´etudes ?
+Quel avantage SSonVue a-t-il montr´e pendant les ´etudes ?
+
+Quel b´en´eﬁce SSonVue a-il montr´e pendant les ´etudes ?
+Quels est le b´en´eﬁce d´emontr´e par SonoVue au cours des ´etudes ?
+
+Table 5: Example of translation output of the generic model and the specialized models with different
+amount of in-domain data. Red, blue and green are, respectively, bad, acceptable and good translations.
+
+

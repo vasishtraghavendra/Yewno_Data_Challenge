@@ -1,0 +1,1389 @@
+4
+1
+0
+2
+
+ 
+r
+p
+A
+9
+
+ 
+
+ 
+ 
+]
+
+G
+L
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+3
+5
+3
+2
+
+.
+
+4
+0
+4
+1
+:
+v
+i
+X
+r
+a
+
+Серия ¾Математика¿
+2010. Т. 3, № 4. С. 1(cid:22)15
+
+Онлайн-доступ к журналу:
+
+http://isu.ru/izvestia
+
+И З В Е С Т И Я
+
+Иркутского
+государственного
+университета
+
+УДК 518.517
+Power System Parameters Forecasting Using
+Hilbert-Huang Transform and Machine Learning ∗
+
+V.G. Kurbatsky, V.A. Spiryaev, N.V. Tomin
+Energy Systems Institute, Siberian Branch of Russian Academy of Sciences
+
+P. Leahy
+University College Cork
+
+D.N. Sidorov, A.V. Zhukov
+Energy Systems Institute, Siberian Branch of Russian Academy of Sciences
+Institute of Mathematics, Economics and Informatics, Irkutsk State University
+
+Abstract.
+
+A novel hybrid data-driven approach is developed for forecasting power system para-
+meters with the goal of increasing the eﬃciency of short-term forecasting studies for
+non-stationary time-series. The proposed approach is based on mode decomposition and
+a feature analysis of initial retrospective data using the Hilbert-Huang transform and
+machine learning algorithms. The random forests and gradient boosting trees learning
+techniques were examined. The decision tree techniques were used to rank the importance
+of variables employed in the forecasting models. The Mean Decrease Gini index is employed
+as an impurity function. The resulting hybrid forecasting models employ the radial basis
+function neural network and support vector regression.
+
+Apart from introduction and references the paper is organized as follows. The second
+section presents the background and the review of several approaches for short-term
+forecasting of power system parameters. In the third section a hybrid machine learning-
+based algorithm using Hilbert-Huang transform is developed for short-term forecasting of
+power system parameters. Fourth section describes the decision tree learning algorithms
+used for the issue of variables importance. Finally in section six the experimental results
+in the following electric power problems are presented: active power ﬂow forecasting,
+electricity price forecasting and for the wind speed and direction forecasting.
+
+Keywords: time series, forecasting, integral transforms, ANN, SVM, machine learning,
+boosting, singular integral, feature analysis.
+
+∗ This work was supported by the grant of Leading Scientiﬁc Schools of Russian
+Federation No.1507NSH-1507.20128. D. N. Sidorov and V. A. Spiryaev are supported by
+grant of RFBR No. 12-01-00722. N. V. Tomin is supported by the Humboldt Research
+Fellowship programme of Alexander von Humboldt Foundation (Germany). P. Leahy
+is supported by the Stokes Lectureship programme of Science Foundation Ireland.
+D. N. Sidorov is supported by Russian Federal framework programme, state contract
+No.14.B37.21.0365 (Russia).
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.1
+
+2
+
+V.G. Kurbatsky et al
+
+1.
+
+Introduction
+
+In recent years power industries worldwide have experienced two major
+changes: liberalization of the electricity market and the expansion of renew-
+able energy. Liberalization has led to a tremendous increase in the inter-
+regional wholesale electricity trade between neighboring utilities or regions.
+The increasing penetration of renewable energy has led to increasing depen-
+dency on the volatile nature of renewable energy sources. Because of this,
+changes in a power system’s parameters often feature a sharply variable
+non-stationary behavior, which limits the eﬃciency of modern technologies
+for forecasting time series [23, 29].
+
+In this situation, eﬀective short-term forecasting of state variables is
+highly important for market participants in wholesale power markets and for
+the power system as a whole. Over the past decade, many power engineers
+have focused their eﬀorts on novel prediction problems, especially short-
+term forecasting of power ﬂow, wind power forecasting and electricity price
+forecasting. In addition to diﬃculties with the sharply variable non-stationary
+behavior of power system parameters, researchers deal with a data requireпїЅ-
+ments problem in actual forecasting of such parameters. The required histori-
+cal data is either not publicly available on power companies’ websites or
+only made available with some delay. Consequently, the correct pattern
+of possible future variability of power system parameters is diﬃcult to
+eﬀectively identify, which in turn prevents accurate forecasting of system
+variables.
+
+In this paper a novel hybrid approach for power system parameters
+forecasting is suggested, which combines the eﬀective apparatus of analysis
+of non-stationary time series – the Hilbert-Huang integral transform (HHT)
+and machine learning technologies.
+
+The paper is organized as follows. Section 2 presents the background and
+the review of several approaches for short-term forecasting of power system
+parameters. In section 3 a hybrid machine learning-based algorithm using
+HHT is developed for short-term forecasting of power system parameters.
+Section 4 presents the experimental results and discussion.
+
+2. Background
+
+In the electricity grid at any moment balance must be maintained between
+electricity consumption and generation - otherwise disturbances in power
+quality or supply may occur. Forecasting power systems parameters may be
+considered at diﬀerent time scales, depending on the intended application.
+From milliseconds up to a few minutes, forecasts can be used, for instance,
+for turbine active control. This type of forecast is usually referred to as very
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.2
+
+Power System Parameters Forecasting
+
+3
+
+short-term forecasts. For the following 48–72 hours, forecasts are needed for
+power system management or energy trading.
+
+The short-term forecasting of power system parameters can be carried
+out both with the aid of classical approaches of dynamic estimation, statisti-
+cal methods of analysis of time series and regressive models, and with the
+aid of artiﬁcial intelligence. Many techniques have been employed for such
+purposes, including machine learning techniques – artiﬁcial neural networks
+(ANNs) [12, 10], support vector machines (SVMs) [8], random forest models
+[8, 22] and etc. Moreover, time series models, like ARIMA, GARCH models
+[13, 11], Kalman ﬁlter-based algorithm [9, 30] have also been proven to be
+eﬀective in the power system parameters forecasting.
+
+It is worth noting that power systems parameters often feature sharply
+variable non-stationary behaviour, which limits the eﬃciency of the stated
+technologies for forecasting of time series. Studies have shown that hybrid
+approaches, that is a combination of diﬀerent intelligent techniques, have
+great potential and are worth pursuing [29]. Previously, several hybrid fore-
+casting approaches have been proposed, including ARIMA-ANN models
+[1], Fuzzy-ANN-based models [14], Wavelet-ANN-based models [26], Fuzzy-
+expert system-based models [4] among others [6]. For review and biblio-
+graphy of the state-ofthe-art medods for dynamical systems identiﬁcation
+and forecasting readers may refer to the monograph [27].
+
+It is well known that for eﬀective forecasting of power system parameters
+a number of additional, correlated characteristics must be taken into account,
+which can be inﬂuenced by a predictable parameter. For instance, everything
+from salmon migration to forest ﬁres can aﬀect current and future electricity
+prices. But quite often, information about these characteristics is either
+unavailable or limited and contradictory. As a result, scientiﬁc researchers
+and power engineers have to work with only one retrospective predictable
+parameter time series without additional characteristics, which imposes
+limitations on forecasting performance. We consider that, in such a case,
+forecasting performance can be improved by using a transition from a time
+series task to a regression task, when an initial time series is decomposed into
+some components. An investigation of properties of obtained components
+can help to improve the performance of a power system parameter forecast.
+
+3. Proposed Approach
+
+We propose a hybrid machine learning-based algorithm using HHT as a data
+preprocessing technology [16, 17]. Figure 1 the shows general forecasting
+scheme. There are ﬁve main blocks.
+
+Data collection is performed by the SCADA system, which merely identi-
+ﬁes a set of power system parameters. The second block preprocesses input
+data with HHT. HHT is a two-step algorithm; combining empirical mode
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.3
+
+4
+
+V.G. Kurbatsky et al
+
+decomposition (EMD) and the Hilbert transform (HT). After the HHT
+was employed we obtain, through EMD and HT, the sets of intrinsic mode
+functions (IMFs), instantaneous amplitudes and frequencies. These sets are
+used as input values to the next block for feature selection and dimensionality
+reduction. In this block, learning methods are used – Random Forest (RF)
+and Boosting Trees (BT) to rank a variable’s importance [7, 3]. SVM and
+ANN forecasting models with non-linear optimization algorithms are employed
+in the next block for optimal selection of parameters. The last block is used
+for testing and a comparison of obtained forecasting models. As a result,
+an HHT-ANN-SVM-based forecasting system will be able to predict power
+system parameters.
+
+Рис. 1. Block diagram of the proposed hybrid approach scheme.
+
+The main goal of the hybrid forecasting approach development was to
+increase the eﬃciency of forecasting studies, when we deal with limited
+retrospective data and sharply variable, non-stationary time series of power
+system parameters.
+
+4. Decision tree learning algorithms for the issue of variables
+
+importance
+
+Forecasting of wind power, power ﬂows, energy price etc. have become a
+major issue in power systems. Following the needs of today’s competitive
+environment, various techniques are used to forecast wind power, energy
+price and power demand. Over the past decade, diﬀerent machine learning
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.4
+
+Power System Parameters Forecasting
+
+5
+
+algorithms have been investigated for analyzing power systems parameters’
+patterns in order to obtain forecasts in power systems with high accuracy.
+The importance of a variable is the contribution it makes to the success of
+the model. For a predictive model, success means good forecasting. Often the
+forecasting relies mainly on a few variables. A good measure of importance
+reveals those variables. The better the forecasting, the closer the model
+represents reality, and the more plausible it is that the important variables
+represent the true cause of forecasting.
+
+We used the decision tree techniques to rank the importance of variables.
+These algorithms can output a list of predictor variables that they believe
+to be important in predicting the outcome. If nothing else, researchers can
+identify a subset of the data to only include the most “important” variables,
+and use that with another model.
+
+As it is explained in [19], every binary decision tree is separately represented
+
+by a tree structure T, from an input vector (X1, ..., Xp) taking its values in
+(χ1 ∗...∗χp = χ) to a output variable y ∈ Y . Every certain node t represents
+a subset of the space χ, with the root node being χ itself. Construction of
+decision trees usually works top-down, by choosing a variable at each step
+that splits the set of items by the binary test st = (Xm < c). The internal
+node t divides its subset into two subsets1 corresponding to two children
+nodes tL and tR. For a new instance the predicted value ˆY is the label of
+the leaf reached by the instance when it is propagated through the tree.
+Algorithms for constructing decision trees identify at each node t the split
+st = s∗ for which the partition of the Nt node samples into tL and tR
+maximizes the decrease
+
+∆i(s, t) = i(t) − pLi(tL) − pRi(tR)
+
+With regard to variable importance in Random forests, in [3] it was proposed
+to add up the weighted impurity (loss) decreases p(t)i(st, t) for all nodes t
+where Xm is used, averaged over all NT trees in the forest:
+
+Imp(Xm) =
+
+1
+
+N tXT XtǫT :ν(st)=Xm
+
+p(t)i(st, t)
+
+and where p(t) is the proportion Nt
+variable which is used in split st.
+
+N of samples reaching t and ν(st) is a
+
+In our paper we have examined two decision tree learning techniques:
+random forests and gradient boosting trees. We used the decision tree
+techniques to rank the importance of variables. Also we use Gini index,
+which is also called Mean Decrease Gini, as an impurity function. It was
+introduced for decision trees in [2] and later modiﬁed for gradient boosting
+machines [5].
+
+1 More generally, splits are deﬁned by a (not necessarily binary) partition of the range
+
+χm of possible values of a single variable χm
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.5
+
+6
+
+V.G. Kurbatsky et al
+
+5. Case Study
+
+The novel hybrid approach is realized in STATISTICA 6.0. and Matlab. The
+eﬃciency of the developed approach is demonstrated with real time series in
+the following electric power problems: active power ﬂow forecasting for the
+Western Baikal-Amur Mainline (Russia) [16, 15], electricity price forecasting
+for the Australian and Nord Pool Spot (EU) power markets [17], wind speed
+forecasting for the Valentia region (Ireland) [30].
+
+5.1. Valentia wind speed forecasting (Ireland)
+
+5.1.0.1. HHT-ANN-SVM model The initial training data is represented
+by two per-hour time-series: wind speed and wind direction values for 1
+year for the Valentia region. Both time series were decomposed into IMFs
+by the Huang method, and the Hilbert transform was employed to obtain
+the amplitudes, A and frequency, F . The latter along with these HHT
+components were used as input values of the selected HHT-ANN and HHT-
+SVM models. The ﬁnal 48 hours of the data were reserved for calculating
+performance statistics.
+
+Fig. 2 illustrates the feature selection analysis of the modiﬁed Valentia
+wind speed data using regression machine learning algorithms – Boosting
+Trees and Random Forest. As seen, high-frequency components of the initial
+wind speed data (IMF1, IMF2, A1, A2 and F1, F2) have less predictive
+importance (less than 0.3) by comparison with other components, and
+therefore they can be excluded from the trained data.
+
+e
+c
+n
+a
+
+t
+r
+o
+p
+m
+
+I
+
+1,2
+
+1,0
+
+0,8
+
+0,6
+
+0,4
+
+0,2
+
+0,0
+
+ Random Forest
+ Boosting Tree
+
+1
+
+ 
+
+d
+e
+e
+p
+s
+
+3
+
+ 
+
+d
+e
+e
+p
+s
+
+5
+
+ 
+
+d
+e
+e
+p
+s
+
+7
+
+ 
+
+d
+e
+e
+p
+s
+
+9
+
+ 
+
+d
+e
+e
+p
+s
+
+ 
+
+1
+m
+a
+
+ 
+
+3
+m
+a
+
+ 
+
+5
+m
+a
+
+ 
+
+7
+m
+a
+
+1
+
+f
+
+3
+
+f
+
+5
+
+f
+
+7
+
+f
+
+9
+
+f
+
+1
+_
+e
+
+l
+
+g
+n
+a
+
+3
+_
+e
+
+l
+
+g
+n
+a
+
+5
+_
+e
+
+l
+
+g
+n
+a
+
+7
+_
+e
+
+l
+
+g
+n
+a
+
+9
+_
+e
+
+l
+
+g
+n
+a
+
+HHT compoments
+
+d
+e
+r
+_
+e
+
+l
+
+g
+n
+a
+
+ 
+
+Рис. 2. Predictor importance diagram based on Random Forest and Boosting Trees
+learning algorithms for the Valentia wind speed data.
+
+As a result, the following hybrid models are constructed, trained and
+
+tested: a RBF neural network (HHT-ANN model) and epsilon-SVM regression
+model (HHT-SVM model). The RBF network is trained by a 2-Phase-RBF
+scheme (two-step algorithm). After a training-testing process we obtained
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.6
+
+Power System Parameters Forecasting
+
+7
+
+the following errors: train error – 0.251%, validation error – 0.263% and test
+error – 0.257%. The obtained RBF network had the following structure:
+input neurons 25, hidden neurons 162 and output neuron 1.
+
+The polynomial kernel function is used in the epsilon-SVM regression
+model. Let us brieﬂy outline the SVM regression model. Let (xi, yi), i =
+
+1, N , be the input data, namely xi ∈ eX ⊂ X, yi ∈ eY ⊂ Y, X is the set of
+
+input data, Y is the set of values of the desired objective function. SVM
+resolves the regression problem by estimation of the unknown function
+
+yi = f (xi) + εi,
+
+(1)
+
+where εi is error of i-th observation, e.g. in linear case f (x) = hw, xi + b,
+where w ∈ Rn are weights and b ∈ R is the oﬀset parameter. In nonlinear
+case SVM employs φ : Rn → H and instead of (1) the following function f is
+under the estimation f (x) = hw, φ(x)i + b. Determination of parameters is
+reduced to a convex optimization problem, i.e. the the following regularized
+risk functional minimization
+
+(2)
+
+(3)
+
+||w||2 + C
+
+(ξi + ξ ∗
+
+i )# ,
+
+NXi=1
+
+yi − hw, φ(xi)i − b ≤ ε + ξi,
+hw, φ(xi)i + b − yi ≤ ε + ξ ∗
+i ,
+ξi, ξ ∗
+
+i ≥ 0, i = 1, N .
+
+2
+
+min
+
+w,b,ξ,ξ∗" 1
+
+
+Here C > 0 is the capacity constant to trade-oﬀ between the ﬂatness of
+f and the amount up to which deviations larger than ε are tolerated, ξi
+are inseparable observations parameters, ε is losses parameter. The second
+term in the functional (2) penalizes any deviation f (xi) from yi based on
+the constraints (3). This problem is resolved in terms of the dual problem
+
+NPi=1
+
+to the problem (2) – (3) as follows f (x) =
+
+(αi − α∗
+
+i )K(xi, x) + b, where
+
+i ≤ C, and kernel K(xi, x) satisﬁes the conditions of Mercer-
+0 ≤ αi, α∗
+Hilbert-Schmidlt theorem (symmetry and non-negativity [21]) and can be
+represented as follows K(xi, x) = hφ(xi), φ(x)i , which is the RBF is our
+case. Using a 10-fold cross-validation method the following optimal training
+constants and RBF kernel parameters were determined: the capacity constant
+C = 1; ε = 1.3; d = 3;γ = 0.03.
+
+5.1.0.2. FF-ANN-SA model
+In this case example a feed forward ANN
+is tested for performance comparison with the hybrid HHT approach. The
+candidate input vectors for the FF-ANN-SA model were: the current value
+of wind speed at time t; previous values of wind speeds at times (t − 1),
+(t − 3), (t − 6); wind direction at times t and (t − 1); and time of day. All
+input vectors and the target vector were normalized to the range [0, 1], and
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.7
+
+8
+
+V.G. Kurbatsky et al
+
+the data were divided in the ratio 4:1 between training and validation sets,
+with the ﬁnal 48 hours reserved for testing as before.
+
+A hybrid simulated annealing/tabu search algorithm for simultaneous
+optimization of the network structure and weights was applied to the problem
+of 24h ahead prediction of wind speeds [21, 22]. The structural optimization
+element of the algorithm uses a network pruning approach, which involves
+deﬁning an initial, maximal network and then randomly removing intra-
+neuron connections until a more parsimonious network is arrived at (Fig.
+3). The inter-neuron connectivity and weights were optimized using the
+hybrid algorithm prior to subsequent optimization of weights and biases
+using Levenberg-Marquadt backpropagation.
+
+Boosting Trees and Random Forest. As 
+frequency  components  of  the  initial  wind  speed 
+less  predictive 
+by  comparison  with  other 
+from  the 
+
+Iteration 3/25 BSF
+
+Optimised Netw ork
+
+v(t-3)
+v(t-6)
+(cid:84)(t-1)
+v(t-1)
+(cid:84)(t)
+v(t)
+dateno
+
+target
+
+v(t-1)
+
+(cid:84)(t)
+
+v(t)
+
+h
+
+target
+
+input
+layer
+
+hidden
+layer
+
+output
+layer
+
+input
+layer
+
+hidden
+layer
+
+output
+layer
+
+ 
+
+Рис. 3. (a) maximal network; (b) FF-ANN-SA network with optimised structure.
+
+The maximal network was deﬁned as having all seven candidate inputs,
+and a single hidden layer with nine neurons. Therefore, the maximum
+number of inter-neuron connections was N1N2 + N2N3 where N1 is the
+number of inputs, N2 the number of hidden layer neurons, and N3 the
+number of outputs. The cost function speciﬁed for the optimization is based
+on predictive performance and number of inter-neuron connections in the
+network, with a 3:1 weighting ratio between network complexity and per-
+formance. Tan-sigmoidal and linear activation functions were used for the
+hidden and output layer neurons, respectively. The linear activation function
+of the output layer was constrained to produce only positive outputs, in
+order to represent the physical reality of wind speeds which are zero-limited.
+The algorithm was allowed to run for a maximum of 25 iterations, or until
+the GL5 early stopping criterion was satisﬁed [25]. In Table I and Figure 4
+the testing results for a “24 hour ahead” wind speed forecasting are presented
+based on the HHT –ANN, HHT–SVM and FF-ANN-SA models. As shown
+in Table I, the most accurate forecast was given by the hybrid HHT-SVM
+and HHT-ANN models (MAE for 0-24h period – 0.58 ms and 0.55 ms
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.8
+
+0.257%.  The  obtained  RBF  network  had  the  following 
+tput 
+
+-
+validation 
+method  the  following  optimal  training  constants  and  kernel 
+:  the  capacity  constant,  C  =1; 
+
+Power System Parameters Forecasting
+
+GL5 early stopping criterion was satisfied [23]. 
+
+9
+
+ Measured wind speed
+ HHT- ANN model
+ HHT- SVM model
+ FF- ANN- SA model
+
+8
+
+6
+
+4
+
+]
+
+ 
+
+1
+
+-
+
+s
+m
+
+[
+ 
+
+d
+e
+e
+p
+s
+ 
+
+d
+n
+W
+
+i
+
+2
+
+is  tested  for 
+The 
+the 
+; previous values of wind 
+and 
+All input vectors and the target vector 
+divided 
+, with the 
+Рис. 4. “24-hour ahead” wind speed forecast based on hybrid HHT-ANN and HHT-SVM
+models.
+
+Figure 4(cid:17)(cid:3)(cid:179)(cid:21)(cid:23)-(cid:75)(cid:82)(cid:88)(cid:85)(cid:3)(cid:68)(cid:75)(cid:72)(cid:68)(cid:71)(cid:180)(cid:3)(cid:90)(cid:76)(cid:81)(cid:71)(cid:3)(cid:86)(cid:83)(cid:72)(cid:72)(cid:71)(cid:3)(cid:73)(cid:82)(cid:85)(cid:72)(cid:70)(cid:68)(cid:86)(cid:87)(cid:3)(cid:69)(cid:68)(cid:86)(cid:72)(cid:71)(cid:3)on hybrid HHT-
+
+Time (hour)
+
+49
+
+0
+
+1
+
+17
+
+25
+
+33
+
+41
+
+9
+
+ 
+
+Таблица I. Comparison of “24hour ahead” Wind Speed Forecasts on the
+Basis of Hybrid and Conventional Neural Approaches for two subsets of
+the test data.
+
+пїЅ Test
+data
+interval
+
+Error
+ms
+
+Models
+
+HHT-
+
+HHT-
+
+FF-ANN-
+
+ANN
+
+SVM
+
+1
+
+2
+
+0-24h
+
+24-48h
+
+MAE
+RMSE
+MAE
+RMSE
+
+0.55
+0.75
+0.73
+1.05
+
+0.58
+0.88
+0.93
+1.17
+
+SA
+
+2.70
+3.30
+1.54
+1.69
+
+respectively), compared with the conventional approaches: the FF-ANN-SA
+model – 2.70 ms.
+
+The FF-ANN-SA algorithm did not perform as well as the HHT methods
+but identiﬁed the inputs with the most predictive power as: the current wind
+speed, the wind speed of the previous hour, the wind direction and the time
+of day.
+
+5.2. Active power flow forecasting for the Western
+
+Baikal-Amur Mainline (Russia)
+
+The BAM external power supply is carried on the 110 kV power network
+(from “Taishet” to “Lena” substations) and the 220 kV power network (from
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.9
+
+10
+
+V.G. Kurbatsky et al
+
+“ Lena” to “Taksimo” substations). Continuous and random changes in time
+traction load and the presence of a two-way feed greatly complicates the
+forecasting of state variables.
+
+ Measured active power flow
+ HHT- ANN forecast
+ HHT- SVM forecast
+
+36
+
+W
+M
+
+ 
+,
+
+w
+o
+
+l
+f
+ 
+r
+e
+w
+o
+p
+
+ 
+
+e
+v
+
+i
+t
+c
+a
+
+28
+
+20
+
+12
+
+1
+
+9
+
+17
+
+25
+
+33
+
+41
+
+49
+
+Figure 5. Result of (cid:179)(cid:20)(cid:3)(cid:80)(cid:76)(cid:81)(cid:88)(cid:87)(cid:72)(cid:3)(cid:68)(cid:75)(cid:72)(cid:68)(cid:71)(cid:180)(cid:3)(cid:68)(cid:70)(cid:87)(cid:76)(cid:89)(cid:72)(cid:3)(cid:83)(cid:82)(cid:90)(cid:72)(cid:85)(cid:3)(cid:73)(cid:79)(cid:82)(cid:90) forecasting based on 
+
+Рис. 5. Result of “1 minute ahead” active power ﬂow forecasting based on hybrid genetic
+models.
+
+time (minute)
+
+The initial training data is represented by the telemetric data of the per-
+minute active power ﬂow for 3 days (4320 values). The initial time series
+were converted using the HHT algorithm. The obtained HHT components
+are used as input values of the trained machine learning-based forecasting
+models. The MLP neural network model is trained with the Broyden–
+Fletcher–Goldfarb–Shanno algorithm [32]. The radial basis function kernel
+function is used in the epsilon-SVM regression model. Using a 10-fold cross-
+validation method the following optimal training constants and kernel para-
+meters were determined: the capacity constant, C = 10; epsilon, ε = 0.4;
+degree, γ = 0.001. To compare the performance of forecasting approaches,
+the authors also calculated similar forecasts based on conventional ap-
+proaches: Autoregressive integrated moving average (ARIMA), single ANN
+and Multiplicative Exponential Smoothing.
+
+Table II and Fig. 5 summaries the numerical results for a “1 minute
+ahead” active power ﬂow forecasting on based on the HHT-ANN and HHT-
+SVM models. As Table II shows, the most accurate forecast was given by
+the hybrid HHT- SVM and HHT-ANN models (MAPE - 11.6% and 12.5%
+respectively), compared with the conventional approaches: the ANN model
+– 15,8%, the ARIMA model – 22.4 % and Exponential Smoothing – 32.2%.
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.10
+
+Power System Parameters Forecasting
+
+11
+
+Таблица II. Comparison of a “1 minute ahead” Acive
+Power Flow Forecasts on the Basis a Hybrid and
+Conventional Approaches.
+
+пїЅ Forecasting
+
+Error
+
+models
+
+MAPE,
+%
+
+MAE,
+MW
+
+RMSE,
+M W 2
+
+1
+2
+3
+4
+5
+
+HHT-ANN
+HHT-SVM
+ANN (MLP)
+ARIMA
+Exponential
+Smoothing
+
+12,5
+11,6
+15,8
+22.4
+34.2
+
+3.2
+2.9
+6,9
+7.1
+10.8
+
+3,9
+3,5
+33,6
+7.4
+10.9
+
+5.3. Electricity price forecasting for the Australian
+
+market (Australia)
+
+The Australian NEM is a duopoly with a dominant player, resulting in
+electricity price changes associated with the behavior of dominant players,
+and is very diﬃcult to predict in the short term. To assess the forecasting
+performance of diﬀerent models, each dataset is divided into two samples
+for training and testing. The training dataset is used exclusively for model
+development, and then the test sample is used to evaluate the established
+model. To build the forecasting model for each of the considered weeks, the
+information available includes hourly price historical data of the four weeks
+prior to the ﬁrst day of the week whose prices are to be predicted.
+
+Here we present the comparison of forecast performance with the hybrid
+ARIMA-ANN model proposed by Phatchakorn Areekul et al. in [1] and our
+HHT-ANN hybrid using the data of Australian national electricity market,
+New South Wales. By analogy with [1] for the sake of a fair comparison, the
+fourth week in one season is selected.
+
+The RF-BT-based importance analysis is shown that in contrast to pre-
+vious results, in this case study, two ﬁrst high-frequency components of
+electricity price data IMF1 (BT – 1.0, RF – 0,79) and IMF2 (BT – 0.95,
+RF – 0,70) have high prediction importance. Components IMF5 and F2
+have less prediction importance (less than 0.20) and therefore they can be
+excluded from the trained data.
+
+Table III and Figure 6 present the values of RMSE, MAE, and MAPE
+from the price forecasting performance of the proposed hybrid HHT-ANN-
+SVM model and hybrid ARIMA-ANN model. The results demonstrate that
+the proposed HHT-ANN (MAPE – 12.24%) hybrid model could provide
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.11
+
+12
+
+V.G. Kurbatsky et al
+
+Таблица III. Comparison of “1 hour ahead” Electricity
+Price Forecasting on the Basis of Hybrid Approaches.
+
+пїЅ Forecasting
+
+Error
+
+models
+
+MAPE,
+%
+
+MAE,
+MW
+
+RMSE,
+M W 2
+
+1
+2
+3
+
+12,24
+HHT-ANN
+HHT-SVM
+17,16
+ARIMA-ANN 13,03
+
+3.86
+7.16
+7,12
+
+20,12
+23,74
+28,02
+
+a considerable improvement of the electricity price forecasting accuracy
+comparing to the ARIMA-ANN – 13.03% and the HHT-SVM – 17.16%
+hybrid models. It is fair to note that the HHT-SVM displays smaller errors
+indicated by MAE and RMSE (respectively 7.01% and 23.74%) compared
+to the ARIMA-ANN model (7.12% and 28.02%).
+
+ fact electricity price
+ HHT- SVM forecast
+ HHT- ANN forecast
+
+280
+
+240
+
+200
+
+160
+
+120
+
+80
+
+40
+
+h
+*
+W
+M
+
+ 
+,
+
+e
+c
+i
+r
+p
+
+ 
+y
+t
+i
+
+c
+i
+r
+t
+c
+e
+e
+
+l
+
+0
+
+1
+
+15
+
+29
+
+43
+
+57
+
+71
+
+85
+
+99
+
+113
+
+127
+
+141
+
+155
+
+Time (hour)
+
+[4]
+
+[5]
+
+[6]
+
+[7]
+
+[8]
+
+[9]
+
+Figure 6. Forecasting results of May 21-27, 2006 based on hybrid HHT-
+
+Рис. 6. Forecasting results (in AUD/MWh) of May 21-27, 2006 based on hybrid
+HHT-ANN-SVM model.
+
+6. Conclusions
+
+In this paper we studied the problem of short-term forecasting of power
+system parameters. The main contribution is the hybrid machine learning-
+based algorithm using HHT as a data preprocessing technology. The proposed
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.12
+
+Power System Parameters Forecasting
+
+13
+
+approach is based on mode decomposition and a feature analysis of initial
+retrospective data using HHT and BT-RF-based machine learning algorithms
+for a prediction importance evaluation. We employed machine learning tech-
+nologies such as ANNs and SVM as forecasting models.
+
+Forecast performance comparison studies with other conventional, machine
+
+learning and hybrid approaches were also presented, especially with the
+FF-ANN-SA approach. The hybrid ANN-SA optimization method does not
+approach the performance of the HHT methods, as indicated by higher
+RMSE and MAE. Performance of the hybrid optimization ANN method can
+probably be improved with some further adjustments, but it is not expected
+that it will approach the performance of the superior HHT methods due to
+the non-stationarity of the wind speed time series. Also one more circumstance
+should be noted. As for today there are a lot of results in the HHT time
+series processing ﬁeld which are associated with various modiﬁcations of the
+HHT. In [31], a modiﬁcation of the standard approach to the decomposition
+of IMF was suggested, and in [28] there is the variation of this proposed
+modiﬁcation. Both of these approaches are based on the idea of adding
+a white noise to the original signal and the construction of an ensemble of
+diﬀerent sets of components. Averaging over the components of an ensemble
+provides a set of IMF, which contains the components reﬂecting the real
+components of the investigated process more accurately than the original
+EMD. These modiﬁcations of the proposed hybrid machine learning-based
+algorithm will be employed in our future works.
+
+References
+
+1. Areekul Ph. A Hybrid ARIMA and Neural Network Model for Short-Term Price
+Forecasting in Deregulated Market / Ph. Areekul, T. Senjyu, H. Toyama, A. Yona
+// IEEE Trans. Power Syst. 2010. – Vol. 25, No. 1. – Pp. 524–530.
+
+2. Breiman L. Classiﬁcation and Regression Trees / L. Breiman, J. Friedman, R.
+
+Olshen, C. Stone // Belmont California. - Wadsworth. - 1984.
+
+3. Breiman L. Random Forests / L. Breiman // Machine Learning. – 2001. – Vol. 45.
+
+– Pp. 5–32.
+
+4. Damousis I.G. A fuzzy model expert system for the forecasting of wind speed and
+power generation in wind farms / I.G. Damousis, P. Dokopoulos // Proc. of the
+IEEE International Conference on Power Industry Computer Applications PICA
+01. – 2001. – Pp. 63–69.
+
+5. Friedman J. Greedy Function Approximation: A Gradient Boosting Machine / J.
+
+Friedman // Annals of Statistics. - Vol. 29. - 2001.
+
+6. Foley A. M. Current Methods and Advances in Forecasting of Wind Power
+Generation / A. M. Foley, P.G. Leahy, A. Marvuglia, E. J. McKeogh // Renewable
+Energy. – 2012. – Vol. 37, N. 1. – Pp. 1–8.
+
+7. Friedman J.H. Stochastic gradient boosting / J.H. Friedman, // Computational
+
+Statistics and Data Analysis. – 2002. – Vol. 38. – Pp. 367–378.
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.13
+
+14
+
+V.G. Kurbatsky et al
+
+8. Fugon L. Data mining for wind power forecasting / L. Fugon , J. Juban, G.
+Kariniotakis // Proc. the European Wind Energy Conference, Brussels, Belgium,
+Apr. 2008
+
+9. Garcia R.C. A GARCH Forecasting Model to Predict Day-Ahead Electricity Prices
+/ R.C. Garcia, J. Contreras, M. van Akkeren, J. Batista C. Garcia // IEEE
+Transactions on Power Systems. – 2005. – Vol. 20, N. 2.
+
+10. Gerikh V. Application of Neural Network Technologies for Price Forecasting in the
+Liberalized Electricity Market / V. Gerikh, I. Kolosok, V. Kurbatsky, N. Tomin
+// Scien. Journal of Riga Tech. Univer. Ser. “Power and Electrical Engineering”. –
+2009. – Vol. 5. – Pp. 91–96.
+
+11. Glazunova A.M., Forecasting Power System State Variables on the Basis of
+Dynamic State Estimation and Artiﬁcial Neural Networks / A.M. Glazunova //
+Proc. the IEEE Region 8 SIBIRCON-2010, Listvyanka, Russia, 2010
+
+12. Hippert H.S. Neural Networks for Short-Term Load Forecasting: A Review and
+Evaluation / H. Steinherz Hippert, C. Eduardo Pedreira, R. Castro Souza, //
+IEEE Trans. On Power Systems. – 2001. – Vol. 16. – No. 1.
+
+13. Kavasseri R.G. Day-ahead wind speed forecasting using f-ARIMA models / R.G.
+Kavasseri and K. Seetharaman, // Renewable Energy. 2009. – Vol. 34, N. 5. – Pp.
+1388–1393.
+
+14. Khotanzad A.Z. A neuro-fuzzy approach to short-term load forecasting in a price
+sensitive environment / A. Zhou Khotanzad, H. Elragal // IEEE Trans. Power
+Syst. 2002. – Vol. 17, N. 4. – Pp. l273–1282.
+
+15. Kurbatsky V. On the Neural Network Approach for Forecasting of Nonstationary
+Time Series on the Basis of the Hilbert–Huang Transform / V. Kurbatsky, D.
+Sidorov, V. Spiryaev, N. Tomin // Automation and Remote Control. – 2011. – Vol.
+72, N. 7. – Pp. 1405–1414.
+
+16. Kurbatsky V. Hybrid Model for Short-Term Forecasting in Electric Power System
+/ V. Kurbatsky, N. Tomin, D. Sidorov, V. Spiryaev // International Journal of
+Machine Learning and Computing, Vol. 1, No. 2. – 2011. – Pp. 138–147.
+
+17. Kurbatsky V., Sidorov D., Spiryaev V., Tomin N. Forecasting Nonstationary Time
+Series on the Basis of Hilbert-Huang Transform and Machine Learning / V.
+Kurbatsky, D. Sidorov, V. Spiryaev, N. Tomin // Automation and Remote Control,
+Vol. 75, N. 4. – 2014. – Pp.12–16.
+
+18. Leahy P. Structural optimisation and input selection of an artiﬁcial neural network
+for river level prediction / P. Leahy, et al., // Journal of Hydrology. – 2008. – Vol.
+355. – Pp. 192–201.
+
+19. Louppe G. et al. Understanding variable importances in forests of randomized trees
+
+// Advances in Neural Information Processing Systems. - 2013. - Pp. 431-439.
+
+20. Ludermir T.B. An optimization methodology for neural network weights and
+architectures / T. B. Ludermir, et al., // IEEE Trans. on Neural Networks. –
+2006. – Vol. 17. – Pp. 1452-1459.
+
+21. Mercer J. Functions of positive and negative type, and their connection with the
+theory of integral equations / J. Mercer // Phil. Trans. of the Royal Society of
+London. Series A, Containing Papers of a Mathematical or Physical Character. –
+1909. – Vol. 209. – Pp.415–446.
+
+22. Natenberg E.J. Application of a Random Forest Approach to Model Output
+Statistics for use in Day Ahead Wind Power Forecasts / E.J. Natenberg, D. J.
+Gagne II, J. W. Zack, J. Manobianco, G. E. Van Knowe, T. Melino // Proc. the
+Symposium on the Role of Statistical Methods in Weather and Climate Prediction,
+USA, Austin, 2013.
+
+23. Negnevitsky M. Development of an Intelligent System for Preventing Large-Scale
+Emergencies in Power Systems / M. Negnevitsky, N. Voropai, V. Kurbatsky,
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.14
+
+Power System Parameters Forecasting
+
+15
+
+N. Tomin, and D. Panasetsky // IEEE/PES General Meeting, Vancouver, BC,
+Canada, 21-25 July 2013. – Pp. 1–6.
+
+24. Neville P.G. Controversy of Variable Importance in Random Forests / P.G. Neville
+
+// Journal of Uniﬁed Statistical Techniques. - 2013. - Vol. 1, N. 1. - Pp. 15-20
+
+25. Prechelt L. Proben1 - A set of neural network benchmark problems and benchmark
+rules / L. Prechelt // Computer Science Faculty, University of Karlsruhe, Germany,
+Tech.l Rep. 21/94, Sept. 1994.
+
+26. Sinha N. Wavelet-GA-ANN Based Hybrid Model for Accurate Prediction of Short-
+Term Load Forecast / N. Sinha, L.L. Lai, P. Kumar Ghosh, Y. Ma // Proc. the
+IEEE Inter. Conf. on ISAP. – 2007. – Toki Messe, Niigata. – Pp. 1-8.
+
+27. Sidorov D. N. Methods of Analysis of Integral Dynamical Models: Theory and
+
+Applications (Russian) / D.N.Sidorov // ISU Publ. – Irkutsk. 2013. – 293 p.
+
+28. Torres M. E. et al. A complete ensemble empirical mode decomposition with
+adaptive noise //IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP). IEEE, 2011. - Pp. 4144-4147.
+
+29. Voropai N. I. Operating Conditions Forecasting for Monitoring and Control of
+Electric Power Systems / N.I. Voropai, A.M. Glazunova, V.G. Kurbatsky, D.N.
+Sidorov, V.A. Spiryaev, N.V. Tomin // in Proc. the IEEE ISGT Europe 2010
+Conference, Gothenburg, Sweden. – 2010.
+
+30. Watters C.S. Comparison of linear, Kalman ﬁlter and neural network downscaling
+of wind speeds from numerical weather prediction / C. Sibuet Watters, and P.
+Leahy, // Proc. 2011 10th International Conference on Environment and Electrical
+Engineering, Rome, Italia, 2009
+
+31. Wu Z., Huang N. E. Ensemble empirical mode decomposition: a noise-assisted data
+analysis method //Advances in adaptive data analysis. - 2009. - Vol. 1. - N. 1. -
+Pp. 1-41.
+
+32. Zhu C. Algorithm 778: L-BFGS-B, Fortran subroutines for large scale bound
+constrained optimization / C. Zhu, R.H. Byrd, P. Lu, J. Nocedal // ACM
+Transactions on Mathematical Software. – 1997. – Vol. 23, No. 4. – Pp. 550–560.
+
+ISU-2013-PL06042014.tex; 10/04/2014; 0:26; p.15
+
+

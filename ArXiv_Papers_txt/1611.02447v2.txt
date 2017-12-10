@@ -1,0 +1,2906 @@
+6
+1
+0
+2
+
+ 
+
+v
+o
+N
+3
+1
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+7
+4
+4
+2
+0
+
+.
+
+1
+1
+6
+1
+:
+v
+i
+X
+r
+a
+
+Action Recognition Based on Joint Trajectory Maps Using
+
+Convolutional Neural Networks
+
+Pichao Wang1∗, Zhaoyang Li2∗, Yonghong Hou2† and Wanqing Li1
+
+1Advanced Multimedia Research Lab, University of Wollongong, Australia
+2School of Electronic Information Engineering, Tianjin University, China
+
+pw212@uowmail.edu.au,lizhaoyang@tju.edu.cn, houroy@tju.edu.cn, wanqing@uow.edu.au
+
+Abstract
+
+Recently, Convolutional Neural Networks (Con-
+vNets) have shown promising performances in
+many computer vision tasks, especially image-
+based recognition. How to effectively use Con-
+vNets for video-based recognition is still an open
+problem.
+In this paper, we propose a compact,
+effective yet simple method to encode spatio-
+temporal information carried in 3D skeleton se-
+quences into multiple 2D images, referred to as
+Joint Trajectory Maps (JTM), and ConvNets are
+adopted to exploit the discriminative features for
+real-time human action recognition.
+The pro-
+posed method has been evaluated on three public
+benchmarks, i.e., MSRC-12 Kinect gesture dataset
+(MSRC-12), G3D dataset and UTD multimodal hu-
+man action dataset (UTD-MHAD) and achieved the
+state-of-the-art results.
+
+1 Introduction
+Recognition of human actions from RGB-D (Red, Green,
+Blue and Depth) data has attracted increasing attention in
+multimedia signal processing in recent years due to the ad-
+vantages of depth information over conventional RGB video,
+e.g. being insensitive to illumination changes. Since the ﬁrst
+work of such a type [9] reported in 2010, many methods [17;
+12; 23; 10] have been proposed based on speciﬁc hand-
+crafted feature descriptors extracted from depth. With the
+recent development of deep learning, a few methods [18;
+19] have been developed based on Convolutional Neural Net-
+works (ConvNets). A common and intuitive method to rep-
+resent human motion is to use a sequence of skeletons. With
+the development of the cost-effective depth cameras and algo-
+rithms for real-time pose estimation [14], skeleton extraction
+has become more robust and many hand-designed skeleton
+features [22; 24; 5; 20; 16] for action recognition have been
+proposed. Recently, Recurrent Neural Networks (RNNs) [3;
+15; 28; 13] have also been adopted for action recognition
+from skeleton data. The hand-crafted features are always
+shallow and dataset-dependent. RNNs tend to overemphasize
+
+∗Both authors contributed equally to this work
+†Corresponding author
+
+the temporal information especially when the training data is
+not sufﬁcient, leading to overﬁtting. In this paper, we present
+a compact, effective yet simple method that encodes the joint
+trajectories into texture images, referred to as Joint Trajectory
+Maps (JTM), as the input of ConvNets for action recognition.
+In this way, the capability of the ConvNets in learning dis-
+criminative features can be fully exploited [25].
+
+One of the challenges in action recognition is how to prop-
+erly model and use the spatio-temporal information. The
+commonly used bag-of-words model tends to overemphasize
+the spatial information. On the other hand, Hidden Markov
+Model (HMM) or RNN based methods are likely to overstress
+the temporal information. The proposed method addresses
+this challenge in a different way by encoding as much the
+spatio-temporal information as possible (without a need to
+decide which one is important and how important it is) into
+images and letting the CNNs to learn the discriminative one.
+This is the key reason that the proposed method outperformed
+previous ones.
+In addition, the proposed encoding method
+can be extended to online recognition due to the accumulative
+nature of the encoding process. Furthermore, such encoding
+of spatio-temporal information into images allows us to lever-
+age the advanced methods developed for image recognition.
+
+2 The Proposed Method
+The proposed method consists of two major components, as
+illustrated in Fig. 1, three ConvNets and the construction of
+three JTMs as the input of the ConvNets in three orthogonal
+planes from the skeleton sequences. Final classiﬁcation of a
+given test skeleton sequence is obtained through a late fusion
+of the three ConvNets. The main contribution of this paper
+is on the construction of suitable JTMs for the ConvNets to
+learn discriminative features.
+
+We argue that an effective JTM should have the following
+properties to keep sufﬁcient spatial-temporal information of
+an action:
+
+• The joints or group of joints should be distinct in the
+JTM such that the spatial information of the joints is well
+reserved.
+
+• The JTM should encode effectively the temporal evolu-
+tion, i.e. trajectories of the joints, including the direction
+and speed of joint motions.
+
+(cid:54)(cid:78)(cid:72)(cid:79)(cid:72)(cid:87)(cid:82)(cid:81)(cid:3)
+(cid:54)(cid:72)(cid:84)(cid:88)(cid:72)(cid:81)(cid:70)(cid:72)(cid:86)
+
+(cid:41)(cid:85)(cid:82)(cid:81)(cid:87)
+
+(cid:55)(cid:82)(cid:83)
+
+(cid:54)(cid:76)(cid:71)(cid:72)
+
+(cid:38)(cid:82)(cid:81)(cid:89)(cid:49)(cid:72)(cid:87)(cid:86)
+
+(cid:54)(cid:70)(cid:82)(cid:85)(cid:72)(cid:86)
+
+(cid:38)(cid:75)(cid:68)(cid:81)(cid:81)(cid:72)(cid:79)(cid:3)(cid:41)(cid:85)(cid:82)(cid:81)(cid:87)
+
+(cid:38)(cid:82)(cid:81)(cid:89)(cid:49)(cid:72)(cid:87)(cid:86)
+
+(cid:54)(cid:70)(cid:82)(cid:85)(cid:72)(cid:86)
+
+(cid:41)(cid:88)(cid:86)(cid:76)(cid:82)(cid:81)
+
+(cid:36)(cid:70)(cid:70)(cid:88)(cid:85)(cid:68)(cid:70)(cid:92)
+
+(cid:38)(cid:75)(cid:68)(cid:81)(cid:81)(cid:72)(cid:79)(cid:3)(cid:55)(cid:82)(cid:83)
+
+(cid:38)(cid:82)(cid:81)(cid:89)(cid:49)(cid:72)(cid:87)(cid:86)
+
+(cid:54)(cid:70)(cid:82)(cid:85)(cid:72)(cid:86)
+
+(cid:38)(cid:75)(cid:68)(cid:81)(cid:81)(cid:72)(cid:79)(cid:3)(cid:54)(cid:76)(cid:71)(cid:72)
+
+Figure 1: The framework of the proposed method.
+
+• The JTM should be able to encode the difference in mo-
+tion among the different joints or parts of the body to
+reﬂect how the joints are synchronized during the action.
+
+Speciﬁcally, JTM can be recursively deﬁned as follows
+
+J T Mi = J T Mi−1 + f (i)
+
+(1)
+
+where f (i) is a function encoding the spatial-temporal infor-
+mation at frame or time-stamp i. Since JTM is accumulated
+over the period of an action, f (i) has to be carefully deﬁned
+such that the JTM for an action sample has the required prop-
+erties and the accumulation over time has little adverse impact
+on the spatial-temporal information encoded in the JTM. We
+propose in this paper to use hue, saturation and brightness to
+encode the spatial-temporal motion patterns.
+
+Joint Trajectory Maps
+
+2.1
+Assume an action H has n frames of skeletons and
+each skeleton consists of m joints.
+The skeleton se-
+quence is denoted as H = {F1, F2, ..., Fn}, where Fi =
+m} is a vector of the joint coordinates at frame
+{P i
+i, and P i
+j is the 3D coordinates of the jth joint in frame i.
+The skeleton trajectory T for an action of n frames consists
+of the trajectories of all joints and is deﬁned as:
+
+2, ..., P i
+
+1, P i
+
+T = {T1, T2, · · · , Ti, · · · , Tn−1}
+
+(2)
+
+1, ti
+
+where Ti = {ti
+k = P i+1
+trajectory is ti
+is the same as Ti, that is,
+
+2, ..., ti
+k − P i
+
+m} = Fi+1 − Fi and the kth joint
+k. At this stage, the function f (i)
+
+(cid:11)(cid:20)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:21)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:22)(cid:12)
+
+Figure 2: The trajectories projected onto three Cartesian
+planes for action “right hand draw circle (clockwise)” in
+UTD-MHAD [2]: (1) the front plane; (2) the top plane; (3)
+the side plane.
+
+2.2 Encoding Joint Motion Direction
+
+To capture the motion information in the JTM, it is proposed
+to use hue to represent the motion direction. Different kinds
+of colormaps can be chosen. In this paper, the jet colormap,
+ranging from blue to red, and passing through the colors cyan,
+yellow, and orange, was adopted. Assume the color of a joint
+trajectory is C and the length of the trajectory L, and let
+Cl, l ∈ (0, L) be the color at position l. For the qth trajectory
+Tq from 1 to n−1, a color Cl, where l = q
+n−1 ×L is speciﬁed
+to the joint trajectory, making different trajectories have their
+own color corresponding to their temporal positions in the
+sequence as illustrated in Fig. 3. Herein, the trajectory with
+color is denoted as C ti
+k and the function f (i) is updated to:
+
+f (i) = Ti = {ti
+
+1, ti
+
+2, ..., ti
+
+m}.
+
+(3)
+
+f (i) = {C ti
+
+1, C ti
+
+2, ..., C ti
+
+m}.
+
+(4)
+
+The skeleton trajectory is projected to the three orthogonal
+planes, i.e. three Cartesian planes, to form three JTMs. Fig. 2
+shows the three projected trajectories of the right hand joint
+for action “right hand draw circle (clockwise)” in the UTD-
+MHAD dataset. From these JTMs, it can be seen that the
+spatial information of this joint is preserved but the direction
+of the motion is lost.
+
+This ensures that different actions are encoded to a same
+length colormap. The effects can be seen in Fig. 4, sub-
+ﬁgures (1) to (2). Even though the same actions with different
+number of cycles will be encoded into different color shapes,
+the direction can still be reﬂected in color variation and the
+differences between actions can still be captured due to the
+different spatial information.
+
+The trajectory adjusted by saturation is denoted as M Cs ti
+k
+and the function f (i) is reﬁned as:
+
+f (i) = {M Cs ti
+
+1, M Cs ti
+
+2, ..., M Cs ti
+
+m}
+
+(8)
+
+The encoding effect can be seen in Figure 4, sub-ﬁgures (3) to
+(4), where the slow motion becomes diluted (e.g. trajectory
+of knees and ankles) while the fast motion becomes saturated
+(e.g. the green part of the circle).
+
+To further enhance the motion patterns in the JTM, the
+brightness is modulated by the speed of joints so that mo-
+tion information is enhance in the JTM by rapidly changing
+the brightness according to the joint speed. In particular, the
+brightness is set to range from bmin to bmax. Given a trajec-
+j in the HSV color
+tory ti
+space is calculated as
+
+j whose speed is vi
+
+j, its brightness Bi
+
+Bi
+
+j =
+
+vi
+j
+
+max{v}
+
+× (bmax − bmin) + bmin
+
+(9)
+
+The trajectory adjusted by brightness is denoted as M Cb ti
+k
+and the function f (i) is updated to:
+
+f (i) = {M Cb ti
+
+1, M Cb ti
+
+2, ..., M Cb ti
+
+m}.
+
+(10)
+
+The effect can be seen in Fig 4, sub-ﬁgures (3) to (5), where
+texture becomes apparent (e.g. the yellow parts of the circle).
+Finally, motion magnitude is encoded with saturation and
+brightness together. The trajectory is denoted as M Csb ti
+k
+and the function f (i) is reﬁned as:
+
+f (i) = {M Csb ti
+
+1, M Csb ti
+
+2, ..., M Csb ti
+
+m}.
+
+(11)
+
+As illustrated in Fig. 4, sub-ﬁgures(3) to (6), it not only en-
+riches the texture information but also highlights the faster
+motion.
+
+(cid:11)(cid:20)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:21)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:22)(cid:12)
+
+(cid:11)(cid:23)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:24)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:25)(cid:12)
+
+Figure 4: Illustration of visual differences for different tech-
+niques in JTM.
+
+2.5 Training and Recognition
+In the experiments, the layer conﬁguration of the three Con-
+vNets was same as the one in [8]. The implementation was
+
+Figure 3: The trajectories of different body parts have their
+different colors reﬂecting the temporal orders.
+
+2.3 Encoding Body Parts
+To distinguish different body parts, multiple colormaps are
+employed. There are many ways to achieve this. For example,
+each joint is assigned to one colormap, or several groups of
+joints are assigned to different colormaps randomly. Consid-
+ering arms and legs often have more motion than other body
+parts, we empirically generate three colormaps (C1, C2, C3)
+to encode three body parts. C1 is used for the left body part
+(consisting of left shoulder, left elbow, left wrist, left hand,
+left hip, left knee, left ankle and left foot), C2 for the right
+body part ( consisting of right shoulder, right elbow, right
+wrist, right hand, right hip, right knee, right ankle and right
+foot), and C3 for the middle body part (consisting of head,
+neck, torso and hip center). C1 is the same as C, i.e. the jet
+colormap, C2 is a reversed colormap of C1, and C3 is a col-
+ormap ranging from light gray to black. Here, the trajectory
+k, and the
+encoded by multiple colormaps is denoted as M C ti
+function f (i) is formulated as:
+
+f (i) = {M C ti
+
+1, M C ti
+
+2, ..., M C ti
+
+m}.
+
+(5)
+
+The effects can be seen in Fig. 4, sub-ﬁgures (2) to (3).
+
+2.4 Encoding Motion Magnitude
+Motion magnitude is one of the most important factors in hu-
+man motion. For one action, large magnitude of motion usu-
+ally indicates more motion information. In this paper, it is
+proposed to encode the motion magnitude of joints into the
+saturation and brightness components, so that such encod-
+ing not only encodes the motion but also enriches the texture
+of trajectories which are expected to be beneﬁcial for Con-
+vNets to learn discriminative features. For joints with high
+motion magnitude or speed, high saturation will be assigned
+as high motion usually carries more discriminative informa-
+tion. Speciﬁcally, the saturation is set to range from smin
+j in HSV color
+to smax. Given a trajectory, its saturation Si
+space could be calculated as
+
+Si
+
+j =
+
+vi
+j
+
+max{v}
+
+× (smax − smin) + smin
+
+where vi
+
+j is the jth joint speed at the ith frame.
+
+j = kP i+1
+vi
+
+j − P i
+
+j k2
+
+(6)
+
+(7)
+
+derived from the publicly available Caffe toolbox [7] based
+on one NVIDIA GeForce GTX TITAN X card and the pre-
+trained models over ImageNet [8] were used for initialization
+in training. The network weights are learned using the mini-
+batch stochastic gradient descent with the momentum being
+set to 0.9 and weight decay being set to 0.0005. At each itera-
+tion, a mini-batch of 256 samples is constructed by sampling
+256 shufﬂed training JTMs. All JTMs are resized to 256 ×
+256. The learning rate is to 10−3 for ﬁne-tuning and then it
+is decreased according to a ﬁxed schedule, which is kept the
+same for all training sets. For each ConvNet the training un-
+dergoes 100 cycles and the learning rate decreases every 20
+cycles. For all experiments, the dropout regularisation ratio
+was set to 0.5 in order to reduce complex co-adaptations of
+neurons in nets. Three ConvNets are trained on the JTMs in
+the three Cartesian planes and the ﬁnal score for a test sample
+are the averages of the outputs from the three ConvNets. The
+testing process can easily achieved real-time speed (average
+0.36 seconds/sample).
+
+3 Experimental Results
+The proposed method was evaluated on three public bench-
+[4],
+mark datasets: MSRC-12 Kinect Gesture Dataset
+G3D [1] and UTD-MHAD [2]. Experiments were conducted
+to evaluate the effectiveness of each encoding scheme in the
+proposed method and the ﬁnal results were compared with
+the state-of-the-art reported on the same datasets. In all ex-
+periments, the saturation and brightness covers the full range
+(from 0% ∼ 100% mapped to 0 ∼ 255) in HSV color space.
+
+3.1 Evaluation of Different Encoding Schemes
+The effectiveness of different encoding schemes (correspond-
+ing to the sub-ﬁgures in 4) was evaluated on the G3D dataset
+using the front JTM and the recognition accuracies are listed
+in Table 1.
+
+Techniques
+Trajectory: ti
+
+1
+
+1
+
+Trajectory: C ti
+Trajectory: M C ti
+Trajectory: M Cs ti
+Trajectory: M Cb ti
+Trajectory: M Csb ti
+
+1
+
+1
+
+1
+
+1
+
+Accuracy (%)
+
+63.64%
+74.24%
+78.48%
+81.82%
+82.12%
+85.45%
+
+Table 1: Comparisons of the different encoding schemes on
+the G3D dataset using the JTM projected to the front plane
+alone.
+
+From this Table it can be seen that the proposed encod-
+ing techniques effectively captures the spatio-temporal infor-
+mation and the ConvNets are able to learn the discriminative
+features from the JTM for action recognition.
+
+3.2 MSRC-12 Kinect Gesture Dataset
+MSRC-12 [4] is a relatively large dataset for gesture/action
+recognition from 3D skeleton data captured by a Kinect sen-
+sor. The dataset has 594 sequences, containing 12 gestures by
+30 subjects, 6244 gesture instances in total. The 12 gestures
+
+are: “lift outstretched arms”, “duck”, “push right”, “goggles”,
+“wind it up”, “shoot”, “bow”, “throw”, “had enough”, “beat
+both”, ”change weapon” and “kick”. For this dataset, cross-
+subjects protocol is adopted, that is odd subjects for training
+and even subjects for testing. Table 2 lists the performance of
+the proposed method and the results reported before.
+
+Method
+HGM [21]
+
+ELC-KSVD [27]
+
+Cov3DJ [6]
+
+Proposed Method
+
+Accuracy (%)
+
+66.25%
+90.22%
+91.70%
+93.12%
+
+Table 2: Comparison of the proposed method with the exist-
+ing methods on the MSRC-12 Kinect gesture dataset.
+
+The confusion matrix is shown in ﬁgure 5. From the con-
+fusion matrix we can see that the proposed method distin-
+guishes most of actions very well, but it is not very effective
+to distinguish “goggles” and “had enough” which shares the
+similar appearance of JTM probably caused by 3D to 2D pro-
+jection.
+
+lift outstretched arms
+
+0.90
+
+0.02
+
+duck
+
+push right
+
+goggles
+
+wind it up
+
+shoot
+
+bow
+
+throw
+
+had enough
+
+change weapon
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+beat both
+
+0.02
+
+kick
+
+ 
+
+1.00
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.06
+
+ 
+
+ 
+
+0.01
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.99
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.72
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.01
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.07
+
+0.94
+
+ 
+
+0.96
+
+ 
+
+ 
+
+0.01
+
+0.08
+
+0.02
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.94
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.02
+
+ 
+
+0.01
+
+ 
+
+ 
+
+ 
+
+0.19
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.97
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.94
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.03
+
+ 
+
+ 
+
+ 
+
+0.04
+
+0.01
+
+ 
+
+ 
+
+0.01
+
+ 
+
+ 
+
+ 
+
+0.04
+
+0.01
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.01
+
+ 
+
+0.06
+
+0.01
+
+0.04
+
+ 
+
+0.86
+
+0.01
+
+ 
+
+ 
+
+ 
+
+0.94
+
+0.01
+
+ 
+
+0.99
+
+ 
+
+0.01
+
+Figure 5: The confusion matrix of the proposed method for
+MSRC-12 Kinect gesture dataset.
+
+3.3 G3D Dataset
+Gaming 3D Dataset (G3D) [1] focuses on real-time action
+recognition in gaming scenario. It contains 10 subjects per-
+forming 20 gaming actions: “punch right”, “punch left”,
+“kick right”, “kick left”, “defend”, “golf swing”, “tennis
+swing forehand”, “tennis swing backhand”, “tennis serve”,
+“throw bowling ball”, “aim and ﬁre gun”, “walk”, “run”,
+“jump”, “climb”, “crouch”, “steer a car”, “wave”, “ﬂap” and
+“clap”. For this dataset, the ﬁrst 4 subjects were used for
+training, the ﬁfth for validation and the remaining 5 subjects
+for testing as conﬁgured in [11].
+
+Table 3 compared the performance of the proposed method
+
+and that reported in [11].
+
+The confusion matrix is shown in ﬁgure 6. From the confu-
+sion matrix we can see that the proposed method recognizes
+most of actions well. Compared with LRBM, our proposed
+method outperforms LRBM in spatial information mining.
+
+Method
+
+LRBM [11]
+
+Proposed Method
+
+Accuracy (%)
+
+90.50%
+94.24%
+
+Table 3: Comparison of the proposed method with previous
+methods on G3D Dataset.
+
+LRBM confused mostly the actions between “tennis swing
+forehand” and “bowling”, “golf” and “tennis swing back-
+hand”, “aim and ﬁre gun” and “wave”, “jump” and “walk”,
+however, these actions were quite well distinguished in our
+method because of the good spatial information exploitation
+in our method. As for “aim and ﬁre gun” and “wave”, our
+method could not distinguish them well before encoding the
+motion magnitude, which means the temporal information
+enhancement procedure is effective. However, in our method,
+“tennis swing forehand” and “tennis swing backhand” are
+confused. It’s probably because the front and side projections
+of body shape of the two actions are too similar, and scores
+fusion is not very effective to improve each other.
+
+X”, “draw triangle”, and “draw circle”), daily activities (e.g.
+“knock on door”, “sit to stand” and “stand to sit”) and train-
+ing exercises (e.g. “arm curl”, “lung” and “squat”). For this
+dataset, cross-subjects protocol is adopted as in [2], namely,
+the data from the subject numbers 1, 3, 5, 7 used for training
+while 2, 4, 6, 8 used for testing.
+
+Table 4 compared the performance of the proposed method
+
+and that reported in [2].
+
+Method
+
+Kinect & Inertial [2]
+Proposed Method
+
+Accuracy (%)
+
+79.10%
+85.81%
+
+Table 4: Comparison of the proposed method with previous
+methods on UTD-MHAD Dataset.
+
+Please notice that the method used in [2] is based on Depth
+
+and Inertial sensor data, not skeleton data alone.
+
+punch right
+punch left
+kick right
+kick left
+defend
+golf swing
+tennis swing forehand
+tennis swing backhand
+tennis serve
+throw bowling ball
+aim and fire gun
+walk
+jogging
+jump
+climb
+crouch
+steer a car
+wave
+flap
+clap
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.93
+
+ 
+
+1.00
+
+1.00
+
+1.00
+
+1.00
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.07
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.07
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.93
+
+0.19
+
+0.67
+
+0.07
+
+0.07
+
+0.19
+
+ 
+
+0.67
+
+0.14
+
+0.07
+
+0.80
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.02
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.07
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.07
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.07
+
+1.00
+
+0.98
+
+0.93
+
+0.07
+
+1.00
+
+1.00
+
+1.00
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+swipe left
+swipe right
+wave
+clap
+throw
+arm_cross
+basketball_shoot
+draw x
+draw circle CW
+draw circle CCW
+draw triangle
+bowling
+boxing
+baseball swing
+tennis swing
+arm curl
+tennis serve
+push
+knock
+catch
+pickup throw
+jog
+walk
+sit2stand
+stand2sit
+lunge
+squat
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+0.06
+
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.19
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+1.00
+
+ 
+
+ 
+
+1.00
+
+ 
+ 
+
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+0.19
+
+0.69
+
+ 
+
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+
+0.06
+
+0.13
+
+0.81
+
+ 
+
+0.75
+
+0.06
+0.94
+0.25
+0.06
+
+0.56
+
+0.88
+
+1.00
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.94
+
+1.00
+
+0.25
+
+0.75
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+0.06
+
+ 
+
+0.06
+
+ 
+ 
+ 
+ 
+
+0.06
+
+ 
+ 
+
+0.06
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.25
+
+ 
+ 
+ 
+ 
+ 
+
+0.06
+
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.75
+
+0.06
+
+0.94
+
+ 
+
+0.75
+
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+
+0.06
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+
+0.19
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.88
+
+0.06
+0.75
+
+ 
+ 
+
+ 
+ 
+
+0.88
+
+0.06
+
+ 
+ 
+ 
+
+0.06
+
+ 
+
+0.06
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.06
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.13
+
+ 
+
+0.06
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.06
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+
+0.13
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.06
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.38
+
+0.56
+0.88
+
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.06
+
+1.00
+
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+0.50
+0.07
+
+0.50
+0.93
+
+1.00
+
+1.00
+
+1.00
+
+ 
+
+1.00
+
+1.00
+
+1.00
+
+0.93
+
+ 
+
+1.00
+
+0.07
+
+ 
+
+0.93
+
+Figure 6: The confusion matrix of the proposed method for
+G3D Dataset.
+
+3.4 UTD-MHAD
+UTD-MHAD [2] is one multimodal action dataset, captured
+by one Microsoft Kinect camera and one wearable inertial
+sensor. This dataset contains 27 actions performed by 8 sub-
+jects (4 females and 4 males) with each subject perform each
+action 4 times. After removing three corrupted sequences,
+the dataset includes 861 sequences. The actions are: “right
+arm swipe to the left”, “right arm swipe to the right”, “right
+hand wave”, “two hand front clap”, “right arm throw”, “cross
+arms in the chest”, “basketball shoot”, “right hand draw x”,
+“right hand draw circle (clockwise)”, “right hand draw cir-
+cle (counter clockwise)”, “draw triangle”, “bowling (right
+hand)”, “front boxing”, “baseball swing from right”, “tennis
+right hand forehand swing”, “arm curl (two arms)”, “tennis
+serve”, “two hand push”, “right hand know on door”, “right
+hand catch an object”, “right hand pick up and throw”, “jog-
+ging in place”, “walking in place”, “sit to stand”, “stand to
+sit”, “forward lunge (left foot forward)” and “squat (two arms
+stretch out)”. It covers sport actions (e.g. “bowling”, “ten-
+nis serve” and “baseball swing”), hand gestures (e.g. “draw
+
+Figure 7: The confusion matrix of the proposed method for
+UTD-MHAD.
+
+The confusion matrix is shown in ﬁgure 7. This dataset is
+much more challenging compared to previous two datasets.
+From the confusion matrix we can see that the proposed
+method can not distinguish some actions well, for example,
+“jog” and “walk”. A probable reason is that the proposed
+encoding process is also a normalization process along tem-
+poral axis (Section 3.2). The actions “jog” and “walk” will
+be normalized to have a very similar JTM after the encoding.
+
+4 Conclusion
+
+This paper addressed the problem of human action recogni-
+tion by applying ConvNets to skeleton sequences. We pro-
+posed an effective method to encode the joints trajectories to
+JTM where the motion information can be encoded into tex-
+ture patterns. ConvNets learn discriminative features from
+these maps for real-time human action recognition. The ex-
+perimental results showed that the techniques for encoding
+worked effectively. The proposed method can beneﬁt from
+effective data augmentation process which would be our fu-
+ture work.
+
+5 Acknowledgments
+This work was supported by the National Natural Science
+Foundation of China (grant 61571325) and Key Projects
+in the Tianjin Science & Technology Pillar Program (grant
+15ZCZD GX001900).
+
+References
+[1] V. Bloom, D. Makris, and V. Argyriou. G3D: A gam-
+ing action dataset and real time action recognition eval-
+uation framework.
+In Proc. IEEE Computer Society
+Conference on Computer Vision and Pattern Recogni-
+tion Workshops (CVPRW), pages 7–12, 2012.
+
+[2] C. Chen, R. Jafari, and N. Kehtarnavaz. Utd-mhad: A
+multimodal dataset for human action recognition utiliz-
+ing a depth camera and a wearable inertial sensor. In Im-
+age Processing (ICIP), 2015 IEEE International Con-
+ference on, pages 168–172, 2015.
+
+[3] Y. Du, W. Wang, and L. Wang. Hierarchical recurrent
+neural network for skeleton based action recognition. In
+Proc. IEEE Conference on Computer Vision and Pattern
+Recognition (CVPR), pages 1110–1118, 2015.
+
+[4] S. Fothergill, H. M. Mentis, S. Nowozin, and P. Kohli.
+Instructing people for training gestural interactive sys-
+tems. In ACM Conference on Computer-Human Inter-
+action (ACM HCI), 2012.
+
+[5] M. A. Gowayyed, M. Torki, M. E. Hussein, and M. El-
+Saban. Histogram of oriented displacements (HOD):
+Describing trajectories of human joints for action recog-
+nition. In Proc. International Joint Conference on Arti-
+ﬁcial Intelligence (IJCAI), pages 1351–1357, 2013.
+
+[6] M. E. Hussein, M. Torki, M. A. Gowayyed, and M. El-
+Saban. Human action recognition using a temporal hi-
+erarchy of covariance descriptors on 3D joint locations.
+In Proc. International Joint Conference on Artiﬁcial In-
+telligence (IJCAI), pages 2466–2472, 2013.
+
+[7] Y. Jia, E. Shelhamer, J. Donahue, S. Karayev, J. Long,
+R. B. Girshick, S. Guadarrama, and T. Darrell. Caffe:
+Convolutional architecture for fast feature embedding.
+In Proc. ACM international conference on Multimedia
+(ACM MM), pages 675–678, 2014.
+
+[8] A. Krizhevsky, I. Sutskever, and G. E. Hinton. Imagenet
+classiﬁcation with deep convolutional neural networks.
+In Proc. Annual Conference on Neural Information Pro-
+cessing Systems (NIPS), pages 1106–1114, 2012.
+
+[9] W. Li, Z. Zhang, and Z. Liu. Action recognition based
+on a bag of 3D points. In Proc. IEEE Computer Society
+Conference on Computer Vision and Pattern Recogni-
+tion Workshops (CVPRW), pages 9–14, 2010.
+
+[10] C. Lu, J. Jia, and C.-K. Tang. Range-sample depth fea-
+ture for action recognition. In Proc. IEEE Conference
+on Computer Vision and Pattern Recognition (CVPR),
+pages 772–779, 2014.
+
+[11] S. Nie, Z. Wang, and Q. Ji. A generative restricted boltz-
+mann machine based method for high-dimensional mo-
+
+tion data modeling. Computer Vision and Image Under-
+standing, pages 14–22, 2015.
+
+[12] O. Oreifej and Z. Liu. HON4D: Histogram of ori-
+ented 4D normals for activity recognition from depth
+sequences. In Proc. IEEE Conference on Computer Vi-
+sion and Pattern Recognition (CVPR), pages 716–723,
+2013.
+
+[13] A. Shahroudy, J. Liu, T.-T. Ng, and G. Wang. NTU
+RGB+ D: A large scale dataset for 3D human activity
+analysis. In Proc. IEEE Conference on Computer Vision
+and Pattern Recognition (CVPR), 2016.
+
+[14] J. Shotton, A. Fitzgibbon, M. Cook, T. Sharp, M. Finoc-
+chio, R. Moore, A. Kipman, and A. Blake. Real-time
+human pose recognition in parts from single depth im-
+ages.
+In Proc. IEEE Conference on Computer Vision
+and Pattern Recognition (CVPR), pages 1297–1304,
+2011.
+
+[15] V. Veeriah, N. Zhuang, and G.-J. Qi. Differential
+In
+recurrent neural networks for action recognition.
+Proc. IEEE International Conference on Computer Vi-
+sion (ICCV), pages 4041–4049, 2015.
+
+[16] R. Vemulapalli, F. Arrate, and R. Chellappa. Human ac-
+tion recognition by representing 3D skeletons as points
+in a lie group.
+In Proc. IEEE Conference on Com-
+puter Vision and Pattern Recognition (CVPR), pages
+588–595, 2014.
+
+[17] J. Wang, Z. Liu, Y. Wu, and J. Yuan. Mining actionlet
+ensemble for action recognition with depth cameras. In
+Proc. IEEE Conference on Computer Vision and Pattern
+Recognition (CVPR), pages 1290–1297, 2012.
+
+[18] P. Wang, W. Li, Z. Gao, C. Tang, J. Zhang, and P. O.
+Ogunbona. Convnets-based action recognition from
+depth maps through virtual cameras and pseudocolor-
+ing. In Proc. ACM international conference on Multi-
+media (ACM MM), pages 1119–1122, 2015.
+
+[19] P. Wang, W. Li, Z. Gao, J. Zhang, C. Tang, and P. Ogun-
+bona. Action recognition from depth maps using deep
+convolutional neural networks. Human-Machine Sys-
+tems, IEEE Transactions on, PP(99):1–12, 2015.
+
+[20] P. Wang, W. Li, P. Ogunbona, Z. Gao, and H. Zhang.
+Mining mid-level features for action recognition based
+on effective skeleton representation. In Proc. Interna-
+tional Conference on Digital Image Computing: Tech-
+niques and Applications (DICTA), pages 1–8, 2014.
+
+[21] S. Yang, C. Yuan, W. Hu, and X. Ding. A hierarchi-
+cal model based on latent dirichlet allocation for action
+recognition. In Pattern Recognition (ICPR), 2014 22nd
+International Conference on, pages 2613–2618. IEEE,
+2014.
+
+[22] X. Yang and Y. Tian. Eigenjoints-based action recogni-
+tion using Naive-Bayes-Nearest-Neighbor. In Proc. In-
+ternational Workshop on Human Activity Understand-
+ing from 3D Data (HAU3D) (CVPRW), pages 14–19,
+2012.
+
+[23] X. Yang and Y. Tian. Super normal vector for activity
+recognition using depth sequences. In Proc. IEEE In-
+ternational Conference on Computer Vision and Pattern
+Recognition (CVPR), pages 804–811, 2014.
+
+[24] M. Zanﬁr, M. Leordeanu, and C. Sminchisescu. The
+moving pose: An efﬁcient 3D kinematics descriptor
+for low-latency action recognition and detection.
+In
+Proc. IEEE International Conference on Computer Vi-
+sion (ICCV), pages 2752–2759, 2013.
+
+[25] M. D. Zeiler and R. Fergus. Visualizing and understand-
+In Proc. European Con-
+ing convolutional networks.
+ference on Computer Vision (ECCV), pages 818–833.
+2014.
+
+[26] J. Zhang, W. Li, P. O. Ogunbona, P. Wang, and C. Tang.
+Rgb-d-based action recognition datasets: A survey. Pat-
+tern Recognition, 60:86–105, 2016.
+
+[27] L. Zhou, W. Li, Y. Zhang, P. Ogunbona, D. T. Nguyen,
+and H. Zhang. Discriminative key pose extraction us-
+ing extended lc-ksvd for action recognition.
+In Proc.
+International Conference on Digital Image Comput-
+ing: Techniques and Applications (DICTA), pages 1–8.
+IEEE, 2014.
+
+[28] W. Zhu, C. Lan, J. Xing, W. Zeng, Y. Li, L. Shen, and
+X. Xie. Co-occurrence feature learning for skeleton
+based action recognition using regularized deep LSTM
+networks.
+In The 30th AAAI Conference on Artiﬁcial
+Intelligence (AAAI), 2016.
+
+

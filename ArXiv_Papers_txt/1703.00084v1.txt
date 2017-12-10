@@ -1,0 +1,1092 @@
+Multi-Sensor Data Pattern Recognition for Multi-Target Localization: A
+
+Machine Learning Approach
+
+Kasthurirengan Suresh, Samuel Silva, Johnathan Votion, and Yongcan Cao
+
+7
+1
+0
+2
+
+ 
+
+b
+e
+F
+8
+2
+
+ 
+
+ 
+ 
+]
+
+Y
+S
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+4
+8
+0
+0
+0
+
+.
+
+3
+0
+7
+1
+:
+v
+i
+X
+r
+a
+
+Abstract— Data-target pairing is an important step towards
+multi-target localization for the intelligent operation of un-
+manned systems. Target localization plays a crucial role in nu-
+merous applications, such as search, and rescue missions, trafﬁc
+management and surveillance. The objective of this paper is to
+present an innovative target location learning approach, where
+numerous machine learning approaches,
+including K-means
+clustering and supported vector machines (SVM), are used
+to learn the data pattern across a list of spatially distributed
+sensors. To enable the accurate data association from different
+sensors for accurate target localization, appropriate data pre-
+processing is essential, which is then followed by the application
+of different machine learning algorithms to appropriately group
+data from different sensors for the accurate localization of mul-
+tiple targets. Through simulation examples, the performance of
+these machine learning algorithms is quantiﬁed and compared.
+
+Index Terms— Sensor fusion, Target localization, Machine
+
+learning, Pattern recognition
+
+I. INTRODUCTION
+
+Conducting surveillance missions using sensor networks is
+essential for many civilian and military applications, such as
+disaster response [1], border patrol [2], force protection [3],
+[4], combat missions [5], and trafﬁc management [6]. One
+main task in these missions is to collect data regarding
+the operational environment and then obtain intelligence
+information from the data. Because the sensors used to
+collect data are often spatially distributed, extracting data
+patterns becomes critical to obtain accurate knowledge about
+the underlying activities.
+
+The existing work on identifying data patterns from spa-
+tially distributed sensors is focused on developing probabilis-
+tic reasoning techniques without recognizing the speciﬁc data
+association or data patterns. Existing approaches for multi-
+target state estimation can be characterized by two features:
+a data-to-target assignment algorithm, and an algorithm for
+single target state estimation under pre-existing data-to-target
+associations. With unknown data association, probabilistic
+data association (PDA) [7] and multiple hypothesis tracking
+(MHT) [8] are two common approaches where dense mea-
+surements are available. In the study of trafﬁc patterns, the
+existing research is focused on estimating trafﬁc density and
+smart routes [6] without analyzing the data pattern to obtain
+better knowledge of trafﬁc information.
+
+The main limitation of the existing research is the lack
+of work that addresses data patterns in spatially distributed
+sensors, which is crucial in obtaining accurate modeling for
+
+The authors are with the Department of Electrical and Computer Engi-
+
+neering, The University of Texas, San Antonio, TX 78249.
+
+Corresponding Author: Yongcan Cao (yongcan.cao@utsa.edu)
+
+the multi-target localization problem. For example, if two
+observations/measurements are obtained for a single target,
+the estimated location of the target can be better calculated if
+such a data correlation can be identiﬁed before estimation. If
+the correlation is not identiﬁed, the target’s location cannot
+be estimated accurately. Although, an incorrect estimation
+of total target numbers is expected. Existing techniques do
+not take into consideration the critical data patterns in multi-
+target localization. Our proposed method leverages machine
+learning tools to uncover the data patterns in order to provide
+accurate multi-target localization and state estimation.
+
+In this paper, we consider the multi-target data pattern
+recognition problem where a number of targets move along a
+known road network with numerous sensors placed at unique
+random known locations. The target’s data is recorded as it
+passes by the sensor’s location. It is assumed that the sensors
+are unable to identify individual targets. The objective of this
+paper is to develop algorithms that can effectively extract and
+associate correlated data to the same target. More precisely,
+we seek to classify all data obtained from spatially distributed
+sensors into datasets and associate each of these sets to one
+target. To achieve this objective, we ﬁrst generate datasets
+for targets with different motions. Then a pre-processing
+algorithm is developed that allows the original dataset to be
+translated into another form that yields classiﬁable datasets.
+Numerous machine learning algorithms, including K-means
+clustering and support vector machines (SVM), as well as
+their variations, are used to classify the translated dataset.
+These algorithms are evaluated via numerous simulation
+studies that suggest some well-behaved algorithms.
+
+The remainder of this paper is organized as follows. In
+Section II, two standard clustering algorithms: K-means and
+support vector machine (SVM) are reviewed. Section III
+gives the problem formulation. Section IV describes the pro-
+posed algorithms that classify datasets for different targets.
+Section V provides numerous simulations that illustrate the
+performance of the proposed algorithms. Finally, Section VI
+provides a brief summary and discusses some potential future
+work.
+
+II. PRELIMINARIES
+
+An important form of learning from observations is to
+conduct classiﬁcation of datasets associated with these ob-
+servations. Traditional techniques generally arrange objects
+or data based on their numerical measure and consequently
+their similarity/disposition on a feature graph [9]. Among the
+several techniques in machine learning, K-means and SVM
+
+ΦY (C) =
+
+d2(y,C) =
+
+(cid:107)y − ci(cid:107)2 .
+
+(2)
+
+min
+
+i=1,...,k
+
+And we obtain H(w, b, ξ) from the optimization described
+as
+
+are two popular classiﬁcation algorithms that will be used in
+the context of the paper.
+
+A. K-means clustering
+
+K-means is one of the most popular data processing
+algorithms. It is a simple unsupervised learning algorithm
+used to solve the clustering problem. The K-means method
+seeks to minimize the average squared distance between
+points in the same cluster [10].
+Let X = {x1, ..., xn} be a set of n points in a d-
+dimensional Euclidean space. Let k denote the number of
+clusters. The Euclidean distance between two points xi and
+xj is deﬁned by (cid:107)xi − xj(cid:107), where (cid:107)·(cid:107) is the 2-norm. For
+a subset Y ⊆ X and a point x, the distance between them
+is deﬁned as d(x, Y ) = miny∈Y (cid:107)x − y(cid:107) [11]. The centroid
+for any subset Y ⊆ X is denoted as Ω and is deﬁned as
+
+Ω(Y ) =
+
+1
+|Y |
+
+y.
+
+(1)
+
+A cost value is assigned to each centroid and is related to the
+distance between the position of the centroid and each point
+in X. Let C = {c1, ..., ck} be a set of k centroid positions.
+The cost of Y with respect to C is deﬁned as
+
+(cid:88)
+
+y∈Y
+
+(cid:88)
+
+y∈Y
+
+(cid:88)
+
+y∈Y
+
+The K-means algorithm seeks to ﬁnd a set C of k centers
+to minimize ΦX (C). The label/cluster to which each data
+sample belongs is deﬁned as the one to which the distance
+between ci and X is smaller than to any cj, j (cid:54)= i.
+
+The optimal solution to the k-means problem uses Lloyd’s
+iteration [12]. To achieve the placement of the centroids that
+lead to a minimum cost ΦY (C), the centroids’ position is
+updated at each iteration. At the ﬁrst loop, the k centroids are
+placed alongside with the data points at random positions.
+Given the position of these centroids, for each data point
+xi we ﬁnd the nearest centroid Ω. After going through the
+entire dataset, a cluster Ck = {x1, ...xu} is formed containing
+all xi which its closer cluster is Ck. Having all clusters
+being formed, the position of the centroid is then recalculated
+according to (1). For the next iteration, the current centroid
+position is used to form new Ck respecting the fact that
+xi ∈ Ck if and only if, its distance d(xi,Ck) ≤ d(xi,Cu) ∀u.
+Such an iterations continues until no signiﬁcant change is
+observed on the centroid positions. Given the simplicity of
+the algorithm, the convergence is expected to be achieved in
+a few iterations.
+It has been shown in [10] that with proper deﬁnition of
+initial set C the accuracy and convergence can be drastically
+improved. Section IV will describe this idea further.
+
+algorithms because it not only aims at simply minimizing the
+empirical classiﬁcation error, but also increasing the dimen-
+sional feature space to optimize the classiﬁcation function
+[13].
+
+The SVM implements an idea where the input vectors are
+mapped into a high-dimensional feature space through an a
+priori nonlinear mapping, identiﬁed later as ‘kernel’. In this
+high-dimensional space a linear surface can be chosen in
+order to ensure generalization of the network [14].
+
+Given a dataset D with N samples, consisting of elements
+j=1, x ∈ Rd is the jth sample and
+in the pattern (xj, yj)N
+yj ∈ (0, 1) is the corresponding class label. Given these
+two classes, the objective is to design a hyperplane able to
+divide them with the largest margin between classes possible
+[15]. Nonlinear SVM’s are often used when a data is not
+linearly separable in the input space Rd. In this case the
+nonlinear SVM maps the feature vector x ∈ Rd into a high
+(up to inﬁnity) dimensional Euclidean space, H, by using
+the nonlinear function Φ : Rd (cid:55)→ H. For this nonlinear
+relation, the decision boundary for a 2 class problem, takes
+the following form as
+
+w · Φ(x) + b = 0.
+
+(3)
+
+(cid:88)
+
+min
+w,b,ξ
+subject to
+
+ξi.
+
+(cid:107)w(cid:107)2 + C
+1
+2
+yi(w · Φ(xi + b) + ξi ≥ 1 and ξi ≥ 0
+f or i = 1, ..., N.
+
+(4)
+
+Notice that C is a variable that compensates for the size
+of w and the sum of ξ in order to avoid over ﬁtting. For
+numerical computation purposes, the dual form of (4) is used.
+This dual form is deﬁned in (5)-(8) as
+
+N(cid:88)
+N(cid:88)
+
+1
+2
+
+i,j=1
+
+yiyjαiαjK(xi, xj) − N(cid:88)
+
+i=1
+
+yiαi = 0 and 0 ≤ αi ≤ C,
+
+min
+
+α
+
+subject to
+
+i=1
+f or i = 1, .., N
+
+where
+
+K(xi, xj) = Φ(xi) · Φ(xj)
+
+N(cid:88)
+N(cid:88)
+
+i=1
+
+w =
+
+f (x) =
+
+αiΦ(xi)
+
+yiαiK(xi, xj) + b.
+
+αi,
+
+(5)
+
+(6)
+
+(7)
+
+(8)
+
+B. Support Vector Machines (SVM)
+
+i=1
+
+Support Vector Machines is a supervised learning method
+used commonly for classiﬁcation and regression. It consists
+of minimizing the empirical classiﬁcation error while maxi-
+mizing the geometric margin in classiﬁcation. This approach
+differs from most of the commonly used machine learning
+
+Eq. (8) is used as the decision function, deﬁning which
+label should be applied to a speciﬁc test sample. If f (x) ≤
+0 the prediction is labeled +1, otherwise the prediction is
+labeled 0. In this case, the binary choice of labels can be
+chosen to be anything that ones need to classify. Because
+
+this paper deals with several labels, an approach of “one-
+vs-all”, derived from the standard SVM, will be shown in
+section IV.
+
+III. PROBLEM FORMULATION
+
+In the context of this paper, we consider a 1-dimensional
+road, having a length denoted as D ∈ R>0. Let S =
+{S1,··· , SNS} be a set of NS ∈ Z>0 sensors placed along
+the road at the locations R = {R1,··· , RNS}, where each
+element in R is unique and valued in the range (0, D).
+
+As a target passes the sensor,
+
+the sensor collects the
+target’s information. This information includes the velocity
+of the target (denoted as v) and a timestamp representing
+when the target passes the sensor (denoted as t). The in-
+formation collected about the target is disassociated with the
+target, meaning that the target for which the information was
+received cannot be directly identiﬁed using the information.
+Let A = {A1,··· , ANA} represent a set of NA ∈ Z>0
+targets. It is assumed that each target passes each sensor ex-
+actly one time. The sensors store their collected information
+in the matrices V ∈ RNA×NS and T ∈ RNA×NS . The mth
+velocity and timestamp measurements obtained by the nth
+sensor is recorded as Vn,m ∈ V and Tn,m ∈ T , respectively
+(where n ∈ {1,··· , NS} and m ∈ {1,··· , NA}). Let
+the information X ⊂ R1 be the collection of velocity
+data V and timestamp information T , organized such that
+n ∈ X is a set of data conaining the
+each element X m
+values Vn,m and Tn,m. More precisely, the set of all ob-
+servations from the sensor network is represented as X =
+{X 1
+
+1 , ..., X NA
+
+, ..., X NA
+NS
+
+1 , X 2
+
+}.
+
+1
+
+Fig. 1: Sensor distribution and road conﬁguration
+
+Let Xideal ⊂ R2 be the desired outcome of the form given
+
+by
+
+ X 1
+
+...
+X NA
+
+1
+
+1
+
+ ,
+
+NS
+
+··· X 1
+...
+...
+··· X NA
+
+NS
+
+Xideal =
+
+(9)
+
+where each row of Xideal represents the measurements of all
+sensors regarding the same target. For example, the ith row
+of Xideal is the dataset associated with target Ai observed
+by different sensors at different time instances. Because the
+targets’ velocities ﬂuctuate as they move along the road
+network, the sequence of targets observed by one sensor
+may not be the same as that observed by another one,
+leading a necessary data pattern recognition problem. More
+
+1
+
+1 , X 2
+
+, ..., X NA
+NS
+
+1 , ..., X NA
+
+precisely, given a set of observations from all sensors as
+X = {X 1
+}, 1 our goal is to classify
+the data X in the desired form of Xideal as in (9). For the
+simplicity of representation, we assume that no false alarm or
+missing detection will occur although the proposed methods
+can be augmented appropriately to deal with false alarm and
+missing detection.
+
+To evaluate the performance of the proposed method,
+labeled data is needed to obtain the percentage of true
+association between targets and their measurements. Let the
+information Y be the collection of information that includes
+the true association of targets to their measurements. The
+information Y is structured similarly to X except that each
+n ∈ Y also includes the value Ai, which describes
+element Y m
+the target identiﬁcation that the measurement corresponds to.
+Algorithm 1 is the pseudo code that describes how mul-
+tiple datasets of Y are generated. The data sets of Y are
+generated in iterations. Let NK be the total number of itera-
+tions and let K be the current iteration step. In each iteration
+step, there is a sub-iterative process. The sub-iterative process
+generates and records the trajectory for a single target. The
+trajectory is generated by ﬁrst deﬁning the initial time and
+velocity values for the target (line 5 and 6 of Algorithm 1).
+These values are selected from a uniform random variable,
+where (vmin, vmax) and (tmin, tmax) indicate, respectively,
+the upper and lower bound for initial velocity and time. A
+unique trajectory is generated for the proﬁle Vi(t) by the
+function g(·,·), which is not fully described here (line 7 of
+Algorithm 1). Then, according to this trajectory the function
+h(·,·,·) is used to insert measurements into the appropriate
+elements of YK (line 8 of Algorithm 1). The velocity and
+time measurements associated with target Ai are inserted into
+the element location of YK according to the sensor positions
+R. After inserting all measurements, the information YK is
+saved (line 10 of Algorithm 1).
+
+with length D
+
+for i = 1 : NA do
+
+Algorithm 1 Data generation
+1: Output: Generate multiple Y from NS sensors on a road
+2: R = {R1, R2, ..., Rm};
+3: for K = 1 : NK do
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11: end for
+
+voi =∼ U [(vmin, vmax)];
+toi =∼ U [(tmin, tmax)];
+Vi(t) = g(voi, toi);
+YK ← h(Vi(t), Ai,R);
+
+end for
+Save YK;
+
+IV. ALGORITHM
+
+To solve the aforementioned problem, the objective of
+this section is to derive a set of machine learning algo-
+
+1In this case, Xm
+
+n means the mth sample collected by the nth sensor,
+
+(m does not identify a speciﬁc target).
+
+rithms that classify the information X , such that each target-
+measurement pair can be identiﬁed. In addition, we are
+interested in conducting a comparison of the performance of
+these algorithms for different datasets. Using the appropriate
+machine learning techniques, it is expected that the random
+data X can be re-organized in order to achieve the mapping
+described as
+
+Θ : (X ⊂ R1) (cid:55)→ (Xideal ⊂ R2),
+
+(10)
+where each row of Xideal represents a set of all measure-
+ments associated to the mth target. The performance of the
+proposed machine learning algorithms will be evaluated by
+the associated accuracy levels.
+
+A. Data Pre-processing
+
+Figures 2, 3, 4 show the case where overlapping between
+measurements in X occur without any preprocessing of the
+data for different velocity variances. In fact, the overlapping
+of dataset becomes more signiﬁcant
+if more targets are
+involved. By using the raw data X , extracting data patterns
+using machine learning algorithms, such as K-means and
+SVM, is difﬁcult. Moreover, if there exists overlapping of
+data points from different targets, mis-classiﬁcation of these
+points into the same category is well expected. To obtain
+more accurate data patterns, an appropriate pre-processing
+of X is essential.
+The method for pre-processing the data is to project the
+measurements in X and estimate what would be that target’s
+measurement obtained by sensor S1. A notation for such a
+mapping is given by
+
+Fig. 2: Dataset with a large velocity variance
+
+Fig. 3: Dataset with a medium velocity variance
+
+F : (Si ∈ S) (cid:55)→ (S1 ∈ S)
+
+∀ (0 ≤ n ≤ NS) and ∀ (0 ≤ m ≤ NA).
+
+The data obtained after pre-processing is represented as
+
+(11)
+
+(12)
+
+ X(cid:48)1
+
+...
+X(cid:48)NA
+
+1
+
+1
+
+X (cid:48) =
+
+ .
+
+NS
+
+··· X(cid:48)1
+...
+...
+··· X(cid:48)NA
+
+NS
+
+In this approach the sensor S1 (the ﬁrst sensor) is taken
+as a reference. All other sensor readings are used to generate
+an estimate for what the reading at sensor S1 would be. For
+each sensor Sn, we have a velocity (Vn,m), time (Tn,m) and
+position (Rn). We use the velocity and position of the sensor
+to calculate a time value that represents when the target had
+passed sensor S1. The new information is represented as
+the set of data X(cid:48)m
+n consisting of velocity (Vn,m) and time
+(T (cid:48)
+
+n,m).
+The deﬁnition of this mapping is given by
+
+n,m = Tn,m − (Rn − R1)
+
+T (cid:48)
+
+Vn,m
+
+.
+
+(13)
+
+Eq. 13 describes the backward extrapolation of the time
+from the nth sensor to sensor S1. For example, the 4th
+measurement obtained by sensor S2 includes V2,4 = 20 m/s
+and T2,4 = 50 s. Let the distance between sensor S1 and
+S2 (evaluated as R2 − R1) be 100 units. The estimated time
+
+Fig. 4: Dataset with a small velocity variance
+
+2 is then calculated as
+associated with the measurement X 4
+T (cid:48)
+n,m = 45 s. Conducting the same pre-processing strategy
+to the information X results in the converted time estimation
+of all measurements with respect to sensor S1. Figures 5, 6,
+7 show the plot of the datasets used in Figures 2, 3, and 4
+respectively after applying the proposed data pre-processing
+method. As can be observed from Figures 5, 6, 7 that the
+processed data yields some patterns that can be potentially
+recognized by machine learning algorithms, such as K-means
+and SVM.
+
+01020304050Time20304050607080VelocitySensor 1Sensor 2Sensor 3Sensor 4Sensor 5Sensor 6Sensor 7Sensor 8Sensor 9Sensor100102030405060708090Time102030405060VelocitySensor 1Sensor 2Sensor 3Sensor 4Sensor 5Sensor 6Sensor 7Sensor 8Sensor 9Sensor10010203040506070Time1520253035404550VelocitySensor 1Sensor 2Sensor 3Sensor 4Sensor 5Sensor 6Sensor 7Sensor 8Sensor 9Sensor10clusters. Each cluster here represents a target. A slightly
+modiﬁed version of K-means algorithm, called K-means++
+algorithm [10], is used to provide better performance as
+shown in the simulation examples in Section V. For the K-
+means++ algorithm, a center k1 is chosen randomly as the
+ﬁrst step. Then the next cluster center kj+1 is chosen, with
+n ∈ X (cid:48), according to the probability given by,
+X m
+
+(cid:80)
+
+n )2
+
+Ds(X m
+n ∈X Ds(X m
+Xm
+
+n )2
+
+(14)
+
+Fig. 5: Dataset with a large velocity variance after
+
+pre-processing
+
+Fig. 6: Dataset with a medium velocity variance after
+
+pre-processing
+
+where Ds(X m
+point X m
+
+n ) denotes the shortest distance from a data
+
+n to the closest center kj−1 already chosen.
+
+An alternative algorithm chosen to solve this problem is
+SVM. The SVM algorithm discussed in section II-B is an
+ideal classiﬁer which involves classiﬁcation between two
+categories. In order to develop a multi-class SVM classiﬁer a
+“one-vs-all’ classiﬁer is used. There are NS different binary
+classiﬁers built such that for any target Ai, all the points in
+class Ai are fed as positive samples, and all points not in
+Ai are fed as negative samples. For targets Ai with classiﬁer
+functions fi, the output classiﬁer function f (x) for a new
+data x can be obtained via the following operation:
+
+f (x) = arg max
+
+i
+
+fi(x).
+
+(15)
+
+C. Recovering the original dataset
+
+In the previous section, the measurements were classiﬁed
+for each target based on the pre-processed data. Predicting
+and classifying the pre-processed data is an intermediate
+solution to the problem and does not directly give any
+meaning to our original data classiﬁcation. When the dataset
+is pre-processed and projected backwards with reference
+to sensor S1, the result obtained is given by (12), where
+X(cid:48)m
+n,m and corresponds to
+sensor Sn located at Rn. Therefore, the original time tj
+i can
+be obtained via the following operation:
+Rn − R1
+Vn,m
+
+n consists of information Vn,m, t(cid:48)
+
+tn,m = t(cid:48)
+
+n,m +
+
+.
+
+Fig. 7: Dataset with a small velocity variance after
+
+pre-processing
+
+With the original time tn,m, velocity Vn,m and position of
+the sensor Rn, the ﬁnal classiﬁed set X (cid:48)(cid:48) can be obtained.
+Each unique row in X (cid:48)(cid:48) consists of measurements associated
+to a single target. In particular, X (cid:48)(cid:48) can be written in
+the desired form given in (9). Algorithm 2 is the pseudo
+code that describes the proposed learning algorithm that
+includes the data preprocessing, classiﬁcation, and recovering
+as described in the previous part of the section.
+
+V. SIMULATION
+
+B. Classiﬁcation Algorithms
+
+Two different algorithms are used for data classiﬁcation.
+A K-means clustering algorithm is used as the primary
+approach because the described problem ﬁts the classic
+example of an unsupervised learning problem. When an
+unlabeled data is clustered with K means, it identiﬁes the
+clusters and assigns each of the data points to one of the
+
+In this section, we provide some simulation examples
+to demonstrate the effectiveness of the proposed machine
+learning algorithms and compare their performances. To
+show the beneﬁts of pre-processing, the proposed algorithms
+are applied to both the raw data X and the preprocessed
+data X (cid:48). In addition, the accuracy levels of these algorithms
+are formally compared. To fully investigate the performance
+of the proposed algorithms, we select a variety of target
+
+051015202530Time2030405060708090VelocityTarget 1Target 2Target 3Target 4Target 5Target 6Target 7Target 8Target 9Target 105101520253035404550Time20253035404550VelocityTarget 1Target 2Target 3Target 4Target 5Target 6Target 7Target 8Target 9Target 1005101520253035Time2030405060VelocityTarget 1Target 2Target 3Mis-classificationTarget 5Target 6Target 7Target 8Target 9Target 10Algorithm 2 Learning algorithm
+1: Input: X
+2: Output: Obtain X (cid:48)(cid:48) =
+
+1 X 1
+2
+...
+...
+1 X n
+X n
+2
+3: while not at the end of the ﬁle do
+
+X 1
+
+
+
+. . . X 1
+m
+...
+...
+. . . X n
+m
+
+V 1
+
+...
+V n
+1
+
+1
+
+;
+
+t1
+1 P1
+...
+...
+tn
+1 Pm
+
+4:
+
+X[m × n] ←
+
+5: end while
+6: while not at the end of X[m × n] do
+7:
+
+;
+
+tpj
+i = tj
+X (cid:48) ← V j
+
+i − Pi−P1
+V j
+i , t(cid:48)j
+i
+i , Pi;
+
+8:
+9: end while
+10: Create a model for K-means++ / one-versus-all SVM
+11: Run / Train the model
+12: while not at the end of X (cid:48) do
+i + Pi−P1
+13:
+V j
+i
+i , tj
+i , Pi;
+
+i = t(cid:48)j
+tj
+X (cid:48)(cid:48) ← V j
+
+;
+
+14:
+15: end while
+16: return X (cid:48)(cid:48)
+
+Fig. 8: K-means++ classiﬁcation of unprocessed data in
+
+Fig. 2.
+
+motions, i.e., the velocity proﬁle of targets falls into different
+ranges. The parameters used in the simulation examples are
+given in Tables I, II, and III. Figures 2, 3 and 4 show the
+plot of the dataset obtained via the simulation parameters in
+Tables I, II and III, respectively.
+
+TABLE I: Parameters with a large velocity variance
+
+NA
+10
+
+D
+
+1000
+
+Si
+
+every 100(i − 1)
+
+Vi
+
+Ti
+
+[30, 80]
+
+[1, 30]s
+
+TABLE II: Parameters with a medium velocity variance
+
+NA
+10
+
+D
+
+1000
+
+Si
+
+every 100(i − 1)
+
+Vi
+
+Ti
+
+[20, 50]
+
+[1, 30]s
+
+TABLE III: Parameters with a small velocity variance
+
+NA
+10
+
+D
+
+1000
+
+Si
+
+every 100(i − 1)
+
+Vi
+
+Ti
+
+[20, 40]
+
+[1, 20]s
+
+Figure 8 shows the classiﬁcation of unprocessed data
+generated using the parameters in Table I. The classiﬁcation
+of the unprocessed data is obtained using the K-means++
+clustering algorithm. It can be observed from Figures 2 and 8
+that the accuracy is very low because of the signiﬁcant over-
+lapping of raw data in the absence of data pre-processing.
+For the data generated using the parameters shown in Tables
+II and III, same worse performance is obtained using K-
+means++ clustering algorithm. Therefore, pre-processing of
+the raw datasets is necessary to obtain more accurate data
+patterns.
+
+Fig. 9: K-means++ classiﬁcation of pre-processed data in
+
+Fig. 5.
+
+Figures 9, 10 and 11 shows the result of the classiﬁca-
+tion obtained from the K-means++ clustering algorithm on
+the pre-processed datasets, generated using the parameters
+shown in Tables I, II and III, respectively. It can be observed
+from Figures 9 and 10 that the accuracy of the classiﬁcation
+obtained from K-means++ clustering algorithm is very high.
+Most data points are classiﬁed accurately with very few mis-
+classiﬁcations. This high accuracy can be attributed to the
+wide velocity and time distribution of the two datasets as
+shown in Figures 5 and 7. The accuracy of the K-means++
+algorithm on the dataset obtained using Table III is poor
+and is shown in Figure 10. The poor accuracy is due to the
+narrow distribution of velocity and time in the dataset. This
+results in more overlapping of data points even after the pre-
+processing is performed on the dataset.
+
+To overcome the challenge of classifying datasets with
+narrow velocity and time distribution, SVM classiﬁer is
+used. The multi-class “one-vs-all’ Quadratic SVM classiﬁer
+is used for classifying all the three sets of data, where the
+classiﬁer functions fi(·) in (15) are quadratic functions. Our
+observation is that the classiﬁcation accuracy for datasets
+generated using parameters shown in Tables I and II is 100%.
+For the dataset generated using parameters shown in Table
+
+01020304050Time2030405060708090VelocityCluster 1Cluster 2Cluster 3Cluster 4Cluster 5Cluster 6Cluster 7Cluster 8Cluster 9Cluster 10Fig. 10: K-means++ classiﬁcation of pre-processed data in
+
+Fig. 6.
+
+Fig. 13: Accuracy for processed dataset. LSVM: Linear
+SVM; QSVM: Quadratic SVM; Kmns++: K-means++
+
+clustering; Kmns: K-means clustering
+
+algorithms. Figure 13 shows the accuracy levels using K-
+means, K-means++, Quadratic SVM (QSVM), and Linear
+SVM (LSVM). For K-means algorithm, the accuracy is based
+on the average obtained using different datasets. For SVM,
+the accuracy is obtained using a cross validation factor of
+10 and then averaged for different datasets. Our observations
+include: (1) K-means++ provides better performance than the
+standard K-means; (2) SVM provides similar performance
+as K-means++ in most case; and (3) QSVM provides most
+robust performance even when the velocity distributions and
+initial time instants for all targets are in a small range.
+
+VI. CONCLUSION AND FUTURE WORK
+
+Identifying correct data-target pairing is essential for the
+situational awareness that the intelligent operation of un-
+manned systems relies on. This paper studied data pattern
+recognition for multi-target localization from a list of spa-
+tially distributed sensors. In contrast to most existing meth-
+ods that do not take into consideration the data correlation,
+we proposed to analyze the data correlation of unlabeled
+data from different sensors. A three-step approach, i.e., pre-
+processing, classiﬁcation, recovering, was proposed, where
+numerous machine learning algorithms, including both K-
+means and SVM, were used to provide reliable classiﬁcation
+for a variety of target motions. In addition, simulation studies
+were provided to show that
+the proposed method offers
+a highly accurate solution for recognizing data patterns.
+Our future work will focus on studying more general road
+network as well as the consideration of false alarms and
+missing detections.
+
+REFERENCES
+
+[1] S. M. George, W. Zhou, H. Chenji, M. Won, Y. O. Lee, A. Pazarloglou,
+R. Stoleru, and P. Barooah, “Distressnet: a wireless ad hoc and sensor
+network architecture for situation management in disaster response,”
+IEEE Communications Magazine, vol. 48, no. 3, pp. 128–136, 2010.
+[2] E. Onur, C. Ersoy, H. Delic, and L. Akarun, “Surveillance wireless sen-
+sor networks: Deployment quality analysis,” IEEE Network, vol. 21,
+no. 6, pp. 48–53, 2007.
+
+[3] N. Ahmed, D. Casbeer, Y. Cao, and D. Kingston, “Bayesian Hidden
+Markov models for UAV-enabled target localization on road networks
+with soft-hard data,” in SPIE Defense+Security Conference, 2015.
+
+Fig. 11: K-means++ classiﬁcation of pre-processed data in
+
+Fig. 7.
+
+III, the accuracy obtained is 90% and the classiﬁcation is
+shown in Figure 12. The increased accuracy shows that the
+beneﬁt of Quadratic SVM (QSVM) in providing a signiﬁcant
+performance increase on narrowly distributed datasets when
+compared to the K-means++ algorithm.
+
+Fig. 12: Quadratic SVM (QSVM) classiﬁcation of
+
+pre-processed data in Fig. 7.
+
+To compare the performance of different machine learning
+the accuracy levels of various
+
+algorithms, we also plot
+
+0510152025303540Time10152025303540455055VelocityCluster 1Cluster 2Cluster 3Cluster 4Cluster 5Cluster 6Cluster 7Cluster 8Cluster 9Cluster 1005101520253035Time1015202530354045VelocityTarget 1Target 2Target 3Target 4Target 5Target 6Target 7Target 8Target 9Target 1005101520253035Time10152025303540455055VelocityTarget 1Target 2Target 3Mis-classificationTarget 5Target 6Target 7Target 8Target 9Target 10LSVMQSVMKmns++KmnsTechnique020406080100Accuracy[4] D. Casbeer, K. Meier, and Y. Cao, “Estimating the state of an intruder
+with a UAV and unattended ground sensors,” in AIAA Infotech@
+Aerospace Conference, 2013.
+
+[5] T. Bokareva, W. Hu, S. Kanhere, B. Ristic, N. Gordon, T. Bessell,
+M. Rutten, and S. Jha, “Wireless sensor networks for battleﬁeld
+surveillance,” in Land Warfare Conference, 2006.
+
+[6] W. Min and L. Wynter, “Real-time road trafﬁc prediction with spatio-
+temporal correlations,” Transportation Research Part C: Emerging
+Technologies, vol. 19, no. 4, pp. 606–616, 2011.
+
+[7] Y. Bar-Shalom, F. Daum, and J. Huang, “The probabilistic data
+association ﬁlter: Estimation in the presence of measurement origin
+uncertainty,” IEEE Transactions on Control Systems Magazine, vol. 29,
+no. 12, pp. 82–100, 2009.
+
+[8] S. S. Blackman, “Multiple hypothesis tracking for multiple target
+tracking,” IEEE Aerospace and Electronic Systems Magazine, vol. 19,
+no. 1, pp. 309–332, 2004.
+
+[9] R. S. Michalski and R. E. Stepp, “Learning from observation: Concep-
+tual clustering,” in Machine learning. Springer, 1983, pp. 331–363.
+[10] D. Arthur and S. Vassilvitskii, “K-means++: The advantages of
+careful seeding,” in Proceedings of the eighteenth annual ACM-SIAM
+symposium on Discrete algorithms. Society for Industrial and Applied
+Mathematics, 2007, pp. 1027–1035.
+
+[11] B. Bahmani, B. Moseley, A. Vattani, R. Kumar, and S. Vassilvitskii,
+“Scalable K-means++,” Proceedings of the VLDB Endowment, vol. 5,
+no. 7, pp. 622–633, 2012.
+
+[12] R. Ostrovsky, Y. Rabani, L. J. Schulman, and C. Swamy, “The
+effectiveness of lloyd-type methods for the K-means problem,” in
+Foundations of Computer Science, 2006. FOCS’06. 47th Annual IEEE
+Symposium on.
+
+IEEE, 2006, pp. 165–176.
+
+[13] M. V. Yeo, X. Li, K. Shen, and E. P. Wilder-Smith, “Can SVM be
+used for automatic EEG detection of drowsiness during car driving?”
+Safety Science, vol. 47, no. 1, pp. 115–124, 2009.
+
+[14] C. Cortes and V. Vapnik, “Support-vector networks,” Machine learn-
+
+ing, vol. 20, no. 3, pp. 273–297, 1995.
+
+[15] R. O. Duda, P. E. Hart, and D. G. Stork, Pattern classiﬁcation.
+
+John
+
+Wiley & Sons, 2012.
+
+

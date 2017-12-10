@@ -1,0 +1,1867 @@
+SUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+1
+
+Action Recognition Based on Joint Trajectory Maps
+
+with Convolutional Neural Networks
+
+Pichao Wang, Student Member, IEEE, Wanqing Li, Senior Member, IEEE,
+
+Chuankun Li, and Yonghong Hou, Member, IEEE,
+
+6
+1
+0
+2
+ 
+c
+e
+D
+0
+3
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+1
+0
+4
+9
+0
+
+.
+
+2
+1
+6
+1
+:
+v
+i
+X
+r
+a
+
+Abstract—Convolutional Neural Networks (ConvNets) have
+recently shown promising performance in many computer vision
+tasks, especially image-based recognition. How to effectively
+apply ConvNets to sequence-based data is still an open problem.
+This paper proposes an effective yet simple method to represent
+spatio-temporal information carried in 3D skeleton sequences
+into three 2D images by encoding the joint trajectories and their
+dynamics into color distribution in the images, referred to as
+Joint Trajectory Maps (JTM), and adopts ConvNets to learn the
+discriminative features for human action recognition. Such an
+image-based representation enables us to ﬁne-tune existing Con-
+vNets models for the classiﬁcation of skeleton sequences without
+training the networks afresh. The three JTMs are generated in
+three orthogonal planes and provide complimentary information
+to each other. The ﬁnal recognition is further improved through
+multiply score fusion of the three JTMs. The proposed method
+was evaluated on four public benchmark datasets, the large NTU
+RGB+D Dataset, MSRC-12 Kinect Gesture Dataset (MSRC-12),
+G3D Dataset and UTD Multimodal Human Action Dataset (UTD-
+MHAD) and achieved the state-of-the-art results.
+
+Index Terms—Action Recognition, Trajectory, Color Encoding,
+
+Convolutional Neural Network.
+
+I. INTRODUCTION
+
+H UMAN action recognition is an important problem in
+
+computer vision due to its wide applications in video
+surveillance, human computer interfaces, robotics, etc. Despite
+signiﬁcant research efforts over the past few decades [1]–
+[21], accurate recognition of human actions from RGB video
+sequences is still an unsolved problem. With the advent of
+easy-to-use and low-cost depth sensors such as MS Kinect
+sensors, human action recognition from RGB-D (Red, Green,
+Blue and Depth) data has attracted increasing attention and
+many applications have been developed [22] in recent years,
+due to the advantages of depth information over conventional
+RGB video, e.g. being insensitive to illumination changes and
+reliable to estimate body silhouette and skeleton [23]. Since
+the ﬁrst work [24] reported in 2010, many methods [25]–[29]
+have been proposed using speciﬁcally hand-crafted feature
+descriptors extracted from depth. As the extraction of skeletons
+from depth maps [23] has become increasingly robust, more
+
+Manuscript received XXX; revised XXX. This work was supported by the
+National Natural Science Foundation of China (grant 61571325) and Key
+Projects in the Tianjin Science & Technology Pillar Program (grant 15ZCZD
+GX001900). (Corresponding author: Yonghong Hou)
+
+P. Wang and W. Li
+
+search Lab, University of Wollongong, Wollongong, Australia.
+pw212@uowmail.edu.au; wanqing@uow.edu.au).
+the
+
+and Y. Hou
+
+are with
+
+School
+
+C.
+
+Li
+
+are with the Advanced Multimedia Re-
+(e-mail:
+
+of
+
+Tianjin, China.
+
+Electronic
+(e-
+
+Information
+mail:chuankunli@tju.edu.cn;houroy@tju.edu.cn).
+
+Tianjin University,
+
+Engineering,
+
+Fig. 1. The joint conﬁguration for Kinect V1 skeleton.
+
+and more hand-designed skeleton features [30]–[42] have
+been devised to capture spatial conﬁguration, and Dynamic
+Time Warpings (DTWs), Fourier Temporal Pyramid (FTP)
+or Hidden Markov Models (HMMs) are employed to model
+temporal information. However, these hand-crafted features
+are always shallow and dataset-dependent. Recently, Recurrent
+Neural Networks (RNNs) [43]–[47] have also been adopted
+for action recognition from skeleton data. RNNs tend to
+overemphasize the temporal information especially when the
+training data is not sufﬁcient, leading to overﬁtting. Up to
+date, it remains unclear how skeleton sequences could be
+effectively represented and fed to deep neural networks for
+recognition. For example, one can conventionally consider a
+skeleton sequence as a set of individual frames with some
+form of temporal smoothness, or as a subspace of poses or
+pose features, or as the output of a neural network encoder.
+Which one among these and other possibilities would result
+in the best representation in the context of action recognition
+is not well understood.
+
+In this paper, we present an effective yet simple method
+that represent both spatial conﬁguration and dynamics of joint
+trajectories into three texture images through color encoding,
+referred to as Joint Trajectory Maps (JTMs), as the input of
+ConvNets for action recognition. Such image-based represen-
+tation enables us to ﬁne-tune existing ConvNets models trained
+on ImageNet for classiﬁcation of skeleton sequences without
+training the whole deep networks afresh. The three JTMs
+are complimentary to each other, and the ﬁnal recognition
+accuracy is improved largely by a late score fusion method.
+One of the challenges in action recognition is how to properly
+model and use the spatio-temporal information. The commonly
+
+SUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+2
+
+Fig. 2. The framework of the proposed method.
+
+used bag-of-words model often ignores spatial information.
+On the other hand, HMMs or RNNs based methods are likely
+to overstress the temporal information. The proposed method
+addresses this challenge in a novel way by encoding as much
+the spatio-temporal information as possible (without a need to
+decide which one is important and how important it is) into
+images, and employing ConvNets to learn the discriminative
+one. Consequently, the proposed method outperformed the
+start-of-the-art methods on popular benchmark datasets.
+
+The main contributions of this paper include:
+• A compact, effective yet simple image-based representa-
+tion is proposed to represent the spatio-temporal infor-
+mation carried in the 3D skeleton sequences into three
+2D images by encoding the dynamics of joint trajectories
+into three complementary Joint Trajectory Maps.
+
+• To overcome the drawbacks of ConvNets not being
+rotation-invariant, and to make the proposed method
+suitable for cross-view action recognition, it is proposed
+to rotate the skeleton data to not only mimic the multiple
+views but also to augment data effectively for training.
+• The proposed method was evaluated on four popular pub-
+lic benchmark datasets, namely, the large NTU RGB+D
+Dataset [46], MSRC-12 Kinect Gesture Dataset (MSRC-
+12) [48], G3D Dataset [49] and UTD Multimodal Human
+Action Dataset (UTD-MHAD) [50], and achieved the
+state-of-the-art recognition results.
+
+This paper is an extension of the works presented in [51],
+[52]. Unlike [51], [52] where skeletons are assumed to have
+been sufﬁciently sampled and discrete joints are drawn onto
+images using a pen whose size is properly set, this paper
+employs joint trajectories and proposes to rotate skeletons to
+mimic multiple views for cross-view action recognition and
+data augmentation. In addition, this paper adopts multiply
+score fusion to improve the ﬁnal recognition accuracy. Ex-
+tensive experiments and detailed analysis are also presented
+in this paper. The rest of this paper is organized as follows.
+An overview of related works is given in Section II. Details of
+the proposed method are described in Section III. Evaluation
+
+of the proposed method on four datasets and analysis of the
+results are reported in Section IV. Section V concludes the
+paper with remarks.
+
+II. RELATED WORK
+
+An extensive review on RGB-D based action recognition is
+beyond the scope of this paper. Readers are referred to [53]–
+[55] for a comprehensive survey. In this section, the work
+related to the proposed method is brieﬂy reviewed, including
+skeleton-based 3D action representation and deep learning
+based action recognition.
+
+A. Skeleton-Based 3D Action Representation
+
+Skeleton based 3D action representation can be generally
+divided into three categories [54]: joints, groups of joints , and
+joint dynamics. Joint representation captures the correlation
+of the body joints by extracting spatial descriptor [30], [56]–
+[59], geometric descriptor [33], [34], [39]–[41], [60] or key
+poses [35], [61]–[63]. The groups of joints aim to detect
+the discriminative subsets of joints to differentiate actions.
+Methods such as [33], [61], [64]–[67] focus on mining the
+subsets of most discriminative joints or consider the correlation
+of predeﬁned subsets of joints.
+
+Joint dynamics focuses on modeling the dynamics of either
+subsets or all joints of a skeleton. In [32] 3D trajectories of
+joints are projected into three 2D trajectories, and histogram of
+oriented displacement is calculated to describe the three 2D
+trajectories, with each displacement in the trajectory voting
+its length in the histogram of orientation angles. Chaudhry
+et al. [37] divided the fully body skeleton into several body
+parts represented by joints, including the upper body, lower
+body,
+legs. A shape context
+feature is computed by considering the directions of a set
+of equidistant points sub-sampled over the segments of each
+body part. A skeleton sequence is ﬁnally represented as a
+set of time series of features such as position, tangent and
+shape context feature. These time series are further divided
+into several temporal scales, and each individual feature series
+
+left/right arms and left/right
+
+ScoresScoresScoresMultiply ScoreFusionAccuracyFrontTopSide Front ChannelTop Channel  Side ChannelSkeleton SequencesConvNetConvNetConvNetRotationColorEncodingColorEncodingColorEncodingSUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+3
+
+is modeled using a linear dynamic system. The estimated
+parameters of all series are used to describe the dynamics
+of the skeleton sequence. In [31] a skeleton sequence is
+modeled as a continuous and differentiable function of the
+body joint locations over time. The local 3D body pose is
+characterized by the current joint locations and differential
+properties like speed and acceleration of the joints. Slama et
+al. [68] represented each action sequence as a linear dynamic
+system that produces 3D joint
+trajectories. Autoregressive
+moving average model was adopted to represent the dynamics
+by means of observability matrix which embeds the parameters
+of the model. In [69] the dynamic forest model was proposed
+and a set of autoregressive trees was adopted. Each node
+in the probabilistic autoregressive tree stores a multivariate
+normal distribution with a ﬁxed covariance matrix, and the
+set of Gaussian posteriors estimated by the forest are used to
+calculate the forest posterior. Shao et al. [70] proposed to use
+a class of integral invariants to describe motion trajectories
+by calculating the line integral of a class of kernel functions
+at multiple scales along the motion trajectory. In [39] the
+authors represented the 3D coordinates of joints and their
+changes over time as a trajectory in the Riemannian manifold,
+and the action recognition is formulated as the problem of
+computing the similarity between the shape of trajectories. In
+this paper, we propose to use color to encode the dynamics
+of trajectories, and model the spatial-temporal information
+carried in a skeleton sequence through shape and textures.
+ConvNets are used to learn deep hierarchy features.
+
+B. Deep Leaning Based Action Recognition
+
+The exiting deep learning approaches to action recognition
+can be generally divided into four categories based on how
+an input sequence is represented and fed to a deep neural
+network. The ﬁrst category views a video either as a set of still
+images [71] or as a short and smooth transition between similar
+frames [72], and each color channel of the images is fed to
+one channel of a ConvNet. Although suboptimal, considering
+the video as a bag of static frames gives reasonable results.
+The second category is to represent a video as a volume and
+extends ConvNets to a third, temporal dimension [73], [74]
+replacing 2D ﬁlters with 3D ones. So far, this approach has
+produced little beneﬁts, probably due to the lack of annotated
+training data. The third category is to treat a video as a
+sequence of images and feed the sequence to a RNN [43]–
+[46], [75], [76]. A RNN is typically considered as memory
+cells, which are sensitive to both short as well as long term
+patterns. It parses the video frames sequentially and encodes
+the frame-level information in their memory. However, using
+RNNs has not given an improvement over temporal pooling
+of convolutional features [71] or over hand-crafted features.
+The last category is to represent a video in one or mul-
+tiple compact images and adopt available trained ConvNet
+architectures for ﬁne-tuning [17], [51], [52], [77], [78]. This
+approach has achieved state-of-the-art results on many RGB
+and depth/skeleton datasets. The proposed method falls into
+this category.
+
+III. THE PROPOSED METHOD
+
+The proposed method consists of four major components,
+as illustrated in Fig. 2, rotation to mimic the multiple views,
+construction of three JTMs as the input of the ConvNets in
+three orthogonal planes from skeleton sequences, training the
+three ConvNets to learn discriminative features, and multiply
+score fusion for ﬁnal classiﬁcation. In the following sections,
+the four components are detailed.
+
+A. Rotation
+
+A skeleton is often represented by a set of joints in 3D space
+with respect
+to the real-world coordinate system centered
+at
+the optical central of the RGB-D camera. By rotating
+the skeleton data,
+it can 1) mimic multi-views for cross-
+view action recognition; 2) enlarge the data for training and
+overcome the drawback of ConvNets usually being not view-
+invariant.
+The rotation was performed with a ﬁxed step of 15◦ along
+the polar angle θ and azimuthal angle ψ, in the range of
+[0◦, 45◦] for θ and [−45◦, 45◦] for ψ. The ranges of θ and
+ψ would cover the possible views considering that the JTMs
+are generated by projecting the trajectories onto the three
+orthogonal planes as detailed below.
+
+Let Try be the transform around y axis (right-handed
+coordinate system) and Trx be the transform around x axis.
+The coordinates (xr, yr, zr) of a joint at (x, y, z) after rotation
+can be expressed as
+
+(cid:2)x, y, z, 1(cid:3)T
+(cid:20)Rx(θ) Tx(θ)
+(cid:21)
+
+,
+
+1
+
+0
+
+; Trx =
+
+ Ty(ψ) =
+ Tx(θ) =
+
+
+
+0
+
+z · sin(ψ)
+
+z · (1 − cos(ψ))
+
+ −z · sin(θ)
+
+0
+
+z · (1 − cos(θ))
+
+ .
+
+(1)
+
+(2)
+
+ ;
+
+[xr, yr, zr, 1]T = TryTrx
+
+where
+
+Try =
+
+1
+
+0
+
+(cid:20)Ry(ψ) Ty(ψ)
+(cid:21)
+1
+ cos(θ)
+
+cos(ψ) − sin(ψ)
+sin(ψ)
+cos(ψ)
+0
+1
+0
+
+− sin(θ)
+
+cos(θ)
+
+sin(θ)
+
+0
+0
+
+0
+
+0
+
+0
+
+0
+
+and
+
+Ry(ψ) =
+
+Rx(θ) =
+
+B. Construction of JTMs
+
+We argue that an effective JTM should have the following
+information of an
+
+properties to keep the spatial-temporal
+action:
+
+• The joints or group of joints should be distinct in the
+JTM such that the spatial information of the joints is
+well reserved.
+
+• The JTM should encode effectively the temporal evolu-
+tion, i.e. trajectories of the joints, including the direction
+and speed of joint motions.
+
+• The JTM should be able to encode the difference in
+motion among the different joints or parts of the body to
+reﬂect how the joints are synchronized during the action.
+
+Speciﬁcally, a JTM can be recursively deﬁned as follows
+
+JT Mi = JT Mi−1 + f (i),
+
+(3)
+
+SUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+4
+
+where f (i) is a function encoding the spatial-temporal infor-
+mation at frame or time-stamp i. Since a JTM is accumulated
+over the period of an action, f (i) has to be carefully deﬁned
+such that the JTM for an action sample has the required
+properties discussed above and the accumulation over time has
+little adverse impact on the spatial-temporal information that
+has already been encoded in the JTM. This paper proposes
+to use hue, saturation and brightness to encode the spatial-
+temporal motion patterns.
+
+Fig. 3. The trajectories projected onto three Cartesian planes for action “right
+hand draw circle (clockwise)” in UTD-MHAD [50]: (1) front plane; (2) top
+plane; (3) side plane.
+
+1) Joint Trajectory Maps: Assume an action H has n
+frames of skeletons and each skeleton consists of m joints.
+The skeleton sequence is denoted as H = {F1, F2, ..., Fn},
+where Fi = {P i
+m} is a vector of joint coordinates
+1, P i
+2, ..., P i
+of frame i, and P i
+j is the 3D coordinates of the jth joint in
+frame i. The skeleton trajectory T for an action of n frames
+consists of the trajectories of all joints and is deﬁned as:
+
+T = {T1, T2,··· , Ti,··· , Tn−1},
+1, ti
+
+(4)
+m} = Fi+1 − Fi, and the kth joint
+k. A simple form of function f (i)
+
+2, ..., ti
+k − P i
+
+where Ti = {ti
+trajectory is ti
+would be Ti, that is,
+
+k = P i+1
+
+f (i) = Ti = {ti
+
+1, ti
+
+2, ..., ti
+
+m}.
+
+(5)
+
+The skeleton trajectory is projected to three orthogonal
+planes, i.e. three Cartesian planes of the real world coordinates
+of the camera, to form three JTMs. Fig. 3 shows the three
+projected trajectories of the right hand joint for action “right
+hand draw circle (clockwise)” in the UTD-MHAD dataset. It
+can be seen that the spatial information of this joint over the
+period of the action is well represented in the JTMs but the
+direction of the motion is lost.
+
+2) Encoding Joint Motion Direction: To capture the motion
+direction in the JTM, it is proposed to use hue to “color” the
+joint trajectories over the action period. Different colormaps
+may be chosen. In this paper, the jet colormap, ranging from
+blue to red, and passing through the colors cyan, yellow, and
+orange, is adopted. Let the color of a joint trajectory be C,
+and the length of the trajectory be L, and Cl, l ∈ (0, L) be
+the color at position l of a trajectory. For the qth trajectory Tq
+n−1 × L is assigned to
+from 1 to n− 1, a color Cl, where l = q
+location l of the joint trajectory, making the entire trajectory
+colored over the period of the sequence as illustrated in Fig. 4.
+
+Herein, a trajectory with color is denoted as C ti
+function f (i) becomes:
+
+k and the
+
+f (i) = {C ti
+
+1, C ti
+
+2, ..., C ti
+
+m}.
+
+(6)
+
+Fig. 5 shows the front JTM of action “right hand draw circle
+(clockwise)” in the UTD-MHAD [50] dataset. Sub-ﬁgure (1)
+is joint trajectories and sub-ﬁgure (2) is the trajectories with
+motion direction being encoded with hue. The color variations
+along the trajectories represent the motion direction.
+
+Fig. 4. An example of colored coded joint trajectory with different colors
+reﬂecting the temporal order.
+
+3) Encoding Body Parts: Many actions, especially complex
+actions, often involve multiple body parts and these body parts
+move in a coordinating manner. It is important to capture such
+coordination in the JTMs. To distinguish different body parts,
+multiple colormaps are employed. Body parts can be deﬁned
+at different levels of granularity. For example, each joint can
+be considered independently as a “part” and is assigned to one
+colormap, or several groups of joints can be deﬁned and all
+joints in each group are assigned to the same colormap and
+colormaps are chosen randomly to each group. Since arms
+and legs often move more than other body parts, a body is
+divided into three parts in this paper. According to the joint
+conﬁguration for Kinect V1 skeleton as shown in Fig. 1, the
+left body part consists of left shoulder, left elbow, left wrist,
+left hand, left hip, left knee, left ankle and left foot, the right
+body part consists of right shoulder, right elbow, right wrist,
+right hand, right hip, right knee, right ankle and right foot and
+the middle part consists of head, neck, torso and hip center.
+The three parts are assigned to three colormaps (C1, C2, C3)
+respectively, where C1 is the same as C, i.e. the jet colormap,
+C2 is a colormap with reversely-ordered colors of C1, and
+C3 is a gray-scale map ranging from light gray to black.
+Let the trajectory encoded by multiple colormaps be M C ti
+k.
+Function f (i) can be expressed as:
+
+f (i) = {M C ti
+
+1, M C ti
+
+2, ..., M C ti
+
+m}.
+
+(7)
+
+The effect of encoding body parts with different colors for
+action “right hand draw circle (clockwise)” is illustrated in
+Fig. 5, sub-ﬁgure (3).
+
+4) Encoding Motion Magnitude: Motion magnitude is one
+of the important factors in human motion. For an action, large
+
+(cid:11)(cid:20)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:21)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:22)(cid:12)SUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+5
+
+magnitude of motion is likely to carry discriminative infor-
+mation. This paper proposes to encode the motion magnitude
+of joints into saturation and brightness so that the changes in
+motion would result in texture in the JMTs. Such texture is
+expected to be beneﬁcial for ConvNets to learn discriminative
+features. For joints with high motion magnitude or speed, high
+saturation will be assigned. Speciﬁcally, the saturation is set
+to range from smin to smax. Given a trajectory, its saturation
+j along the path of the trajectory could be calculated as
+Si
+
+vi
+j
+
+Si
+
+j =
+
+max{v} × (smax − smin) + smin
+j is the speed of jth joint at the ith frame.
+
+where vi
+
+j = (cid:107)P i+1
+vi
+
+j − P i
+j(cid:107)2
+
+(8)
+
+(9)
+
+Let a trajectory modulated by saturation be M Cs ti
+f (i) is reﬁned as:
+
+k, function
+
+f (i) = {M Cs ti
+
+1, M Cs ti
+
+2, ..., M Cs ti
+
+m}
+
+(10)
+
+For the sample example in Fig. 5, the encoding effect can be
+seen in the sub-ﬁgures (4), where the slow motion becomes
+diluted (e.g. trajectory of knees and ankles) while the fast
+motion becomes saturated (e.g. the green part of the circle).
+To further enhance the motion patterns in the JTMs, the
+brightness is modulated by the speed of joints. Given a
+trajectory ti
+j is computed
+as
+
+j whose speed is vi
+
+j, its brightness Bi
+max{v} × (bmax − bmin) + bmin
+
+Bi
+
+j =
+
+(11)
+
+vi
+j
+
+where bmin and bmax represent the range of the brightness.
+Let M Cb ti
+k be the trajectory with brightness and function
+f (i) is then updated to:
+
+f (i) = {M Cb ti
+
+1, M Cb ti
+
+2, ..., M Cb ti
+
+m}.
+
+(12)
+
+The effect of brightness modulation can be seen in sub-ﬁgure
+(5) of the example shown in in Fig. 5, where texture becomes
+apparent (e.g. the yellow parts of the circle).
+
+Finally, let M Csb ti
+
+k be the trajectory after encoding the
+motion magnitude into both saturation and brightness. Func-
+tion f (i) can be expressed as:
+
+f (i) = {M Csb ti
+
+1, M Csb ti
+
+2, ..., M Csb ti
+
+(13)
+
+m}.
+
+As illustrated in Fig. 5, sub-ﬁgure (6), the motion variation
+enriches the texture in the ﬁnal JTM.
+
+Fig. 5. Step-by-step illustration of the front JTM for action “right hand draw
+circle (clockwise)” from the UTD-MHAD [50] dataset. (1) Joint trajectory
+map without encoding any motion direction and magnitude; (2) encoding joint
+motion direction in hue, where color variations indicate motion direction; (3)
+encoding body parts with different colormaps; (4) encoding motion magnitude
+into saturation; (5) encoding motion magnitude into brightness; (6) ﬁnal JTM
+with all encodings.
+
+10−2 for training from scratch and set to 10−3 for ﬁne-tuning
+with pre-trained models on ILSVRC-2012, and then it
+is
+decreased according to a ﬁxed schedule. For each ConvNet the
+training undergoes 100 cycles and the learning rate decreases
+every 30 cycles. For all experiments, the dropout regularization
+ratio was set to 0.9 in order to reduce complex co-adaptations
+of neurons in the nets for both networks.
+
+D. Multiply Score Fusion
+
+Given a testing skeleton sequence (sample), three JTMs
+are generated and fed into the three ConvNets respectively.
+Multiply score fusion is used to combine the outputs from the
+individual ConvNets. Speciﬁcally, the score vectors outputted
+by the three ConvNets are multiplied in an element-wise way,
+and the max score in the resultant vector is assigned as the
+probability of the test sequence. The index of this max score
+corresponds to the recognized class label.
+
+IV. EXPERIMENTS
+
+C. ConvNets Training
+
+After constructing the three JTMs on three orthogonal image
+planes, three ConvNets are ﬁne-tuned individually, each Con-
+vNet is an AlexNet [79]. The ﬁne-tuning procedure is similar
+to the one in [79]. The network weights are learned using
+the mini-batch stochastic gradient descent with the momentum
+being set to 0.9 and weight decay being set to 0.0005. All
+hidden weight layers use the rectiﬁcation (RELU) activation
+function. At each iteration, a mini-batch of 256 samples is
+constructed by sampling 256 shufﬂed training samples. The
+images are resized to 256 × 256. The learning rate is set to
+
+The proposed method was evaluated on four public bench-
+mark datasets: the large NTU RGB+D Dataset [46], MSRC-12
+Kinect Gesture Dataset [48], G3D [49] and UTD-MHAD [50].
+Experiments were conducted on the effectiveness of individual
+encoding scheme in the proposed method, the effectiveness of
+rotation, the role of ﬁne-tuning, and the multiply score fusion
+compared with the max and average score fusion methods.
+The ﬁnal recognition results were compared with the state-of-
+the-art reported on the same datasets. In all experiments, the
+saturation and brightness range from 0% ∼ 100% (mapped to
+0 ∼ 255 in the JTM images).
+
+(cid:11)(cid:20)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:21)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:22)(cid:12)(cid:11)(cid:23)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:24)(cid:12)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:3)(cid:11)(cid:25)(cid:12)SUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+6
+
+A. Evaluation of Key Design Factors
+
+1) Different Encoding Schemes: The effectiveness of differ-
+ent encoding schemes (as illustrated in Fig. 5) was evaluated
+on the G3D dataset, and the recognition accuracies are listed
+in Table I.
+
+COMPARISON OF THE DIFFERENT ENCODING SCHEMES ON THE G3D
+
+DATASET IN TERMS OF RECOGNITION ACCURACY.
+
+TABLE I
+
+COMPARISONS OF FINE-TUNING AND TRANINING FROM SCRATCH ON THE
+
+NTU RGB+D AND G3D DATASETS IN TERMS OF RECOGNITION
+
+TABLE III
+
+ACCURACY.
+
+NTU RGB+D (Cross Subject)
+NTU RGB+D (Cross View)
+
+Dataset
+
+G3D
+
+Training from Scratch
+
+72.50%
+73.77%
+46.64%
+
+Fine-tuning
+
+75.30%
+77.67%
+94.65%
+
+Techniques
+Trajectory: ti
+1
+Trajectory: C ti
+1
+Trajectory: M C ti
+1
+Trajectory: M Cs ti
+1
+Trajectory: M Cb ti
+1
+Trajectory: M Csb ti
+1
+
+Top
+
+Side
+
+Fusion
+Front
+65.45% 72.18% 73.54% 80.58%
+76.12% 75.55% 76.56% 83.65%
+79.98% 78.25% 79.40% 87.68%
+83.52% 81.32% 82.08% 89.98%
+84.46% 84.68% 85.60% 93.84%
+86.25% 87.56% 86.54% 96.02%
+
+comparison of these three score fusion methods on the four
+datasets for ﬁnal recognition are listed in Table IV. From
+the Table we can see that on the evaluated four datasets, the
+multiply score fusion consistently outperformed the average
+and max score fusion methods. This veriﬁes that the three
+JTMs are likely to be statistically independent and provide
+complementary information.
+
+From Table I we can see that
+
+the proposed encoding
+methods effectively capture spatio-temporal information. Each
+encoding method gradually amends more information to the
+JTMs for the three ConvNets to learn the discriminative
+features and improves the recognition. The three JTMs are
+complimentary to each other to improve recognition signiﬁ-
+cantly through fusion.
+
+2) Rotation: Rotation is adopted to mimic multiple views,
+and this simple process makes the proposed method capable of
+cross-view action recognition. At the same time, the rotation
+enlarges the training data and enables the method to work on
+small datasets. Table II shows the comparison of the proposed
+method with and without rotation on the NTU RGB+D and
+G3D datasets. As expected, the rotation operation improves
+the performance of cross-view recognition largely (by almost
+3.5 percentage points).
+
+COMPARISON THE PROPOSED METHOD WITH AND WITHOUT ROTATION ON
+
+THE NTU RGB+D AND G3D DATASETS IN TERMS OF RECOGNITION
+
+TABLE II
+
+ACCURACY.
+
+Dataset
+
+NTU RGB+D (Cross Subject)
+NTU RGB+D (Cross View)
+
+G3D
+
+Without
+Rotation
+75.30%
+77.67%
+95.12%
+
+With
+
+Rotation
+76.32%
+81.08%
+96.02%
+
+3) Fine-tuning vs. Training from Scratch: Even though the
+number of training samples per class is over 600 for the
+NTU RGB+D Dataset, ﬁne-tuning with available models from
+ImageNet is still preferred in terms of recognition accuracy.
+Table III shows the results of two settings, ﬁne-tuning and
+training from scratch, on NTU RGB+D and G3D datasets.
+In both settings, no rotation was performed. Notice that ﬁne-
+tuning improved the recognition by 5 percentage point on
+the NTU RGB+D Dataset and almost doubled the recognition
+accuracy on the small G3D Dataset compared to training from
+scratch.
+
+4) Comparison of Three Score Fusion Methods: There are
+two common used late score fusion methods, namely, average
+score fusion method and max score fusion method. However,
+in this paper, we propose to adopt multiply score fusion which
+turns out to be more effective on the evaluated datasets. The
+
+COMPARISON OF THREE SCORE FUSION METHODS ON THE FOUR
+
+DATASETS IN TERMS OF RECOGNITION ACCURACY.
+
+TABLE IV
+
+Dataset
+
+NTU RGB+D (Cross Subject)
+NTU RGB+D (Cross View)
+
+MSRC-12
+
+G3D
+
+UTD-MHAD
+
+Max
+
+73.56% 75.05%
+78.43% 79.88%
+91.70% 93.42%
+93.78% 94.65%
+85.81% 86.42%
+
+Average Multiply
+76.32%
+81.08%
+94.86%
+96.02%
+87.90%
+
+B. NTU RGB+D Dataset
+
+To our best knowledge, NTU RGB+D Dataset is currently
+the largest action recognition dataset. The 3D data is captured
+by Kinect v2 cameras. The dataset has more than 56 thousand
+sequences and 4 million frames, containing 60 actions per-
+formed by 40 subjects aging between 10 and 35. It consists of
+front view, two side views and left, right 45 degree views. This
+dataset is challenging due to large intra-class and viewpoint
+variations.
+
+For fair comparison and evaluation, the same protocol as
+that in [46] was used. It has both cross-subject and cross-
+view evaluation. In the cross-subject evaluation, samples of
+subjects 1, 2, 4, 5, 8, 9, 13, 14, 15, 16, 17, 18, 19, 25, 27, 28,
+31, 34, 35 and 38 were used as training and samples of the
+remaining subjects were reserved for testing. In the cross-view
+evaluation, samples taken by cameras 2 and 3 were used as
+training, testing set includes the samples of camera 1. Table V
+lists the performance of the proposed method and those
+reported before. From this Table we can see that our proposed
+method achieved the state-of-the-art results compared with
+both hand-crafted features and deep learning methods. The
+work [34] focused only on single person action and could
+not model multi-person interactions well. Dynamic Skeletons
+method [38] performed better than some RNN-based methods
+verifying the weakness of the RNNs [43], [46], which only
+mines the short-term dynamics and tends to overemphasize the
+temporal information even on large training data. LSTM and
+its variants [46], [47] performed better due to their ability to
+utilize long-term context compared to conventional RNNs, but
+it is still weak in exploiting spatial information. The proposed
+
+SUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+7
+
+COMPARATIVE ACCURACIES OF THE PROPOSED METHOD AND PREVIOUS
+
+METHODS ON NTU RGB+D DATASET.
+
+TABLE V
+
+Method
+
+Cross subject Cross view
+
+Lie Group [34]
+
+Dynamic Skeletons [38]
+
+HBRNN [43]
+
+2 Layer RNN [46]
+2 Layer LSTM [46]
+Part-aware LSTM [46]
+
+ST-LSTM [47]
+
+ST-LSTM+ Trust Gate [47]
+
+Proposed Method
+
+50.08%
+60.23%
+59.07%
+56.29%
+60.69%
+62.93%
+65.20%
+69.20%
+76.32%
+
+52.76%
+65.22%
+63.97%
+64.09%
+67.29%
+70.27%
+76.10%
+77.70%
+81.08%
+
+method achieved the best results in both cross-subject and
+cross-view evaluation.
+
+Fig. 6. The confusion matrix of the proposed method on the MSRC-12 Kinect
+gesture dataset.
+
+C. MSRC-12 Kinect Gesture Dataset
+
+MSRC-12 [48] is a relatively large dataset for gesture/action
+recognition from 3D skeleton data captured by a Kinect sensor.
+The dataset has 594 sequences, containing 12 gestures by
+30 subjects, 6244 gesture instances in total. The 12 gestures
+are: “lift outstretched arms”, “duck”, “push right”, “goggles”,
+“wind it up”, “shoot”, “bow”, “throw”, “had enough”, “beat
+both”, ”change weapon” and “kick”. For this dataset, cross-
+subjects protocol was adopted, that is, odd subjects were used
+for training and even subjects were for testing. Table VI
+lists the performance of the proposed method and the results
+reported before.
+
+COMPARISON OF THE PROPOSED METHOD WITH THE EXISTING
+
+METHODS ON THE MSRC-12 KINECT GESTURE DATASET.
+
+TABLE VI
+
+Method
+
+HGM [80]
+
+Pose-Lexicon [81]
+ELC-KSVD [82]
+
+Cov3DJ [57]
+
+SOS [52]
+
+Proposed Method
+
+Accuracy (%)
+
+66.25%
+85.86%
+90.22%
+91.70%
+94.27%
+94.86%
+
+The confusion matrix is shown in Fig. 6. From the confusion
+matrix we can see that the proposed method distinguishes
+most of actions very well, but
+is not very effective to
+distinguish “goggles” and “had enough” which shares the
+similar appearance of JTMs probably caused by 3D to 2D
+projection.
+
+it
+
+D. G3D Dataset
+
+Gaming 3D Dataset (G3D) [49] focuses on real-time action
+recognition in a gaming scenario. It contains 10 subjects
+performing 20 gaming actions: “punch right”, “punch left”,
+“kick right”, “kick left”, “defend”, “golf swing”, “tennis swing
+forehand”, “tennis swing backhand”, “tennis serve”, “throw
+bowling ball”, “aim and ﬁre gun”, “walk”, “run”, “jump”,
+“climb”, “crouch”, “steer a car”, “wave”, “ﬂap” and “clap”.
+For this dataset, the ﬁrst 4 subjects were used for training, the
+ﬁfth for validation and the remaining 5 subjects were for test-
+ing as conﬁgured in [83]. Table VII compared the performance
+of the proposed method and those reported in [83].
+
+COMPARISON OF THE PROPOSED METHOD WITH PREVIOUS METHODS ON
+
+TABLE VII
+
+THE G3D DATASET.
+
+Method
+
+Cov3DJ [57]
+
+ELC-KSVD [82]
+
+LRBM [83]
+SOS [52]
+
+Proposed Method
+
+Accuracy (%)
+
+71.95%
+82.37%
+90.50%
+95.45%
+96.02%
+
+The confusion matrix is shown in ﬁgure 7. From the confu-
+sion matrix we can see that the proposed method recognizes
+most of actions well. The proposed method outperformed
+LRBM. LRBM confused the actions among “tennis swing
+forehand” and “bowling”, “golf” and “tennis swing backhand”,
+“aim and ﬁre gun” and “wave”, “jump” and “walk”, however,
+these actions are well distinguished by the proposed method
+likely because of the quality spatial information encoded in the
+JTMs. As for “aim and ﬁre gun” and “wave”, the proposed
+method could not distinguish them well without encoding the
+motion magnitude, but does well with the encoding of motion
+magnitude. However, the proposed method, confused “tennis
+swing forehand” and “tennis swing backhand”. It’s probably
+because the front and side projections of body shape of the
+two actions are too similar.
+
+E. UTD-MHAD
+
+UTD-MHAD [50] is a multimodal action dataset, captured
+by one Microsoft Kinect camera and one wearable inertial
+sensor. This dataset contains 27 actions performed by 8
+subjects (4 females and 4 males) with each subject performing
+each action 4 times. After removing three corrupted sequences,
+the dataset has 861 sequences. The actions are: “right arm
+swipe to the left”, “right arm swipe to the right”, “right
+hand wave”, “two hand front clap”, “right arm throw”, “cross
+arms in the chest”, “basketball shoot”, “right hand draw x”,
+“right hand draw circle (clockwise)”, “right hand draw circle
+(counter clockwise)”, “draw triangle”, “bowling (right hand)”,
+“front boxing”, “baseball swing from right”, “tennis right hand
+forehand swing”, “arm curl (two arms)”, “tennis serve”, “two
+hand push”, “right hand know on door”, “right hand catch an
+object”, “right hand pick up and throw”, “jogging in place”,
+
+0.92         0.03 0.021.00    0.04  0.01    1.00            0.82            0.95          0.02 0.96   0.060.01     0.01 0.96     0.02      0.97       0.16    0.99        0.03   0.88  0.03   0.04     0.96 0.01    0.01 0.030.010.05 1.00lift outstretched armsduckpush rightgoggleswind it upshootbowthrowhad enoughchange weaponbeat bothkicklift outstretched armsduckpush rightgoggleswind it upshootbowthrowhad enoughchange weaponbeat bothkickSUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+8
+
+Fig. 7. The confusion matrix of the proposed method on the G3D Dataset.
+
+Fig. 8. The confusion matrix of the proposed method on the UTD-MHAD
+dataset.
+
+“walking in place”, “sit to stand”, “stand to sit”, “forward
+lunge (left foot forward)” and “squat (two arms stretch out)”.
+It covers sport actions (e.g. “bowling”, “tennis serve” and
+“baseball swing”), hand gestures (e.g. “draw X”, “draw tri-
+angle”, and “draw circle”), daily activities (e.g. “knock on
+door”, “sit to stand” and “stand to sit”) and training exercises
+(e.g. “arm curl”, “lung” and “squat”). For this dataset, cross-
+subjects protocol was adopted as in [50], namely, the data
+from the subjects numbered 1, 3, 5, 7 were used for training
+while subjects 2, 4, 6, 8 were used for testing. Table VIII
+compares the performance of the proposed method and those
+reported in [50].
+
+COMPARISON OF THE PROPOSED METHOD WITH THE PREVIOUS
+
+METHODS ON UTD-MHAD DATASET.
+
+TABLE VIII
+
+Method
+
+ELC-KSVD [82]
+
+Kinect & Inertial [50]
+
+Cov3DJ [57]
+
+SOS [52]
+
+Proposed Method
+
+Accuracy (%)
+
+76.19%
+79.10%
+85.58%
+86.97%
+87.90%
+
+Please notice that the method used in [50] is based on Depth
+
+and Inertial sensor data, not skeleton data alone.
+
+The confusion matrix is shown in Fig. 8. This dataset is
+much more challenging compared to the previous two datasets.
+From the confusion matrix we can see that
+the proposed
+method can not distinguish some actions well, for example,
+“jog” and “walk”. A probable reason is that the proposed
+encoding process is also a temporal normalization process.
+The actions “jog” and “walk” would be normalized to have
+similar JTMs after the encoding.
+
+natural ones. Generally speaking, there possibly exist three
+orthogonal views which are better than the natural coordinates
+if the three views result in less self-occlusion among the joints
+for all actions. Since only very sparse 20 joints are used to
+represent the skeleton, the likelihood of such self-occlusion of
+the joints would be very small. Consequently, no particular
+three orthogonal views would be obviously superior to others.
+However, the depth camera only captures 2 1
+2 D in the natural
+coordinates and the skeleton is estimated from the 2 1
+2 D. It is
+likely that the natural coordinates could be slightly, but not
+signiﬁcantly, better than other three orthogonal views.
+
+To validate this, we conducted the following experiments
+on the G3D Dataset. Different three orthogonal views were
+generated by rotating the 3D points of joints and project-
+ing them to the three orthogonal planes. The rotation was
+performed with a ﬁxed step of 22.5◦ along the polar angle
+θ and azimuthal angle ψ, both in the range of [−45◦, 45◦].
+Note that this range effectively covers all possible views since
+rotation beyond this range would result in swapping of views.
+Such swapping would not affect the recognition accuracy after
+fusion. Table IX shows the recognition accuracies of different
+orthogonal views indicated by the values of θ and ψ.
+
+THE RECOGNITION ACCURACY (%) OF DIFFERENT ORTHOGNAL VIEWS.
+
+TABLE IX
+
+θ
+ψ
+−45◦
+−22.5◦
+0◦
+22.5◦
+45◦
+
+− 45◦ −22.5◦
+94.45
+92.12
+94.45
+95.40
+95.05
+94.45
+94.85
+94.85
+92.24
+95.00
+
+0◦
+94.85
+94.45
+95.12
+94.45
+94.85
+
+22.5◦
+92.24
+92.73
+94.85
+94.85
+94.15
+
+45◦
+92.42
+92.24
+94.15
+93.45
+94.15
+
+F. Discussion
+
+In this paper, we adopt
+
+the three orthogonal planes of
+the natural real coordinates of the camera. One question is
+whether there are some orthogonal planes better than the
+
+The results in Table IX have shown small and insigniﬁcant
+variation of the recognition accuracy among the views and the
+natural coordinates produced the best result.
+
+In this paper, we fuse three orthogonal image planes to
+improve the ﬁnal accuracy. Another questions is whether
+
+0.96                    1.00                    1.00     0.06              1.00                    1.00                    0.970.140.12                  0.76 0.07           0.04     0.060.78                  0.040.100.80                    1.00                    1.00                    0.95             0.03     0.051.00               0.07    1.00                    1.00                    1.00                    1.00                    1.00 0.03                  1.00                    0.97punch rightpunch leftkick rightkick leftdefendgolf swingtennis swing forehandtennis swing backhandtennis servethrow bowling ballaim and fire gunwalkjoggingjumpclimbcrouchsteer a carwaveflapclappunch rightpunch leftkick rightkick leftdefendgolf swingtennis swing forehandtennis swing backhandtennis servethrow bowling ballaim and fire gunwalkjoggingjumpclimbcrouchsteer a carwaveflapclap1.00 0.06      0.19                  1.00                           0.88 0.06   0.06 0.06                   0.81                           0.81             0.06           0.19 0.880.75                         0.06 0.88       0.13                  0.06                       0.13   0.940.130.06                         0.68                           0.88                           1.00  0.25                 0.06      0.94    0.19                0.06     1.00                           0.75    0.06                      0.87                 0.25     0.06   1.00                           0.81           0.06               0.38                          0.560.94                           1.00                           0.50                          0.501.00                           1.00                           1.00                           1.00                           1.00swipe leftswipe rightwaveclapthrowarm crossbasketball shootdraw xdraw circle CWdraw circle CCWdraw trianglebowlingboxingbaseball swingtennis swingarm curltennis servepushknockcatchpickup throwjogwalksit2standstand2sitlungesquatswipe leftswipe rightwaveclapthrowarm crossbasketball shootdraw xdraw circle CWdraw circle CCWdraw trianglebowlingboxingbaseball swingtennis swingarm curltennis servepushknockcatchpickup throwjogwalksit2standstand2sitlungesquatSUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+9
+
+adding more views will
+lead to better recognition. Some
+experiments were conducted on the G3D dataset to answer
+this question. Firstly, the views of the natural coordinates were
+fused with the views after rotating the points by the speciﬁed
+angles in θ and ψ. Table X shows the results by fusing two
+pairs of three orthogonal planes, one is the natural coordinates
+and the other is speciﬁed by the rotation angles θ and ψ. The
+accuracies of all cases are almost same.
+
+THE RESULTS OF FUSING THE ORIGINAL THREE ORTHOGONAL PLANES
+
+AND ROTATED THREE PLANES.
+
+TABLE X
+
+θ
+ψ
+−45◦
+−22.5◦
+0◦
+22.5◦
+45◦
+
+− 45◦ −22.5◦
+93.45
+94.45
+94.85
+94.54
+95.15
+95.12
+94.24
+94.85
+94.85
+94.85
+
+0◦
+94.85
+95.15
+95.12
+95.15
+95.15
+
+22.5◦
+95.15
+95.12
+94.54
+95.15
+95.12
+
+45◦
+95.12
+94.85
+94.54
+94.85
+95.15
+
+θ
+
+9
+
+by
+
+We
+
+also
+views
+
+evaluated
+of
+
+the
+ones, where
+
+the
+coordinates
+∈
+
+performance
+including
+{−22.5◦, 0◦, 22.5◦}
+
+fusing
+the
+all
+and
+natural
+ψ ∈ {−22.5◦, 0◦, 22.5◦}, and all views of
+the 25
+coordinates, where θ ∈ {−45◦,−22.5◦, 0◦, 22.5◦, 45◦}
+and ψ ∈ {−45◦,−22.5◦, 0◦, 22.5◦, 45◦} respectively. The
+results are shown in Table XI. It can be seen that fusing
+views of multiple orthogonal coordinates did not
+improve
+the performance on this dataset. Similar results would be
+expected on other datasets for the reason explained above.
+
+The above analysis and experiments have demonstrated that
+the three orthogonal views in the natural coordinates are likely
+to be sufﬁcient.
+
+THE RESULTS FOR FUSING VIEWS OF MULTIPLE COORDINATES.
+
+TABLE XI
+
+Number of Coordinates
+
+9
+25
+
+Accuracy (%)
+
+95.15
+94.85
+
+V. CONCLUSION
+
+This paper addresses the problem of human action recogni-
+tion by applying ConvNets to skeleton sequences. An effective
+method is proposed to project the joint trajectories to three
+orthogonal JTMs to encode the spatial-temporal information
+into texture patterns. The three JTMs are complementary to
+each other. Such image-based representation enables us to
+ﬁne-tune the existing ConvNets models trained on image data
+for classiﬁcation of skeleton sequences, without training the
+deep ConvNets afresh. The experimental results on the four
+datasets have shown the efﬁcacy of the proposed encoding
+scheme. Extension of the proposed method to on-line action
+recognition is the focus of future work.
+
+REFERENCES
+
+[1] T. Darrell and A. Pentland, “Space-time gestures,” in Proc. IEEE Com-
+puter Society Conference on Computer Vision and Pattern Recognition
+(CVPR), 1993, pp. 335–340.
+
+[2] L. W. Campbell and A. F. Bobick, “Recognition of human body motion
+using phase space constraints,” in Proc. International Conference on
+Computer Vision (ICCV), 1995, pp. 624–630.
+
+[3] A. Bobick and J. Davis, “An appearance-based representation of action,”
+
+in ICPR, 1996, pp. 307–312.
+
+[4] A. F. Bobick and J. W. Davis, “The recognition of human movement
+using temporal templates,” IEEE Transactions on pattern analysis and
+machine intelligence, vol. 23, no. 3, pp. 257–267, 2001.
+
+[5] A. Yilmaz and M. Shah, “Actions sketch: A novel action representation,”
+
+in CVPR, 2005, pp. 984–989.
+
+[6] I. Laptev, “On space-time interest points,” International Journal of
+
+Computer Vision, vol. 64, no. 2-3, pp. 107–123, 2005.
+
+[7] W. Li, Z. Zhang, and Z. Liu, “Expandable data-driven graphical model-
+ing of human actions based on salient postures,” Circuits and Systems
+for Video Technology, IEEE Transactions on, vol. 18, no. 11, pp. 1499–
+1510, 2008.
+
+[8] H. Wang and C. Schmid, “Action recognition with improved trajecto-
+
+ries,” in ICCV, 2013, pp. 3551–3558.
+
+[9] L. Liu, L. Shao, X. Zhen, and X. Li, “Learning discriminative key poses
+for action recognition,” IEEE transactions on cybernetics, vol. 43, no. 6,
+pp. 1860–1870, 2013.
+
+[10] H. Wang, A. Kl¨aser, C. Schmid, and C.-L. Liu, “Dense trajectories
+and motion boundary descriptors for action recognition,” International
+Journal of Computer Vision, vol. 103, no. 1, pp. 60–79, 2013.
+
+[11] X. Peng, C. Zou, Y. Qiao, and Q. Peng, “Action recognition with stacked
+
+ﬁsher vectors,” in ECCV, 2014, pp. 581–595.
+
+[12] L. Shao, X. Zhen, D. Tao, and X. Li, “Spatio-temporal laplacian pyramid
+coding for action recognition,” IEEE Transactions on Cybernetics,
+vol. 44, no. 6, pp. 817–827, 2014.
+
+[13] V. Kantorov and I. Laptev, “Efﬁcient feature extraction, encoding, and
+classiﬁcation for action recognition,” in Proc. IEEE Conference on
+Computer Vision and Pattern Recognition (CVPR), 2014, pp. 2593–
+2600.
+
+[14] B. Ni, P. Moulin, X. Yang, and S. Yan, “Motion part regularization:
+Improving action recognition via trajectory selection,” in Proc. IEEE
+Conference on Computer Vision and Pattern Recognition (CVPR), 2015,
+pp. 3698–3706.
+
+[15] L. Wang, Y. Qiao, and X. Tang, “Action recognition with trajectory-
+pooled deep-convolutional descriptors,” in CVPR, 2015, pp. 4305–4314.
+[16] L. Liu, L. Shao, X. Li, and K. Lu, “Learning spatio-temporal represen-
+tations for action recognition: a genetic programming approach,” IEEE
+transactions on cybernetics, vol. 46, no. 1, pp. 158–170, 2016.
+
+[17] H. Bilen, B. Fernando, E. Gavves, A. Vedaldi, and S. Gould, “Dynamic
+
+image networks for action recognition,” in CVPR, 2016.
+
+[18] L. Shao, L. Liu, and M. Yu, “Kernelized multiview projection for robust
+action recognition,” International Journal of Computer Vision, vol. 118,
+no. 2, pp. 115–129, 2016.
+
+[19] X. Peng, L. Wang, X. Wang, and Y. Qiao, “Bag of visual words and
+fusion methods for action recognition: Comprehensive study and good
+practice,” Computer Vision and Image Understanding, 2016.
+
+[20] B. Fernando, E. Gavves, J. Oramas, A. Ghodrati, and T. Tuytelaars,
+“Rank pooling for action recognition,” IEEE Transactions on Pattern
+Analysis and Machine Intelligence, 2016.
+
+[21] L. Wang, Y. Xiong, Z. Wang, Y. Qiao, D. Lin, X. Tang, and L. Van Gool,
+“Temporal segment networks: towards good practices for deep action
+recognition,” in European Conference on Computer Vision, 2016, pp.
+20–36.
+
+[22] J. Han, L. Shao, D. Xu, and J. Shotton, “Enhanced computer vision with
+microsoft kinect sensor: A review,” IEEE transactions on cybernetics,
+vol. 43, no. 5, pp. 1318–1334, 2013.
+
+[23] J. Shotton, A. Fitzgibbon, M. Cook, T. Sharp, M. Finocchio, R. Moore,
+A. Kipman, and A. Blake, “Real-time human pose recognition in parts
+from single depth images,” in Proc. IEEE Conference on Computer
+Vision and Pattern Recognition (CVPR), 2011, pp. 1297–1304.
+
+[24] W. Li, Z. Zhang, and Z. Liu, “Action recognition based on a bag of 3D
+
+points,” in CVPRW, 2010, pp. 9–14.
+
+[25] X. Yang, C. Zhang, and Y. Tian, “Recognizing actions using depth
+motion maps-based histograms of oriented gradients,” in ACM MM,
+2012, pp. 1057–1060.
+
+[26] J. Wang, Z. Liu, Y. Wu, and J. Yuan, “Mining actionlet ensemble for
+action recognition with depth cameras,” in CVPR, 2012, pp. 1290–1297.
+[27] O. Oreifej and Z. Liu, “HON4D: Histogram of oriented 4D normals for
+activity recognition from depth sequences,” in CVPR, 2013, pp. 716–
+723.
+
+[28] X. Yang and Y. Tian, “Super normal vector for activity recognition using
+
+depth sequences,” in CVPR, 2014, pp. 804–811.
+
+SUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+10
+
+[29] C. Lu, J. Jia, and C.-K. Tang, “Range-sample depth feature for action
+
+recognition,” in CVPR, 2014, pp. 772–779.
+
+[30] X. Yang and Y. Tian, “Eigenjoints-based action recognition using Naive-
+
+Bayes-Nearest-Neighbor,” in CVPRW, 2012, pp. 14–19.
+
+[31] M. Zanﬁr, M. Leordeanu, and C. Sminchisescu, “The moving pose: An
+efﬁcient 3D kinematics descriptor for low-latency action recognition and
+detection,” in Proc. IEEE International Conference on Computer Vision
+(ICCV), 2013, pp. 2752–2759.
+
+[32] M. A. Gowayyed, M. Torki, M. E. Hussein, and M. El-Saban, “His-
+togram of oriented displacements (HOD): Describing trajectories of
+human joints for action recognition,” in IJCAI, 2013, pp. 1351–1357.
+
+[33] P. Wang, W. Li, P. Ogunbona, Z. Gao, and H. Zhang, “Mining mid-level
+features for action recognition based on effective skeleton representa-
+tion,” in Proc. International Conference on Digital Image Computing:
+Techniques and Applications (DICTA), 2014, pp. 1–8.
+
+[34] R. Vemulapalli, F. Arrate, and R. Chellappa, “Human action recognition
+by representing 3D skeletons as points in a lie group,” in CVPR, 2014,
+pp. 588–595.
+
+[35] L. Xia, C.-C. Chen, and J. Aggarwal, “View invariant human action
+recognition using histograms of 3D joints,” in Proc. IEEE Conference on
+Computer Vision and Pattern Recognition Workshops (CVPRW), 2012,
+pp. 20–27.
+
+[36] Z. Shao and Y. Li, “A new descriptor for multiple 3D motion trajectories
+recognition,” in Proc. IEEE International Conference on Robotics and
+Automation (ICRA), 2013, pp. 4749–4754.
+
+[37] R. Chaudhry, F. Oﬂi, G. Kurillo, R. Bajcsy, and R. Vidal, “Bio-
+inspired dynamic 3D discriminative skeletal features for human action
+recognition,” in Proc. IEEE Conference on Computer Vision and Pattern
+Recognition Workshops, 2013, pp. 471–478.
+
+[38] E. Ohn-Bar and M. Trivedi, “Joint angles similarities and HOG2 for
+action recognition,” in Proc. IEEE Conference on Computer Vision and
+Pattern Recognition Workshops, 2013, pp. 465–470.
+
+[39] M. Devanne, H. Wannous, S. Berretti, P. Pala, M. Daoudi, and
+A. Del Bimbo, “3-D human action recognition by shape analysis of
+motion trajectories on riemannian manifold,” IEEE transactions on
+cybernetics, vol. 45, no. 7, pp. 1340–1352, 2015.
+
+[40] R. Vemulapalli, F. Arrate, and R. Chellappa, “R3DG features: Relative
+3d geometry-based skeletal representations for human action recogni-
+tion,” Computer Vision and Image Understanding, vol. 152, pp. 155 –
+166, 2016.
+
+[41] R. Vemulapalli and R. Chellappa, “Rolling rotations for recognizing
+human actions from 3D skeletal data,” in Proc. IEEE Conference on
+Computer Vision and Pattern Recognition, 2016.
+
+[42] Y. Yang, C. Deng, D. Tao, S. Zhang, W. Liu, and X. Gao, “Latent max-
+margin multitask learning with skelets for 3-D action recognition,” IEEE
+transactions on cybernetics, 2016.
+
+[43] Y. Du, W. Wang, and L. Wang, “Hierarchical recurrent neural network
+for skeleton based action recognition,” in CVPR, 2015, pp. 1110–1118.
+[44] V. Veeriah, N. Zhuang, and G.-J. Qi, “Differential recurrent neural
+
+networks for action recognition,” in ICCV, 2015, pp. 4041–4049.
+
+[45] W. Zhu, C. Lan, J. Xing, W. Zeng, Y. Li, L. Shen, and X. Xie, “Co-
+occurrence feature learning for skeleton based action recognition using
+regularized deep LSTM networks,” in AAAI, 2016.
+
+[46] A. Shahroudy, J. Liu, T.-T. Ng, and G. Wang, “NTU RGB+ D: A large
+
+scale dataset for 3D human activity analysis,” in CVPR, 2016.
+
+[47] J. Liu, A. Shahroudy, D. Xu, and G. Wang, “Spatio-temporal LSTM
+with trust gates for 3D human action recognition,” in Proc. European
+Conference on Computer Vision, 2016, pp. 816–833.
+
+[48] S. Fothergill, H. M. Mentis, S. Nowozin, and P. Kohli, “Instructing
+people for training gestural interactive systems,” in ACM Conference
+on Computer-Human Interaction (ACM HCI), 2012.
+
+[49] V. Bloom, D. Makris, and V. Argyriou, “G3D: A gaming action
+dataset and real time action recognition evaluation framework,” in Proc.
+IEEE Computer Society Conference on Computer Vision and Pattern
+Recognition Workshops (CVPRW), 2012, pp. 7–12.
+
+[50] C. Chen, R. Jafari, and N. Kehtarnavaz, “Utd-mhad: A multimodal
+dataset for human action recognition utilizing a depth camera and
+a wearable inertial sensor,” in Image Processing (ICIP), 2015 IEEE
+International Conference on, 2015, pp. 168–172.
+
+[51] P. Wang, Z. Li, Y. Hou, and W. Li, “Action recognition based on joint
+trajectory maps using convolutional neural networks,” in ACM MM,
+2016, pp. 102–106.
+
+[52] Y. Hou, Z. Li, P. Wang, and W. Li, “Skeleton optical spectra based action
+recognition using convolutional neural networks,” IEEE Transactions on
+Circuits and Systems for Video Technology, pp. 1–5, 2016.
+
+[53] J. K. Aggarwal and L. Xia, “Human activity recognition from 3d data:
+
+A review,” Pattern Recognition Letters, vol. 48, pp. 70–80, 2014.
+
+[54] L. L. Presti and M. La Cascia, “3d skeleton-based human action
+classiﬁcation: A survey,” Pattern Recognition, vol. 53, pp. 130–147,
+2016.
+
+[55] J. Zhang, W. Li, P. O. Ogunbona, P. Wang, and C. Tang, “RGB-D-based
+action recognition datasets: A survey,” Pattern Recognition, vol. 60, pp.
+86–105, 2016.
+
+[56] C. Ellis, S. Z. Masood, M. F. Tappen, J. J. Laviola Jr, and R. Sukthankar,
+“Exploring the trade-off between accuracy and observational latency in
+action recognition,” International Journal of Computer Vision, vol. 101,
+no. 3, pp. 420–436, 2013.
+
+[57] M. E. Hussein, M. Torki, M. A. Gowayyed, and M. El-Saban, “Human
+action recognition using a temporal hierarchy of covariance descriptors
+on 3D joint locations,” in IJCAI, 2013, pp. 2466–2472.
+
+[58] T. Kerola, N. Inoue, and K. Shinoda, “Spectral graph skeletons for 3d
+action recognition,” in Asian Conference on Computer Vision. Springer,
+2014, pp. 417–432.
+
+[59] D. Wu and L. Shao, “Leveraging hierarchical parametric networks for
+joints based action segmentation and recognition,” in Pro-
+the IEEE Conference on Computer Vision and Pattern
+
+skeletal
+ceedings of
+Recognition, 2014, pp. 724–731.
+
+[60] G. Evangelidis, G. Singh, and R. Horaud, “Skeletal quads: Human
+action recognition using joint quadruples,” in International Conference
+on Pattern Recognition, 2014, pp. 4513–4518.
+
+[61] F. Oﬂi, R. Chaudhry, G. Kurillo, R. Vidal, and R. Bajcsy, “Sequence
+of the most informative joints (smij): A new representation for human
+skeletal action recognition,” Journal of Visual Communication and
+Image Representation, vol. 25, no. 1, pp. 24–38, 2014.
+
+[62] M. Barnachon, S. Bouakaz, B. Boufama, and E. Guillou, “Ongoing
+human action recognition with motion capture,” Pattern Recognition,
+vol. 47, no. 1, pp. 238–247, 2014.
+
+[63] I. Lillo, A. Soto, and J. Carlos Niebles, “Discriminative hierarchical
+modeling of spatio-temporally composable human activities,” in Pro-
+ceedings of
+the IEEE Conference on Computer Vision and Pattern
+Recognition, 2014, pp. 812–819.
+
+[64] C. Wang, Y. Wang, and A. L. Yuille, “An approach to pose-based action
+recognition,” in Proceedings of the IEEE Conference on Computer Vision
+and Pattern Recognition, 2013, pp. 915–922.
+
+[65] P. Wei, N. Zheng, Y. Zhao, and S.-C. Zhu, “Concurrent action detection
+with structural prediction,” in Proceedings of the IEEE International
+Conference on Computer Vision, 2013, pp. 3136–3143.
+
+[66] A. Eweiwi, M. S. Cheema, C. Bauckhage, and J. Gall, “Efﬁcient pose-
+based action recognition,” in Asian Conference on Computer Vision.
+Springer, 2014, pp. 428–443.
+
+[67] A. Shahroudy, T. T. Ng, Q. Yang, and G. Wang, “Multimodal multipart
+learning for action recognition in depth videos,” IEEE Transactions on
+Pattern Analysis and Machine Intelligence, vol. 38, no. 10, pp. 2123–
+2129, 2016.
+
+[68] R. Slama, H. Wannous, M. Daoudi, and A. Srivastava, “Accurate 3d
+action recognition using learning on the grassmann manifold,” Pattern
+Recognition, vol. 48, no. 2, pp. 556–567, 2015.
+
+[69] A. M. Lehrmann, P. V. Gehler, and S. Nowozin, “Efﬁcient nonlinear
+markov models for human motion,” in Proceedings of the IEEE Confer-
+ence on Computer Vision and Pattern Recognition, 2014, pp. 1314–1321.
+[70] Z. Shao and Y. Li, “Integral invariants for space motion trajectory
+matching and recognition,” Pattern Recognition, vol. 48, no. 8, pp. 2418–
+2432, 2015.
+
+[71] J. Yue-Hei Ng, M. Hausknecht, S. Vijayanarasimhan, O. Vinyals,
+R. Monga, and G. Toderici, “Beyond short snippets: Deep networks
+for video classiﬁcation,” in CVPR, 2015, pp. 4694–4702.
+
+[72] K. Simonyan and A. Zisserman, “Two-stream convolutional networks
+
+for action recognition in videos,” in NIPS, 2014, pp. 568–576.
+
+[73] S. Ji, W. Xu, M. Yang, and K. Yu, “3D convolutional neural networks for
+human action recognition,” Pattern Analysis and Machine Intelligence,
+IEEE Transactions on, vol. 35, no. 1, pp. 221–231, 2013.
+
+[74] D. Tran, L. Bourdev, R. Fergus, L. Torresani, and M. Paluri, “Learning
+spatiotemporal features with 3D convolutional networks,” in ICCV,
+2015, pp. 4489–4497.
+
+[75] J. Donahue, L. Anne Hendricks, S. Guadarrama, M. Rohrbach, S. Venu-
+gopalan, K. Saenko, and T. Darrell, “Long-term recurrent convolutional
+networks for visual recognition and description,” in CVPR, 2015, pp.
+2625–2634.
+
+[76] S. Sharma, R. Kiros, and R. Salakhutdinov, “Action recognition using
+
+visual attention,” arXiv preprint arXiv:1511.04119, 2015.
+
+[77] P. Wang, W. Li, Z. Gao, C. Tang, J. Zhang, and P. O. Ogunbona,
+“Convnets-based action recognition from depth maps through virtual
+cameras and pseudocoloring,” in ACM MM, 2015, pp. 1119–1122.
+
+SUBMITTED TO IEEE TRANSACTIONS ON CYBERNETICS, VOL. X, NO. X, X 2016 (WILL BE INSERTED BY THE EDITOR)
+
+11
+
+[79] A. Krizhevsky, I. Sutskever, and G. E. Hinton, “Imagenet classiﬁcation
+with deep convolutional neural networks,” in Proc. Annual Conference
+on Neural Information Processing Systems (NIPS), 2012, pp. 1106–
+1114.
+
+[80] S. Yang, C. Yuan, W. Hu, and X. Ding, “A hierarchical model based on
+latent dirichlet allocation for action recognition,” in Pattern Recognition
+(ICPR), 2014 22nd International Conference on. IEEE, 2014, pp. 2613–
+2618.
+
+[78] P. Wang, W. Li, Z. Gao, J. Zhang, C. Tang, and P. Ogunbona, “Action
+recognition from depth maps using deep convolutional neural networks,”
+Human-Machine Systems, IEEE Transactions on, vol. 46, no. 4, pp. 498–
+509, 2016.
+
+[81] L. Zhou, W. Li, and P. Ogunbona, “Learning a pose lexicon for
+semantic action recognition,” in 2016 IEEE International Conference
+on Multimedia and Expo (ICME), 2016, pp. 1–6.
+
+[82] L. Zhou, W. Li, Y. Zhang, P. Ogunbona, D. T. Nguyen, and H. Zhang,
+“Discriminative key pose extraction using extended lc-ksvd for action
+recognition,” in Proc. International Conference on Digital Image Com-
+puting: Techniques and Applications (DICTA).
+IEEE, 2014, pp. 1–8.
+[83] S. Nie, Z. Wang, and Q. Ji, “A generative restricted boltzmann machine
+based method for high-dimensional motion data modeling,” Computer
+Vision and Image Understanding, pp. 14–22, 2015.
+
+Yonghong Hou (M’11) received the B.Eng. degree
+in electronic engineering from Xidian University,
+Xian, China, in 1991, and the M.Eng. and Ph.D
+degrees both in communication and information
+system from Tianjin University, Tianjin, China, in
+2003 and 2009, respectively. Since 2006, he has
+been an associate professor of school of electronic
+and information engineering, Tianjin University. His
+research interests include computer vision, artiﬁcial
+intelligence and multimedia signal processing
+
+Pichao Wang (S’14) received the BE degree in net-
+work engineering from Nanchang University, Nan-
+chang, China, in 2010, and received the MS de-
+gree in communication and information system from
+Tianjin University, Tianjin, China, in 2013. He is
+currently pursuing the PhD degree with the School
+of Computing and Information Technology, Univer-
+sity of Wollongong, Australia. His current research
+interests include computer vision and machine learn-
+ing.
+
+Wanqing Li received his PhD in electronic engi-
+neering from The University of Western Australia.
+He is an Associate Professor and Co-Director of
+Advanced Multimedia Research Lab (AMRL) of
+University of Wollongong, Australia. His research
+areas are 3D computer vision, 3D multimedia signal
+processing and medical image analysis. Dr. Li is a
+Senior Member of IEEE.
+
+Chuankun Li received the BE degree in electronic
+information engineering from North University of
+China , Taiyuan, China, in 2012 and received the MS
+degree in communication and information system
+from North University of China, Taiyuan, China, in
+2015. He is currently pursuing the Ph.D degree with
+School of electronic information engineering , Tian-
+jin University, China. His current research interests
+include computer vision and machine learning.
+
+

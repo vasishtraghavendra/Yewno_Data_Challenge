@@ -1,0 +1,1341 @@
+6
+1
+0
+2
+
+ 
+
+v
+o
+N
+3
+2
+
+ 
+
+ 
+ 
+]
+L
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+7
+9
+8
+7
+0
+
+.
+
+1
+1
+6
+1
+:
+v
+i
+X
+r
+a
+
+Unsupervised Learning of Sentence Representations
+
+using Convolutional Neural Networks
+
+Zhe Gan†, Yunchen Pu†, Ricardo Henao†, Chunyuan Li†, Xiaodong He‡, Lawrence Carin†
+
+†Department of Electrical and Computer Engineering, Duke University
+
+{zg27, yp42, r.henao, cl319, lcarin}@duke.edu
+
+‡Microsoft Research, Redmond, WA 98052, USA
+
+xiaohe@microsoft.com
+
+Abstract
+
+We propose a new encoder-decoder approach to learn distributed sentence repre-
+sentations from unlabeled sentences. The word-to-vector representation is used,
+and convolutional neural networks are employed as sentence encoders, mapping
+an input sentence into a ﬁxed-length vector. This representation is decoded using
+long short-term memory recurrent neural networks, considering several tasks, such
+as reconstructing the input sentence, or predicting the future sentence. We further
+describe a hierarchical encoder-decoder model to encode a sentence to predict
+multiple future sentences. By training our models on a large collection of novels,
+we obtain a highly generic convolutional sentence encoder that performs well in
+practice. Experimental results on several benchmark datasets, and across a broad
+range of applications, demonstrate the superiority of the proposed model over
+competing methods.
+
+1
+
+Introduction
+
+Learning sentence representations is central to many natural language applications. The aim of a
+model for such task is to learn ﬁxed-length feature vectors that encode the semantic and syntactic
+properties of sentences. Deep learning techniques have shown promising performance on sentence
+modeling, via recurrent neural networks (RNNs) [1], convolutional neural networks (CNNs) [2, 3],
+and recursive neural networks [4]. Most of these models are trained in a supervised manner, with
+a fully-connected layer at the top of the neural network. However, large-scale labeled datasets are
+often difﬁcult to acquire, motivating the need for unsupervised learning methods to learn structure
+in sentences. Further, sentences contain a large amount of linguistic regularity, which makes them
+particularly well suited as a domain for building unsupervised learning models.
+Several approaches have been proposed for unsupervised sentence modeling. The paragraph-vector
+model of [5] incorporates a global context vector into the log-linear neural language model [6] to
+learn the sentence representations; however, at prediction time, one needs to perform gradient descent
+to compute a new vector. The skip-thought model of [7] describes an encoder-decoder model to
+reconstruct the surrounding sentences of an input sentence, where both the encoder and decoder are
+modeled as RNNs. The sequence autoencoder of [8] is a simple variant of [7], in which the decoder
+is used to reconstruct the input sentence itself. Most recently, [9] proposed a sentence-level log-linear
+bag-of-words (BoW) model, where a BoW representation of an input sentence is used to predict
+adjacent sentences that are also represented as BoW. CNNs have recently achieved excellent results
+in various supervised natural language applications [2, 3, 10]. However, CNN-based unsupervised
+sentence modeling has previously not been explored. This paper seeks to ﬁll that gap.
+Related to but distinct from the skip-thought model of [7], we propose to use a CNN encoder for
+unsupervised learning of sentence representations within the framework of encoder-decoder models
+
+proposed by [11, 12]. A CNN performs successive convolution and pooling operations on an input
+sentence, then uses a fully-connected layer to produce a ﬁxed-length encoding of the sentence. This
+encoding vector is then fed into a long short-term memory (LSTM) recurrent network to produce a
+target sentence. Depending on the task, we propose three models: (i) CNN-LSTM autoencoder: this
+model seeks to reconstruct the original input sentence, by capturing the intra-sentence information;
+(ii) CNN-LSTM future predictor: this model aims to predict a future sentence, by leveraging inter-
+sentence information; (iii) CNN-LSTM composite model: in this case, there are two LSTMs, decoding
+the representation to the input sentence itself and a future sentence, respectively. This composite
+model aims to learn a sentence encoder that captures both intra- and inter-sentence information.
+The proposed CNN-LSTM future predictor model only considers the immediately subsequent sen-
+tence as context.
+In order to capture longer-term dependencies between sentences, we further
+introduce a hierarchical encoder-decoder model. This model abstracts the RNN language model
+of [13] to the sentence level. That is, instead of using the current word in a sentence to predict its
+future words (sentence continuation), we encode a sentence to predict multiple future sentences
+(paragraph continuation). This model is termed hierarchical CNN-LSTM model.
+Compared with the LSTM encoders used in [7, 8, 9], a CNN encoder may have the following
+advantages. First, the sparse connectivity of a CNN, which indicates fewer parameters are required,
+typically improves its statistical efﬁciency as well as reduces memory requirements. For example,
+excluding the number of parameters used in the word embeddings, our trained sentence encoder has
+3 million parameters, while the skip-thought vector of [7] contains 40 million parameters. Second, a
+CNN is able to encode regional (n-gram) information containing rich linguistic patterns. Further,
+an LSTM encoder might be disproportionately inﬂuenced by words appearing later in the sentence,
+while the CNN gives largely uniform importance to the signal coming from each of the words in
+the sentence. This makes the LSTM excellent at language modeling (decoding), but potentially
+suboptimal at encoding n-gram information placed further back into the sentence.
+As in [7], we ﬁrst train our proposed models on a large collection of novels, and then evaluate the
+CNN sentence encoder as a generic feature extractor for 8 tasks: semantic relatedness, paraphrase
+detection, image-sentence ranking and 5 standard classiﬁcation benchmarks. In these experiments,
+we train a linear classiﬁer on top of the extracted sentence features, without additional ﬁne-tuning of
+the CNN. We show that our trained sentence encoder yields generic representations that perform as
+well as, or better than those of [7, 8, 9], in all the tasks considered. Note that the LSTM decoder is
+not evaluated, and can be discarded after the encoder-decoder model has been trained.
+Summarizing, the main contribution of this paper is a new class of CNN-LSTM encoder-decoder
+models that is able to leverage the vast quantity of unlabeled text for unsupervised learning of
+sentence representations.
+
+2 Model description
+
+2.1 CNN-LSTM model
+
+x and wt
+
+y denote the t-th word in sentences sx and sy, respectively. Each word wt
+
+Assume we are given a sentence pair (sx, sy). The encoder, a CNN, encodes the ﬁrst sentence sx
+into a feature vector z, which is then fed into a LSTM decoder that predicts the second sentence sy.
+Let wt
+x is embedded
+x], where We ∈ Rk×V is a word embedding matrix
+into a k-dimensional word vector xt = We[wt
+(to be learned), V is the vocabulary size, and notation [v] denotes the index for the v-th column of a
+matrix. Similarly, we let yt = We[wt
+y]. Next we describe the model in three parts: encoder, decoder
+and applications.
+
+CNN encoder The CNN architecture in [3, 14] is used for sentence encoding, which consists of a
+convolution layer and a max-pooling operation over the entire sentence for each feature map. A sen-
+tence of length T (padded where necessary) is represented as a matrix X ∈ Rk×T , by concatenating
+its word embeddings as columns, i.e., the t-th column of X is xt.
+A convolution operation involves a ﬁlter Wc ∈ Rk×h, applied to a window of h words to produce a
+new feature. According to [14], we can induce one feature map c = f (X ∗ Wc + b) ∈ RT−h+1,
+where f (·) is a nonlinear activation function such as the hyperbolic tangent used in our experiments,
+b ∈ RT−h+1 is a bias vector, and ∗ denotes the convolutional operator. Convolving the same ﬁlter
+
+2
+
+Figure 1: Illustration of the CNN-LSTM encoder-decoder models. The sentence encoder is a CNN, the sentence
+decoder is a LSTM, and the paragraph generator is another LSTM. (Left) (a)+(c) represents the autoencoder;
+(b)+(c) represents the future predictor; (a)+(b)+(c) represents the composite model. (Right) hierarchical model.
+In this example, the input contiguous sentences are: this is great. you will love it! i promise.
+
+with the h-gram at every position in the sentence allows the features to be extracted independently of
+their position in the sentence. We then apply a max-over-time pooling operation [14] to the feature
+map and take its maximum value, i.e., ˆc = max{c}, as the feature corresponding to this particular
+ﬁlter. This pooling scheme tries to capture the most important feature, i.e., the one with the highest
+value, for each feature map, effectively ﬁltering out less informative compositions of words. Further,
+this pooling scheme also guarantees that the extracted features are independent of the length of the
+input sentence.
+The above process describes how one feature is extracted from one ﬁlter. In practice, the model
+uses multiple ﬁlters with varying window sizes. Each ﬁlter can be considered as a linguistic feature
+detector that learns to recognize a speciﬁc class of n-grams (or h-grams, in the above notation).
+Assume we have m window sizes, and for each window size, we use d ﬁlters; then we obtain a
+md-dimensional vector to represent a sentence.
+There exist other CNN architectures in the literature [2, 10, 15]. We adopt the CNN model in [3, 14]
+due to its simplicity and excellent performance on classiﬁcation. Empirically, we found that it can
+extract high-quality sentence representations in our unsupervised models.
+
+LSTM decoder The CNN encoder maps sentence sx into a vector z. We now describe the LSTM
+decoder that translates z into the sentence sy. The probability of a length-T sentence sy given the
+encoded feature vector z is deﬁned as
+
+T(cid:89)
+
+p(sy|z) = p(w1
+
+y|z)
+
+p(wt
+
+y|w<t
+
+t=2
+
+y from z, with p(w1
+
+y , z)
+y|z) = softmax(Vh1), where h1 =
+Speciﬁcally, we generate the ﬁrst word w1
+tanh(Cz). Bias terms are omitted for simplicity. All other words in the sentence are then sequentially
+generated using the RNN, until the end-sentence symbol is generated. Each conditional p(wt
+y , z),
+where < t = {1, . . . , t−1}, is speciﬁed as softmax(Vht), where ht, the hidden units, are recursively
+updated through ht = H(yt−1, ht−1, z). V is a weight matrix used for computing a distribution
+over words.
+The transition function H(·) is implemented with an LSTM [1]. Each LSTM unit has a cell containing
+a state ct at time t. Reading or writing the memory unit is controlled through sigmoid gates, namely,
+input gate it, forget gate ft, and output gate ot. The hidden units ht are updated as follows:
+
+y|w<t
+
+(1)
+
+it = σ(Wiyt−1 + Uiht−1 + Ciz)
+ot = σ(Woyt−1 + Uoht−1 + Coz)
+ct = ft (cid:12) ct−1 + it (cid:12) ˜ct
+
+ft = σ(Wf yt−1 + Uf ht−1 + Cf z)
+˜ct = tanh(Wcyt−1 + Ucht−1 + Ccz)
+ht = ot (cid:12) tanh(ct)
+
+(2)
+(3)
+(4)
+
+3
+
+you$$$$$$will$$$$$$love$$$$$$it$$$$$$$$$$!you$$will$$$love$$$it$$$$$$$$!ipromise$$.sentence&encodersentence&decoderparagraph&generatorthis$$$$$$$is$$$$$$$great$$$$$$$.you$$$$$$will$$$$$$love$$$$$$it$$$$$$$$$$!!$$$$$$$it$$$$$love$$will$$$youipromise$$.sentence&encodersentence&decoder(a)(b)(c)where σ(·) denotes the logistic sigmoid function, and (cid:12) represents the element-wise multiply operator
+(Hadamard product). W{i,f,o,c}, U{i,f,o,c}, C{i,f,o,c}, V and C are the set of parameters. Note that
+z is used as an explicit input at each time step of the LSTM to guide the generation of sy.
+Given the sentence pair (sx, sy), the objective function is the sum of the log-probabilities of the target
+sentence conditioned on the encoder representation in (1): log p(w1
+y , z).
+The total objective is the above objective summed over all the sentence pairs.
+
+y|z) +(cid:80)T
+
+t=2 log p(wt
+
+y|w<t
+
+Applications
+Inspired by [16], we propose three models: (i) an autoencoder, (ii) a future predictor,
+and (iii) the composite model. These models share the same CNN-LSTM model architecture, but are
+different in terms of the choices of the target sentence. An illustration of the proposed encoder-decoder
+models is shown in Figure 1(Left).
+The autoencoder (i) aims to reconstruct the same sentence as the input. The intuition behind this is
+that an autoencoder learns to represent the data using features that explain its own important factors of
+variation, and hence model the internal structure of sentences, effectively capturing the intra-sentence
+information. Another natural unsupervised learning task is encoding the input sentence, namely, the
+sentence sent to the encoder, to predict the subsequent sentence w.r.t the input. The future predictor
+(ii) achieves this, effectively capturing the inter-sentence information, which has been shown to be
+useful to learn the semantics of a sentence [7]. These two tasks can be combined to create a composite
+model (iii), where the CNN encoder is asked to learn a feature vector that is useful to simultaneously
+reconstruct the input sentence and predict a future sentence. This composite model encourages the
+sentence encoder to incorporate contextual information both within and beyond the sentence.
+
+Vocabulary expansion In our experiments, the CNN-LSTM models are trained with a vocabulary
+size of 22,154 words. In order to learn a generic sentence encoder that can encode a large number
+of possible words, we describe two methods to expand our encoder’s vocabulary to words that have
+not been seen during training. Suppose we have a large pretrained word embedding matrix, such
+as the publicly available word2vec vectors that have dimensionality 300 and were trained using a
+continuous bag-of-words architecture [6].
+The ﬁrst method is the same as described in [7]. A linear mapping between the word2vec embedding
+space Vw2v and the CNN word embedding space Vcnn is learned by solving a linear regression
+problem. Thus, any word from Vw2v can be mapped into Vcnn for encoding sentences.
+The second method is conceptually simpler. We initialize the word vectors in Vcnn as the correspond-
+ing word vectors in Vw2v , and do not update the word embedding parameters during training. Thus,
+any word vector from Vw2v can be naturally used to encode sentences. We examine both methods
+in our experiments, and after vocabulary expansion, our trained sentence encoder can successfully
+encode 931,331 words.
+
+Related work Our model falls into the category of encoder-decoder models, which have been used
+for machine translation [11, 12], video analysis [16], image captioning [17], unsupervised sentence
+embedding [7, 8, 9], among many others. However, most of the previous work focuses on utilizing
+LSTMs for both the encoder and decoder. The combination of CNN and LSTM has been considered
+in image captioning [17], and in some recent work on machine translation [18, 19]. Our utilization of
+a CNN is different, and more importantly, the ultimate goal of our model is different. Our work is the
+ﬁrst to use a CNN for unsupervised learning of sentence representations.
+
+2.2 Hierarchical CNN-LSTM model
+
+The future predictor described in Section 2.1 only considers the immediately subsequent sentence as
+context. By utilizing a larger surrounding context, it is likely that we can learn even higher-quality
+sentence representations. Inspired by the standard RNN-based language model [13] that uses the
+current word to predict future words, we propose a hierarchical encoder-decoder model that encodes
+the current sentence to predict multiple future sentences. An illustration of the hierarchical model is
+shown in Figure 1(Right).
+A CNN is used for sentence encoding, an LSTM is used for sentence decoding, and another LSTM
+on top of the CNN model is used for paragraph generation, capturing the dependencies between
+sentences. This encourages the current sentence to be responsible for generating all the future
+
+4
+
+sentences, and hence enables the CNN encoder to leverage longer-term cross-sentence contextual
+information, when compared with the previously described future predictor.
+Our proposed hierarchical model characterizes the hierarchy word-sentence-paragraph. A paragraph
+is modeled as a sequence of sentences, and each sentence is modeled as a sequence of words.
+Speciﬁcally, assume we are given a paragraph D = (s1, . . . , sL), that consists of L sentences. The
+probability for a paragraph is then deﬁned as
+
+L(cid:89)
+
+T(cid:96)(cid:89)
+
+p(D) =
+
+p(s(cid:96)|s<(cid:96))
+
+p(s(cid:96)|s<(cid:96)) =
+
+p(w(cid:96),t|w(cid:96),<t, s<(cid:96))
+
+(5)
+
+(cid:96)=1
+
+t=1
+
+assumption p(D) =(cid:81)L
+
+where T(cid:96) is the length of sentence (cid:96), and w(cid:96),t denotes the t-th word in sentence (cid:96). Inspecting (5), the
+future predictor can be considered as a special case of the hierarchical model, by making the Markov
+
+(cid:96)=1 p(s(cid:96)|s(cid:96)−1). In (5), each p(w(cid:96),t|w(cid:96),<t, s<(cid:96)) is calculated as
+
+p(w(cid:96),t|w(cid:96),<t, s<(cid:96)) = softmax(Vh(s)
+(cid:96),t )
+
+h(p)
+(cid:96) = LSTM2(h(p)
+
+(cid:96)−1, z(cid:96))
+
+(cid:96),t = LSTM1(h(s)
+h(s)
+z(cid:96) = CNN(s(cid:96)−1)
+
+(cid:96),t−1, x(cid:96),t−1, h(p)
+(cid:96) )
+
+(6)
+
+(7)
+
+(cid:96),t denotes the t-th hidden state of the LSTM decoder for sentence (cid:96), h(p)
+
+where h(s)
+(cid:96) denotes the (cid:96)-th
+hidden state of the LSTM paragraph generator, see Figure 1(Right), and z(cid:96) denotes the extracted
+feature vector for sentence (cid:96) − 1. Besides, x(cid:96),t−1 denotes the word embedding for w(cid:96),t−1, and V is
+a weight matrix used for computing distribution over words. As can be seen, h(p)
+summarizes all
+the previous (cid:96) − 1 sentences, and is used to guide the generation of the (cid:96)-th sentence. Note that the
+generation of s(cid:96) implicitly depends on all the previous sentences s<(cid:96), rather than a single s(cid:96)−1.
+
+(cid:96)
+
+Related work We use our hierarchical CNN-LSTM model to extract meaningful sentence represen-
+tations. However, our model can also be considered as a hierarchical language model for paragraphs.
+Similar work can be found in [20, 21, 22]. However, [20, 21] uses a LSTM for the sentence encoder,
+while [22] uses a bag-of-words to represent sentences. Our work is unique in that we use a CNN for
+sentence encoding, in an unsupervised setting.
+
+3 Experiments
+
+We ﬁrst provide qualitative analysis of our CNN encoder, and then present experimental results on 8
+tasks: 5 classiﬁcation benchmarks, paraphrase detection, semantic relatedness and image-sentence
+ranking. As in [7], we evaluate the capabilities of our encoder as a generic feature extractor. To further
+demonstrate the advantage of unsupervised training, we also ﬁne-tune our trained sentence encoder
+on the 5 classiﬁcation benchmarks. All the CNN-LSTM models are trained using the BookCorpus
+dataset [23], which consists of 70 million sentences from over 7000 books.
+We train four models in total: (i) an autoencoder, (ii) a future predictor, (iii) the composite model,
+and (iv) the hierarchical model1. For the CNN encoder, we employ ﬁlter windows (h) of sizes {3,4,5}
+with 800 feature maps each, hence each sentence is represented as a 2400-dimensional vector. For
+both, the LSTM sentence decoder and paragraph generator, we use one hidden layer of 600 units.
+For training, all weights in the CNN and non-recurrent weights in the LSTM are initialized from a
+uniform distribution in [-0.01,0.01]. Orthogonal initialization is employed on the recurrent matrices
+in the LSTM. All bias terms are initialized to zero. The initial forget gate bias for LSTM is set to
+3. We initialize the word embeddings using word2vec vectors [6] and consider the two vocabulary
+expansion methods described in Section 2.1. Gradients are clipped if the norm of the parameter vector
+exceeds 5 [11]. The Adam algorithm [24] with learning rate 2× 10−4 is utilized for optimization. For
+all the CNN-LSTM models, we use mini-batches of size 64. For the hierarchical CNN-LSTM model,
+we use mini-batches of size 8, and each paragraph is composed of 8 sentences. All experiments are
+implemented in Theano [25], using a NVIDIA GeForce GTX TITAN X GPU with 12GB memory.
+For reference, the CNN-LSTM composite model was trained for roughly two weeks.
+
+5
+
+Table 1: Vector “compositionality” using element-wise addition and subtraction. Let z(s) denote the vector
+representation z of a given sentence s. We ﬁrst calculate z(cid:63)=z(A)-z(B)+z(C). The resulting vector is then sent
+to the LSTM to generate sentence D.
+
+you got me?
+
+A you needed me?
+B
+C i got you.
+D i needed you.
+
+this is great.
+this is awesome.
+you are awesome.
+you are great.
+
+its lovely to see you.
+its great to meet you.
+its great to meet him.
+its lovely to see him.
+
+he had thought he was going crazy.
+i felt like i was going crazy.
+i felt like to say the right thing.
+he had thought to say the right thing.
+
+3.1 Qualitative analysis
+
+Table 2: Query-retrieval examples. In each case, the ﬁrst sen-
+tence is a query, while the second and third sentence are retrieval
+results when the CNN and LSTM encoder are used, respectively.
+
+We ﬁrst demonstrate that the sentence representation learned by our model exhibits a linear structure
+that makes it possible to perform analogical reasoning using simple vector arithmetics, as illustrated
+in Table 1. It demonstrates that the arithmetic operations on the sentence representations correspond
+to word-level addition and subtractions. For instance, in the 3rd example, our encoder captures that
+the difference between sentence B and C is “you" and “him", so that the former word in sentence A
+is replaced by the latter (i.e., “you”-“you”+“him”=“him”), resulting in sentence D.
+In order to further demonstrate the
+different properties of the CNN and
+LSTM encoder, we train a CNN-
+LSTM autoencoder and an LSTM-
+LSTM autoencoder (LSTM encoder,
+and LSTM decoder), and empirically
+compare their sentence retrieval re-
+sults. During training, the input sen-
+tences sent to the LSTM encoder are
+reversed. Given a query sentence,
+we retrieve its nearest neighbor when
+CNN and LSTM are used to encode
+the sentence. Nearest neighbors are
+scored by cosine similarity from a ran-
+dom sample of 1 million sentences from the BookCorpus dataset.
+Three examples are provided in Table 2. As can be seen, the CNN encoder captures information
+uniformly across the sentence, while the LSTM encoder tends to focus more on the beginning of a
+sentence. For instance, in the 1st example, the CNN encoder captures the 5-gram information “on the
+couch and watched”, while the LSTM encoder emphasizes on the ﬁrst two words “we sat”. Further,
+from the 2nd and 3rd examples, we can see that our CNN encoder is capable of encoding the global
+semantic properties of a sentence, while the LSTM only uses the phrases appearing at the beginning
+of a sentence to determine semantic similarity. We provide additional examples of sentence retrieval
+results in the Supplementary Material.
+
+after all , im sure you know they will be giving you their undivided attention .
+we went over this , but i do n’t think you were giving me your full attention .
+after all , he taught me that you do n’t trust the human cattle .
+
+Query and nearest sentence
+
+we sat on the couch and watched tv .
+i sulk on the couch and watched them .
+we sat in the kitchen and ate dinner .
+
+in that moment , a rage he ’d never felt before came over him .
+he stood over me , a rage i ’ve never seen before , blazing in his eyes .
+in that moment , he realized he ’d never stopped hoping for this .
+
+3.2 Quantitative evaluations
+
+Classiﬁcation benchmarks We ﬁrst study the task of sentence classiﬁcation on 5 datasets: MR [26],
+CR [27], SUBJ [28], MPQA [29] and TREC [30]. A detailed description of the datasets is provided in
+the Supplementary Material. On all the datasets, we simply train a logistic regression model on top
+of the extracted sentence features. We restrict our comparison to unsupervised methods that do not
+require label information during training for fair comparison. Results are summarized in Table 3. As
+can be seen, our CNN encoder provides better results than the combine-skip model of [7] on 4 out of
+5 datasets.
+We highlight some observations. First, the autoencoder performs better than the future predictor,
+indicating that the intra-sentence information may be more important for classiﬁcation than the
+inter-sentence information. Second, the hierarchical model performs better than the future predictor,
+demonstrating the importance of capturing long-term dependencies across multiple sentences. Our
+
+1We also tried the skip-thought construction [7] of our CNN-LSTM model, but empirically we did not
+
+observe better performance than the composite model, hence no results are reported.
+
+6
+
+Table 3: Classiﬁcation accuracies on several standard benchmarks. The last column shows results on the task
+of paraphrase detection, where the evaluation metrics are classiﬁcation accuracy and F1 score. †The ﬁrst and
+second block in our results were obtained using the ﬁrst and second vocabulary expansion method described in
+Section 2.1, respectively. ‡“combine” means concatenating the feature vectors learned from both the hierarchical
+model and the composite model. Our best results are underlined.
+
+Method
+ParagraphVec DM [9]
+SDAE [9]
+SDAE+emb. [9]
+FastSent [9]
+uni-skip [7]
+bi-skip [7]
+combine-skip [7]
+Our Results†
+autoencoder
+future predictor
+hierarchical model
+composite model
+combine‡
+hierarchical model+emb.
+composite model+emb.
+combine+emb.‡
+
+MR
+61.5
+67.6
+74.6
+70.8
+75.5
+73.9
+76.5
+
+75.53
+72.56
+75.20
+76.34
+77.21
+75.30
+76.84
+77.50
+
+CR
+68.6
+74.0
+78.0
+78.4
+79.3
+77.9
+80.1
+
+78.97
+78.44
+77.99
+79.93
+80.85
+79.37
+79.66
+80.77
+
+SUBJ MPQA TREC MSRP(Acc/F1)
+76.4
+89.3
+90.8
+88.7
+92.1
+92.5
+93.6
+
+73.6 / 81.9
+76.4 / 83.4
+73.7 / 80.7
+72.2 / 80.3
+73.0 / 81.9
+71.2 / 81.2
+73.0 / 82.0
+
+78.1
+81.3
+86.9
+80.6
+86.9
+83.3
+87.1
+
+55.8
+77.6
+78.4
+76.8
+91.4
+89.4
+92.2
+
+91.97
+90.72
+91.66
+92.45
+93.11
+91.94
+92.09
+92.72
+
+87.96
+87.48
+88.21
+88.77
+89.09
+88.48
+88.41
+88.90
+
+89.8
+86.6
+90.0
+91.4
+91.8
+90.4
+91.6
+92.6
+
+73.61 / 82.14
+71.87 / 81.68
+73.96 / 82.54
+74.65 / 82.21
+75.52 / 82.62
+74.25 / 82.70
+74.71 / 82.23
+75.75 / 83.09
+
+Figure 2: (Left) Effect of unsupervised pretraining on the 5 classiﬁcation benchmarks. The error bars are
+over 10 different runs. (Right) Effect of unsupervised pretraining on accuracy for the TREC dataset, in terms
+of change in the size of the labeled training set. The error bars are over 10 different samples of training sets.
+Pretraining means initializing the CNN parameters from the trained CNN-LSTM composite model.
+
+combined model, which concatenates the feature vectors learned from both the hierarchical model
+and the composite model, performs the best. This is not surprising since in this setting, both intra-
+and long-term inter-sentence information are leveraged.
+To further demonstrate the advantage of unsupervised training, we train a CNN classiﬁer (i.e., a
+CNN encoder with a logistic regression model on top) with two different initialization strategies:
+random initialization and initialization with trained parameters from the CNN-LSTM composite
+model. Results are shown in Figure 2 (Left). As can be seen, unsupervised pretraining provides
+substantial improvements (3.52% on average) over random initialization of CNN parameters. Figure 2
+(Right) shows the effect of pretraining as the number of labeled sentences is varied. For the TREC
+dataset, the performance improves from 79.7% to 84.1% when only 10% sentences are labeled. As
+the size of the set of labeled sentences grows, the improvement becomes smaller as expected.
+
+Paraphrase detection Now we consider paraphrase detection on the MSRP dataset [31]. On this
+task, one needs to predict whether or not two sentences are paraphrases. The training set consists of
+4076 sentence pairs, and the test set has 1725 pairs. As in [32], given two sentence representations zx
+
+7
+
+MRCRSUBJMPQATRECDataset6065707580859095100Accuracy (%)PretrainRandom102030405060708090Proportion (%) of labelled sentences788082848688909294Accuracy (%)PretrainRandomTable 4: Results for image-sentence ranking experiments on the MS COCO dataset. R@K denotes Recall@K
+(higher is better) and Med r is the median rank (lower is better).
+
+Method
+uni-skip [7]
+bi-skip [7]
+combine-skip [7]
+Our Results
+hierarchical model+emb.
+composite model+emb.
+combine+emb.
+
+Image Annotation
+
+Image Search
+
+R@1 R@5 R@10 Med r R@1 R@5 R@10 Med r
+30.6
+32.7
+33.8
+
+64.5
+67.3
+67.7
+
+22.7
+24.2
+25.9
+
+71.7
+73.2
+74.6
+
+56.4
+57.1
+60.0
+
+79.8
+79.6
+82.1
+
+3
+3
+3
+
+4
+4
+4
+
+32.7
+33.8
+34.4
+
+64.0
+66.8
+67.8
+
+78.9
+80.3
+81.8
+
+3
+3
+3
+
+25.3
+25.7
+26.6
+
+57.6
+59.0
+59.8
+
+71.8
+73.0
+73.7
+
+4
+4
+4
+
+and zy, we ﬁrst compute their element-wise product zx (cid:12) zy and their absolute difference |zx − zy|,
+and then concatenate them together. A logistic regression model is trained on top of the concatenated
+features to predict whether two sentences are paraphrases. We present our results on the last column
+of Table 3. Our best result is better than all the reported results, except the sequential denoising
+autoencoder (SDAE) used in [9]. However, SDAE performs poorly on all the classiﬁcation datasets,
+while our model provides consistently competitive results.
+
+Image-sentence ranking We consider the task of image-sentence ranking, which aims to retrieve
+items in one modality given a query from the other. We use the Microsoft (MS) COCO dataset [33],
+which contains 123287 images each with 5 captions. For development and testing we use the
+same splits as [17]. The development and test sets each contain 1000 images and 5000 captions.
+Performance is evaluated using Recall@K, which measures the average times a correct item is found
+within the top-K retrieved results. We also report the median rank of the closest ground truth result in
+the ranked list.
+We represent images using 4096-dimensional feature vectors from VggNet [34]. Each caption is
+encoded using our trained CNN encoder. The training objective we use is the same pairwise ranking
+loss as used in [7], which takes the form of max(0, α − f (xn, yn) + f (xn, ym)), where f (·,·) is
+the image-sentence score. (xn, yn) denotes the related image-sentence pair, and (xn, ym) is the
+randomly sampled unrelated image-sentence pair with n (cid:54)= m. For image retrieval from sentences, x
+denotes the caption, y denotes the image, and vice versa. The objective is to force the matching score
+of the related pair (xn, yn) to be greater than the unrelated pair (xn, ym) by a margin α, which is set
+to 0.1 in our experiments. Detailed setup is provided in the Supplementary Material.
+Table 4 shows our results. We empirically found
+that the encoder trained using the ﬁxed word embed-
+ding performed better on this task, hence only re-
+sults using the second vocabulary expansion method
+are reported. As can be seen, we obtain the same
+median rank as in [7], indicating that our encoder
+is as competitive as the skip-thought vectors [7].
+The performance gain between our encoder and the
+combine-skip model of [7] on the R@1 score is sig-
+niﬁcant, which shows that the CNN encoder has
+more discriminative power on retrieving the most
+correct item than a LSTM encoder.
+
+Table 5: Results on the SICK semantic related-
+ness task. The evaluation metrics are Pearson’s
+r, Spearman’s ρ and mean squared error (MSE).
+Our best result is underlined.
+r
+
+uni-skip [7]
+bi-skip [7]
+combine-skip [7]
+
+0.7780
+0.7696
+0.7916
+
+0.2872
+0.2995
+0.2687
+
+0.8477
+0.8405
+0.8584
+
+Our Results
+
+Method
+
+ρ
+
+MSE
+
+autoencoder
+future predictor
+hierarchical model
+composite model
+combine
+
+0.8284
+0.8132
+0.8333
+0.8434
+0.8533
+
+0.7577
+0.7342
+0.7646
+0.7767
+0.7891
+
+0.3258
+0.3450
+0.3135
+0.2972
+0.2791
+
+Semantic relatedness For our ﬁnal experiment,
+we consider the task of semantic relatedness on the
+SICK dataset [35], consisting of 9927 sentence pairs.
+Given two sentences, our goal is to produce a real-
+valued score between [1, 5] to indicate how semantically related two sentences are, based on human
+generated scores. We compute a feature vector representing the pair of sentences in the same way
+as on the MSRP dataset. We follow the method in [32], and use the cross-entropy loss for training.
+Details are provided in the Supplementary Material. Results are summarized in Table 5. Our best
+
+hierarchical model+emb.
+composite model+emb.
+combine+emb.
+
+0.7588
+0.7742
+0.7893
+
+0.3152
+0.3005
+0.2789
+
+0.8352
+0.8425
+0.8554
+
+8
+
+result is competitive with, though slightly worse than, the combine-skip model of [7]. This may
+suggest that CNN is good at discriminative classiﬁcation tasks, but suboptimal at matching human
+relatedness judgements.
+
+4 Conclusion
+
+We presented a new class of CNN-LSTM encoder-decoder models to learn sentence representations
+from unlabeled text. Our trained convolutional encoder is highly generic, and can be an alternative to
+the skip-thought vectors of [7]. Compelling experimental results on several tasks demonstrated the
+advantages of our approach.
+In future work, we aim to use more advanced CNN architectures [10] for sentence encoding. Further,
+our proposed models can be used for other natural language applications. For example, the basic
+CNN-LSTM model can be used for machine translation [19], while the hierarchical CNN-LSTM
+model can be extended to learn document embeddings [20].
+
+References
+[1] S. Hochreiter and J. Schmidhuber. Long short-term memory. In Neural computation, 1997.
+[2] N. Kalchbrenner, E. Grefenstette, and P. Blunsom. A convolutional neural network for modelling sentences.
+
+In ACL, 2014.
+
+[3] Y. Kim. Convolutional neural networks for sentence classiﬁcation. In EMNLP, 2014.
+[4] R. Socher, A. Perelygin, J. Wu, J. Chuang, C. Manning, A. Ng, and C. Potts. Recursive deep models for
+
+semantic compositionality over a sentiment treebank. In EMNLP, 2013.
+
+[5] Q. Le and T. Mikolov. Distributed representations of sentences and documents. In ICML, 2014.
+[6] T. Mikolov, I. Sutskever, K. Chen, G. Corrado, and J. Dean. Distributed representations of words and
+
+phrases and their compositionality. In NIPS, 2013.
+
+[7] R. Kiros, Y. Zhu, R. Salakhutdinov, R. Zemel, R. Urtasun, A. Torralba, and S. Fidler. Skip-thought vectors.
+
+In NIPS, 2015.
+
+[8] A. Dai and Q. Le. Semi-supervised sequence learning. In NIPS, 2015.
+[9] F. Hill, K. Cho, and A. Korhonen. Learning distributed representations of sentences from unlabelled data.
+
+In NAACL, 2016.
+
+[10] B. Hu, Z. Lu, H. Li, and Q. Chen. Convolutional neural network architectures for matching natural
+
+language sentences. In NIPS, 2014.
+
+[11] I. Sutskever, O. Vinyals, and Q. Le. Sequence to sequence learning with neural networks. In NIPS, 2014.
+[12] K. Cho, B. Van Merriënboer, C. Gulcehre, D. Bahdanau, F. Bougares, H. Schwenk, and Y. Bengio. Learning
+
+phrase representations using rnn encoder-decoder for statistical machine translation. In EMNLP, 2014.
+
+[13] T. Mikolov, M. Karaﬁát, L. Burget, J. Cernock`y, and S. Khudanpur. Recurrent neural network based
+
+language model. In INTERSPEECH, 2010.
+
+[14] R. Collobert, J. Weston, L. Bottou, M. Karlen, K. Kavukcuoglu, and P. Kuksa. Natural language processing
+
+(almost) from scratch. In JMLR, 2011.
+
+[15] R. Johnson and T. Zhang. Effective use of word order for text categorization with convolutional neural
+
+networks. In NAACL HLT, 2015.
+
+[16] N. Srivastava, E. Mansimov, and R. Salakhutdinov. Unsupervised learning of video representations using
+
+lstms. In ICML, 2015.
+
+[17] A. Karpathy and L. Fei-Fei. Deep visual-semantic alignments for generating image descriptions. In CVPR,
+
+2015.
+
+[18] N. Kalchbrenner and P. Blunsom. Recurrent continuous translation models. In EMNLP, 2013.
+[19] F. Meng, Z. Lu, M. Wang, H. Li, W. Jiang, and Q. Liu. Encoding source language with convolutional
+
+neural network for machine translation. In ACL, 2015.
+
+[20] J. Li, M. Luong, and D. Jurafsky. A hierarchical neural autoencoder for paragraphs and documents. In
+
+ACL, 2015.
+
+[21] A. Sordoni, Y. Bengio, H. Vahabi, C. Lioma, J. Grue Simonsen, and Ji. Nie. A hierarchical recurrent
+
+encoder-decoder for generative context-aware query suggestion. In CIKM, 2015.
+
+[22] R. Lin, S. Liu, M. Yang, M. Li, M. Zhou, and S. Li. Hierarchical recurrent neural network for document
+
+modeling. In EMNLP, 2015.
+
+[23] Y. Zhu, R. Kiros, R. Zemel, R. Salakhutdinov, R. Urtasun, A. Torralba, and S. Fidler. Aligning books and
+movies: Towards story-like visual explanations by watching movies and reading books. In ICCV, 2015.
+
+[24] D. Kingma and J. Ba. Adam: A method for stochastic optimization. In ICLR, 2015.
+[25] F. Bastien, P. Lamblin, R. Pascanu, J. Bergstra, I. Goodfellow, A. Bergeron, N. Bouchard, D. Warde-Farley,
+
+and Y. Bengio. Theano: new features and speed improvements. arXiv:1211.5590, 2012.
+
+9
+
+[26] B. Pang and L. Lee. Seeing stars: Exploiting class relationships for sentiment categorization with respect
+
+to rating scales. In ACL, 2005.
+
+[27] M. Hu and B. Liu. Mining and summarizing customer reviews. In SIGKDD, 2004.
+[28] B. Pang and L. Lee. A sentimental education: Sentiment analysis using subjectivity summarization based
+
+on minimum cuts. In ACL, 2004.
+
+[29] J. Wiebe, T. Wilson, and C. Cardie. Annotating expressions of opinions and emotions in language. In
+
+Language resources and evaluation, 2005.
+
+[30] X. Li and D. Roth. Learning question classiﬁers. In ACL, 2002.
+[31] B. Dolan, C. Quirk, and C. Brockett. Unsupervised construction of large paraphrase corpora: Exploiting
+
+massively parallel news sources. In COLING, 2004.
+
+[32] K. Tai, R. Socher, and C. Manning. Improved semantic representations from tree-structured long short-term
+
+memory networks. In ACL, 2015.
+
+[33] T. Lin, M. Maire, S. Belongie, J. Hays, P. Perona, D. Ramanan, P. Dollár, and C. L. Zitnick. Microsoft
+
+coco: Common objects in context. In ECCV, 2014.
+
+[34] K. Simonyan and A. Zisserman. Very deep convolutional networks for large-scale image recognition. In
+
+ICLR, 2015.
+
+[35] M. Marelli and et al. Semeval-2014 task 1: Evaluation of compositional distributional semantic models on
+
+full sentences through semantic relatedness and textual entailment. SemEval-2014, 2014.
+
+A Additional results
+
+A.1 Vocabulary expansion
+
+In the ﬁrst vocabulary expansion method, a linear mapping between the word2vec embedding space
+Vw2v and the CNN word embedding space Vcnn is learned by solving a linear regression problem.
+We show in Table 6 examples of nearest neighbor words based on the word embeddings we have
+learned after using the ﬁrst vocabulary expansion method.
+
+Table 6: Nearest neighbors of words after vocabulary expansion. For each query (in bold face) we show 7
+nearest neighbors. The ﬁrst 3 queries (columns) are words that appear in our training vocabulary. The last 5
+queries are words that do not appear in our training vocabulary.
+
+october
+
+april
+
+september
+december
+november
+
+july
+
+february
+january
+
+richard
+joseph
+andrew
+david
+rebecca
+thomas
+dave
+gary
+
+modulation
+Modulation
+
+ﬁve
+six
+four
+seven
+ten
+modulated
+eight modulations
+two
+three
+
+BPSK
+QPSK
+
+feedforward
+
+8PSK
+
+neuronal
+
+neural
+neurons
+synaptic
+neuron
+axonal
+neurones
+cortical
+
+choreograph
+choreographed
+choreographer
+choreographing
+choreographs
+choreography
+choreographers
+Choreographed
+
+vindicate
+vindicated
+vindicates
+exonerate
+exculpate
+contradict
+vindication
+discredit
+
+Tupac
+2Pac
+Biggie
+2pac
+
+Cashis
+Kanye
+
+Cormega
+
+ThugLifeArmy
+
+A.2 Detailed accuracies from Figure 2
+
+The details of the accuracies shown in Figure 2(Left) and Figure 2(Right) can be found in Table 7
+and Table 8, respectively.
+
+Table 7: Effect of unsupervised pretraining on the 5 classiﬁcation benchmarks.
+Method
+80.59±1.00
+Pretrain
+Random 77.00±1.22
+
+MPQA
+89.61±1.20
+84.68±1.26
+
+94.17±0.75
+91.45±1.12
+
+92.96±0.50
+90.50±0.85
+
+83.19±2.14
+79.29±1.95
+
+TREC
+
+SUBJ
+
+MR
+
+CR
+
+A.3 Sentence retrieval
+
+Table 9 shows nearest neighbors of sentences from a CNN-LSTM autoencoder trained on the
+BookCorpus dataset. As can be seen, our encoder learns to accurately capture semantic and syntax of
+the sentences.
+
+10
+
+Table 8: Effect of unsupervised pretraining on accuracy for the TREC dataset, in terms of change in the size of
+the labeled training set.
+
+10%
+
+Method
+84.10±2.11
+Pretrain
+Random 79.70±2.17
+
+20%
+
+89.12±1.40
+84.08±1.12
+
+30%
+
+90.22±1.54
+86.70±0.67
+
+Proportion of labeled sentences
+40%
+60%
+
+50%
+
+91.16±1.09
+87.22±0.82
+
+92.12±0.60
+88.76±0.95
+
+92.16±0.58
+88.86±1.20
+
+70%
+
+92.48±0.70
+89.64±0.95
+
+80%
+
+92.82±0.68
+90.18±0.60
+
+90%
+
+92.96±0.50
+90.50±0.85
+
+Table 9: Query-retrieval examples. In each case (block of rows), the ﬁrst sentence is a query, while the second
+sentence is the retrieved result from a random subset of 1 million sentences from the BookCorpus dataset.
+
+Query and nearest sentence
+johnny nodded his curly head , and then his breath eased into an even rhythm .
+aiden looked at my face for a second , and then his eyes trailed to my extended hand .
+i yelled in frustration , throwing my hands in the air .
+i stand up , holding my hands in the air .
+i loved sydney , but i was feeling all sorts of homesickness .
+i loved timmy , but i thought i was a self-sufﬁcient person .
+“ i brought sad news to mistress betty , ” he said quickly , taking back his hand .
+“ i really appreciate you taking care of lilly for me , ” he said sincerely , handing me the money .
+“ i am going to tell you a secret , ” she said quietly , and he leaned closer .
+“ you are very beautiful , ” he said , and he leaned in .
+“ you ’re awesome , mom , ” i said as i hugged her .
+“ it ’s awesome , mom , ” seth assured her .
+she kept glancing out the window at every sound , hoping it was jackson coming back .
+i kept checking the time every few minutes , hoping it would be ﬁve oclock .
+“ it depends on what you mean by believing in god , ” rayford replied .
+“ if that ’s what you want to believe , ” rebecca replied .
+leaning forward , he rested his elbows on his knees and let his hands dangle between his legs .
+stepping forward , i slid my arms around his neck and then pressed my body ﬂush against his .
+i take tris ’s hand and lead her to the other side of the car , so we can watch the city disappear behind us .
+i take emma ’s hand and lead her to the ﬁrst taxi , everyone else taking the two remaining cars .
+
+B Experimental details
+
+B.1 Classiﬁcation datasets
+
+We test our CNN encoder on several benchmark
+datasets for sentence classiﬁcation. Summary
+statistics of the datasets are in Table 10. A de-
+tailed description of the datasets is as follow. (i)
+TREC: This task involves classifying a question
+into 6 types [30]. (ii) MR: Movie reviews with one
+sentence per review. Classiﬁcation involves pre-
+dicting positive/negative reviews [26]. (iii) SUBJ:
+Subjectivity dataset where the task is to classify
+a sentence as being subjective or objective [28].
+(iv) CR: Customer reviews of various products.
+This task is about predicting positive/negative re-
+views [27]. (v) MPQA: Opinion polarity detection
+subtask of the MPQA dataset [29].
+
+B.2 Image-sentence ranking method
+
+Table 10: Summary statistics for the datasets after
+tokenization. c: number of target classes. l: average
+sentence length. N: dataset size. |V |: vocabulary
+size. T est: Test set size (CV indicates there was no
+standard train/test split thus 10-fold cross-validation
+was used.)
+
+Data
+c
+6
+TREC
+2
+MR
+2
+SUBJ
+CR
+2
+MPQA 2
+
+l
+10
+20
+23
+19
+3
+
+N
+
+5,952
+10,662
+10,000
+3,775
+10,606
+
+|V |
+9,764
+18,765
+21,322
+5,339
+6,246
+
+T est
+500
+CV
+CV
+CV
+CV
+
+We use the same method as in [7] for image-sentence ranking. The training objective is given by
+
+11
+
+(cid:88)
+
+(cid:88)
+
+x
+
+k
+
+max(0, α − f (Ux, Vy) + f (Ux, Vyk)) +
+
+(cid:88)
+
+(cid:88)
+
+y
+
+k
+
+max(0, α − f (Vy, Ux) + f (Vy, Uxk))
+
+where x is the extracted image feature vector, y is the sentence feature vector, yk are vectors for
+contrastive (incorrect) sentences, and xk are vectors for contrastive images. f (·,·) is the image-
+sentence score using cosine similarity. U and V are the image embedding matrix and sentence
+embedding matrix (to be learned), respectively. We use a 1000-dimensional embedding, margin
+α = 0.1 and k = 50 contrastive terms. The model was trained for 15 epochs.
+
+B.3 Semantic relatedness method
+We follow the method in [32] for semantic relatedness. Let r(cid:62) = [1, . . . , 5] be an integer vector from
+1 to 5. Given two sentence representations zx and zy, we predict the similarity score ˆy = r(cid:62) ˆπθ ,
+where
+
+ˆπθ = softmax(W · (zx (cid:12) zy) + U · |zx − zy| + b)
+
+(8)
+This corresponds to a categorical distribution ˆpθ = Cat( ˆπθ). θ = {W, U, b} is the set of parameters
+to be learned.
+Given a similarity score y, we deﬁne a target distribution p = Cat(π) as follow
+
+(cid:40) y − (cid:98)y(cid:99),
+
+(cid:98)y(cid:99) − y + 1,
+0
+
+πi =
+
+i = (cid:98)y(cid:99) + 1
+i = (cid:98)y(cid:99)
+otherwise
+
+for 1 ≤ i ≤ 5. (cid:98)y(cid:99) denotes the largest integer ˆy such that ˆy ≤ y. The cost function is as follow
+
+(cid:16)
+
+N(cid:88)
+
+n=1
+
+Jθ =
+
+1
+N
+
+KL
+
+p(n)||ˆp(n)
+
+θ
+
+(cid:17)
+
+(9)
+
+where N is the number of sentence pairs; p(n) and ˆp(n)
+deﬁned above.
+
+θ denote the categorical distributions for pair n,
+
+12
+
+

@@ -1,0 +1,862 @@
+5
+1
+0
+2
+
+ 
+t
+c
+O
+4
+1
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+3
+v
+1
+0
+0
+3
+0
+
+.
+
+9
+0
+5
+1
+:
+v
+i
+X
+r
+a
+
+Real-time Sign Language Fingerspelling Recognition using
+
+Convolutional Neural Networks from Depth map
+
+Byeongkeun Kang
+
+Subarna Tripathi
+
+Truong Q. Nguyen
+
+Department of Electrical and Computer Engineering
+
+University of California, San Diego
+bkkang, stripathi, tqn001@ucsd.edu
+
+Abstract
+
+Sign language recognition is important for natural and
+convenient communication between deaf community and
+hearing majority. We take the highly efﬁcient initial step
+of automatic ﬁngerspelling recognition system using convo-
+lutional neural networks (CNNs) from depth maps. In this
+work, we consider relatively larger number of classes com-
+pared with the previous literature. We train CNNs for the
+classiﬁcation of 31 alphabets and numbers using a subset
+of collected depth data from multiple subjects. While using
+different learning conﬁgurations, such as hyper-parameter
+selection with and without validation, we achieve 99.99%
+accuracy for observed signers and 83.58% to 85.49% ac-
+curacy for new signers. The result shows that accuracy im-
+proves as we include more data from different subjects dur-
+ing training. The processing time is 3 ms for the prediction
+of a single image. To the best of our knowledge, the sys-
+tem achieves the highest accuracy and speed. The trained
+model and dataset is available on our repository1.
+
+1. Introduction
+
+Sign language recognition is important for natural and
+convenient communication between deaf community and
+hearing majority. Currently, most communications between
+two communities highly rely on human-based translation
+services. However, this is inconvenient and expensive as
+human expertise is involved. Therefore, automatic sign lan-
+guage recognition aims to understand the meaning of signs
+without the assistance from experts. Then it can be trans-
+lated to sound or text based on end users’ needs. We be-
+lieve that sign language recognition is important for provid-
+ing equal opportunity to every person and improving public
+welfare.
+
+Sign language recognition is still a challenging prob-
+
+1https://github.com/byeongkeun-kang/
+
+FingerspellingRecognition
+
+lem despite of many research efforts during the last few
+decades [12, 1].
+It requires the understanding of combi-
+nation of multi-modal information such as hand pose and
+movement, facial expression, and human body posture.
+Also, sign language has at least thousands of words includ-
+ing very similar hand poses while gesture recognition gen-
+erally includes a small set of well speciﬁed gestures. More-
+over, even same signs have signiﬁcantly different appear-
+ances for different signers and different viewpoints.
+
+In this paper, we focus on static ﬁngerspelling in Amer-
+ican Sign Language (ASL) which is a small, but important
+part of sign language recognition. This is a small set of sign
+languages as shown in ﬁgure 1, but is used in many situ-
+ations in conveying names, addresses, brands, and so on.
+Static ﬁngerspelling is still challenging because of visually
+similar yet different signs. For example, some of the signs
+are only distinguished by the position of thumb. Also, a
+large variation occurs from different camera viewpoint and
+different signers.
+
+Depth sensors enable us to capture additional informa-
+tion to improve accuracy and/or processing time. Also, with
+recent improvement of GPU, CNNs have been employed to
+many computer vision problems. Therefore, we take advan-
+tage of a depth sensor and convolutional neural networks to
+achieve a real-time and accurate sign language recognition
+system.
+
+2. Related Work
+
+Although gesture recognition only considers well speci-
+ﬁed hand gestures, some approaches are related to sign lan-
+guage recognition. Nagi et al. [8] proposed a gesture recog-
+nition system for human-robot interaction using CNNs. Van
+den Bergh et al. [14] proposed a hand gesture recognition
+system using Haar wavelets and database searching. The
+system extracts features using Haar wavelets and classiﬁes
+input image by ﬁnding the nearest match in the database.
+Although both systems show good results, these methods
+consider only six gesture classes.
+
+Different sign languages are used in different countries
+or regions. There have been efforts towards sign language
+recognition systems other than ASL as well. Pigou et al. [9]
+proposed an Italian sign language recognition system us-
+ing CNNs. Although they reported 95.68% accuracy for 20
+classes, they mentioned that users in test set can be in train-
+ing set and/or validation set. Liwicki et al. [7] described a
+British Sign Language recognition system that understands
+ﬁngerspelled words from video. The system ﬁrst recog-
+nized letters using Histogram of Gradients (HOG) descrip-
+tors. Then that recognized words using Hidden Markov
+Models (HMM). That system is different from recognizing
+a single ﬁngerspelling. The dataset in use corresponded to
+a single signer.
+
+ASL sentence recognition and veriﬁcation has also been
+explored. Zafrulla et al. [16] proposed a system which rec-
+ognizes a sentence of three to ﬁve words. The word should
+be one of 19 signs in their dictionary. They also used Hid-
+den Markov Models on extracted features.
+
+Our work belongs to the category of ASL ﬁngerspelling
+recognition systems. Isaac et al. [3] proposed an ASL ﬁn-
+gerspelling recognition system based on neural networks
+applied to wavelet features. They reported a recognition
+rate of 99%. However, they did not specify the size of the
+dataset and the number of different subjects. Later, Pugeault
+et al. [10] proposed a real-time ASL ﬁngerspelling recogni-
+tion system using Gabor ﬁlters and random forest. Their
+system recognizes 24 different ASL ﬁngerspelling for al-
+phabets. They collected dataset from ﬁve subjects and re-
+ported a recognition rate of 75% using both color and depth,
+73% using only color, and 69% using only depth. Although
+Pugeault et al. [10] reported that combination of color and
+depth improves the recognition rate, we only use depth to
+achieve better consistency to illumination changes and skin
+pigment differences and to avoid calibration process for
+general users. Kuznetsova et al. [6] also proposed a real-
+time ASL ﬁngerspelling recognition system using multi-
+layered random forest. They reported and Dong et al. [2]
+also analyzed that they achieved 87% accuracy for the sub-
+jects whom the system has been trained on and 57% accu-
+racy for new subject. Very recently, Dong et al. [2] pro-
+posed an ASL alphabet recognition system. They ﬁrst lo-
+calized hand joint positions using random forest and hierar-
+chical mode-seeking method. Then the system recognized
+ASL signs by applying random forest classiﬁer to joint an-
+gle vector. They reported 90% accuracy for the subjects
+whom the system has been trained on and 70% accuracy for
+new signers.
+
+This paper differs from previous works in several ways.
+First, to the best of our knowledge, ours is the ﬁrst ﬁnger-
+spelling recognition system to classify total 31 alphabets
+and numbers compared with the state of the art approach to
+classify only 24 classes reported in the literature. Second,
+
+Figure 1. ASL ﬁngerspelling alphabets and numbers [13]. We fol-
+low the real demonstrations of formal signs on [15] to collect our
+dataset. The demonstration images are also available on our repos-
+itory.
+
+we extract features by ﬁne-tuning convolutional neural net-
+work parameters which are pre-trained for image classiﬁca-
+tion task using 1.28 millions of color images [11]. More-
+over, it achieves both real-time and the state of the art accu-
+racy across different users. Our contribution also includes
+providing publicly available dataset which is currently lim-
+ited both in quantity and quality.
+
+3. Method
+3.1. Dataset
+
+We have collected 31,000 depth maps using a depth sen-
+sor, Creative Senz3D camera of the resolution of 320 × 240.
+The dataset consists of 1,000 images for each of the 31 dif-
+ferent hand signs from ﬁve subjects. 31 hand signs include
+all the ﬁngerspellings of both alphabets and numbers ex-
+cept J and Z which require temporal information for clas-
+siﬁcation. Since (2/V) and (6/W) are differentiated based
+on context, we have only one class to represent both one
+alphabet and one number. Although some informal signs
+are clearer and easier to recognize, we follow formal signs
+to avoid ambiguity between signers [15]. To collect dataset
+from various viewpoint, the dataset is collected while sub-
+jects are moving their hand around both on image plane and
+along z-axis.
+3.2. Hand Segmentation
+
+We assume that the closest object from camera is the
+user’s hand. This assumption is valid in ﬁngerspelling and
+
+Figure 2. Captured image before pre-processing. The hand is con-
+vincingly the closest object according to the captured depth map
+and there is a clear depth void around the hand which can be ex-
+ploited for hand segmentation using connected component from
+the area with the closest depth.
+
+Figure 3. Examples of pre-processed dataset from A to Z and from
+1 to 9. In real dataset, background is set to zero.
+
+most of gesture recognition tasks.
+In addition, we use a
+black wrist band to get depth voids around wrist, since depth
+sensor cannot capture depth from black objects well. Figure
+2 shows one example of the captured depth image, where
+the hand is convincingly the closest object according to the
+captured depth map and there is a depth void around the
+hand. Hand segmentation thus ends up in ﬁnding the con-
+nected components from this closest region of the depth im-
+age. This strategy provides a very simple and effective real-
+time hand segmentation. Figure 3 shows segmented hand
+depth image samples for the 31 signs including alphabets
+and digits generated using this method. We ﬁnd a bound-
+ing box of hand region and scale it to 227 × 227. Then
+we include redundant 14 or 15 pixels at each edge of the
+
+Figure 4. The collected data for the same meaning. It shows the
+importance of consideration of different signers and viewpoint
+variation.
+
+bounding box to make it the same input size of 256 × 256
+described by Krizhevsky et al. [5] and thus take the differ-
+ences of different hand segmentation results into account.
+3.3. Classiﬁcation
+
+Architecture : We use Caffe [4] implementation (Caf-
+feNet) of the CNNs which is almost equivalent to AlexNet
+[5]. The architecture consists of ﬁve convolution layers,
+three max-pooling layers, and three fully connected layers.
+After each convolution layer or fully connected layer except
+the last one, rectiﬁed linear unit layer is followed. For de-
+tails, we will upload the architecture and also readers can
+refer to CaffeNet/Caffe [4] and AlexNet [5].
+
+Feature extraction : We extract a 4096-dimensional
+feature (ﬁnal fully connected layer feature) vector from
+each pre-processed depth image using the aforementioned
+architecture. First, we subtract the mean image from each of
+the sample training/validation/test image. Then the mean-
+subtracted image is forward-propagated to extract features.
+Training : We train and test neural networks in ﬁve dif-
+ferent operating modes. These ﬁve cases can be looked
+upon from different perspectives. One way to look at it is
+from the pre-training perspective and the second way is how
+we deal with the training/testing data separation for differ-
+ent subjects. In the former case, we categorize the operat-
+ing modes into two categories, namely re-training and ﬁne-
+tuning. For re-training, the model is re-trained from ran-
+domly generated weights using the collected ﬁngerspelling
+data. In ﬁne-tuning, we pre-train the CNNs using a large
+ILSVRC2012 classiﬁcation dataset [11]; then we ﬁne-tune
+the network weights for ﬁngerspelling classiﬁcation with
+the same architecture except the last layer which is replaced
+by 31 output classes. From the subjects’ data separation
+perspective, in one case, we do not separate the subjects in
+training, validation, and testing and in the second scenario,
+we use data from different subjects for training, validation,
+and testing.
+4. Experimental Results
+
+As mentioned in Sec. 3.3, we train and test for ﬁve ex-
+perimental settings. The results are compared with other
+systems in table 1. Our system achieves 99.99% accuracy
+when training and validation data have samples correspond-
+ing to the test subject. In this experiment, 50%, 25%, and
+
+Class type
+Gesture
+Gesture
+Alphabets
+Alphabets
+Alphabets
+Alphabets
+Alphabets
+Alphabets
+Alphabets
+Alphabets
+
+Method
+Nagi et al. [8]
+Van den Bergh et al. [14]
+Isaacs et al. [3]
+Pugeault et al. [10]
+Pugeault et al. [10]
+Pugeault et al. [10]
+Kuznetsova et al. [6] (50/50)%
+Kuznetsova et al. [6] (4/1)
+Dong et al. [2] (50/50)%
+Dong et al. [2] (4/1)
+Ours (re-training) (50/25/25)% Alph. & Digit
+Alph. & Digit
+Ours (re-training) (3/1/1)
+Alph. & Digit
+Ours (re-training) (4/1)
+Alph. & Digit
+Ours (ﬁne-tuning) (3/1/1)
+Ours (ﬁne-tuning) (4/1)
+Alph. & Digit
+
+# of class
+
+# of subj.
+
+Test w/ diff.
+
+6
+6
+24
+24
+24
+24
+24
+24
+24
+24
+31
+31
+31
+31
+31
+
+-
+-
+-
+5
+5
+5
+5
+5
+5
+5
+5
+5
+5
+5
+5
+
+No
+No
+-
+-
+-
+-
+No
+Yes
+No
+Yes
+No
+Yes
+Yes
+Yes
+Yes
+
+Color & Depth
+
+Color & Depth
+
+Input
+Color
+
+Color
+Color
+Depth
+
+Depth
+Depth
+Depth
+Depth
+Depth
+Depth
+Depth
+Depth
+Depth
+
+Accur.(%)
+
+96
+
+99.54
+99.9
+73
+69
+75
+87
+57
+90
+70
+
+99.99
+75.18
+78.39
+83.58
+85.49
+
+Table 1. Comparison. Gesture and ASL ﬁngerspelling recognition systems are compared. Test with different subject means that the signer
+in test set is excluded from training/validation set. The corresponding results are highlighted in light gray. (a/b/c)% represents the portion
+of dataset for (training/validation/test). (a/b/c) and (a/b) represent the number of subjects in (training/validation/test) and (training/test).
+
+Method
+
+Pugeault et al. [10]
+Color & Depth
+
+Ours
+(re-training)
+(3/1/1)
+Ours
+(re-training)
+(4/1)
+Ours
+(ﬁne-tuning)
+(3/1/1)
+Ours
+(ﬁne-tuning)
+(4/1)
+
+A
+M
+X
+75
+17
+20
+82.7
+42.1
+66.9
+85.8
+46.8
+75.8
+84.2
+62.2
+72.0
+89.5
+59.9
+75.3
+
+B
+N
+Y
+83
+23
+77
+94.9
+32.6
+51.0
+95.4
+28.4
+86.0
+94.3
+59.0
+76.9
+97.1
+65.1
+81.9
+
+C
+O
+1
+57
+13
+-
+
+83.3
+73.1
+98.6
+91.7
+74.9
+97.7
+86.9
+69.4
+99.0
+93.2
+69.2
+99.0
+
+D
+P
+3
+37
+57
+-
+
+85.9
+85.4
+80.3
+91.4
+79.0
+79.5
+89.7
+82.9
+77.9
+88.4
+80.2
+82.1
+
+E
+Q
+4
+63
+77
+-
+
+45.7
+70.8
+92.7
+43.0
+70.2
+92.2
+87.1
+82.6
+91.0
+85.7
+85.7
+92.1
+
+F
+R
+5
+35
+63
+-
+
+86.6
+58.9
+95.7
+83.6
+69.4
+96.3
+92.3
+80.9
+98.1
+93.8
+85.2
+97.5
+
+G
+S
+7
+60
+17
+-
+
+86.1
+73.6
+92.7
+79.9
+73.2
+98.1
+88.0
+57.6
+95.4
+84.9
+53.7
+95.9
+
+H
+T
+8
+80
+7
+-
+
+81.8
+10.1
+79.6
+81.5
+4.8
+80.2
+85.2
+55.3
+82.0
+86.1
+60.6
+82.5
+
+I
+U
+9
+73
+67
+-
+
+72.5
+61.7
+92.6
+78.7
+70.5
+97.6
+90.5
+92.2
+98.1
+95.6
+96.1
+99.3
+
+K
+V
+-
+43
+87
+-
+
+86.7
+93.0
+
+-
+
+94.4
+98.1
+
+-
+
+83.0
+94.5
+
+-
+
+90.0
+98.2
+
+-
+
+L
+W
+-
+87
+53
+-
+
+93.4
+80.2
+
+-
+
+98.4
+87.6
+
+99.7
+83.7
+
+99.4
+87.0
+
+-
+
+-
+
+-
+
+Table 2. Detailed results. Accuracy less than 50% is highlighted in light gray. Bold entries correspond to accuracy higher than 90%.
+
+25% of dataset is used for training, validation, and test-
+ing. We achieve 75.18% and 78.39% for regular training
+(re-training) and 83.58% and 85.49% for ﬁne-tuning. This
+shows that ﬁne-tuning outperforms re-training about 7∼8%
+in this depth image dataset even though the nature of the
+pre-training dataset (ILSVRC2012) is different. For each
+case, the former represents the average result of training
+with three subjects, validation with one subject, and test
+with one subject. The latter represents the average result
+of training with four subjects and test with one subject. We
+
+considered all possible combinations of subjects for train-
+ing, validation, and test and the ﬁnal reported accuracy is
+the average of all. For the latter case, although we use
+the same training parameters (e.g.
+the number of itera-
+tions) for all combinations, the performance is improved
+about 2∼3%.
+It shows that by increasing the number of
+subjects in training, the system’s performance for new sub-
+ject has high possibility of improvement. The number of
+iterations in the training phase is ﬁxed to 8000 and 4000 for
+re-training and ﬁne-tuning respectively. Overall, our system
+
+achieves about 10∼15% improvement compare to previous
+state of the art result even with more number of classes and
+subjects. Moreover, the processing time is about 3 ms for
+the prediction of a single image using Nvidia GeForce GTX
+Titan. Table 2 shows accuracy for each alphabet or number.
+It shows that even with more number of classes, the accu-
+racy of each class is higher than or similar to previous state
+of the art result. Therefore, it is obvious we will achieve
+better result with the same number of classes of comparing
+with the other works. On the other hand, the table shows
+that (E,M,N,T) has low accuracy for both our method and
+others since the letters are only differentiated by thumb po-
+sition.
+
+Previous gesture or ASL ﬁngerspelling recognition sys-
+tems considered only six gestures or 24 signs respectively.
+We increase the number of signs to 31 to accommodate
+most of the signs. Also, some previous methods did not
+separate subjects in training, validation, and testing. Ex-
+perimenting with training and testing dataset from different
+subjects is important because then only the system’s per-
+formance for a new subject can be measured. Therefore,
+we include experiments and report results where training
+and testing subjects are separated to demonstrate how the
+trained model can be used for anonymous subject. Lastly,
+although Pugeault et al. [10] reported that combination of
+color and depth improves the recognition rate, we only use
+depth to achieve better consistency to illumination changes
+and skin pigment differences and to avoid calibration pro-
+cess for general users.
+
+5. Conclusion
+
+We show the efﬁcacy of using convolutional neural net-
+works and a depth sensor for ASL ﬁngerspelling recog-
+nition system. We collect and share the dataset of depth
+images for ASL ﬁngerspelling system. Our approach
+of classifying 31 signs of alphabets and numbers using
+depth image and CNNs achieves real-time performance
+and state-of-the-art accuracy even for different signers.
+We conclude that pre-training from auxiliary task of im-
+age classiﬁcation from color images is helpful for appar-
+ently different type of input data such as depth image.
+The trained model and dataset is available on our repos-
+itory https://github.com/byeongkeun-kang/
+FingerspellingRecognition.
+
+References
+[1] H. Cooper, B. Holt, and R. Bowden. Sign language recog-
+nition. Visual Analysis of Humans, pages 539–562, 2011.
+1
+
+[2] C. Dong, M. Leu, and Z. Yin. American sign language alpha-
+bet recognition using microsoft kinect. In Computer Vision
+and Pattern Recognition Workshops (CVPRW), 2015 IEEE
+Conference on, pages 44–52, June 2015. 2, 4
+
+[3] J. Isaacs and S. Foo. Hand pose estimation for american sign
+language recognition. In System Theory, 2004. Proceedings
+of the Thirty-Sixth Southeastern Symposium on, pages 132–
+136, 2004. 2, 4
+
+[4] Y. Jia. Caffe: An open source convolutional architec-
+ture for fast feature embedding, 2013. ”http://caffe.
+berkeleyvision.org”. 3
+
+[5] A. Krizhevsky, I. Sutskever, and G. E. Hinton. Imagenet clas-
+siﬁcation with deep convolutional neural networks. In Ad-
+vances in Neural Information Processing Systems 25, pages
+1097–1105. 2012. 3
+
+[6] A. Kuznetsova, L. Leal-Taixe, and B. Rosenhahn. Real-time
+sign language recognition using a consumer depth camera.
+In Computer Vision Workshops (ICCVW), 2013 IEEE Inter-
+national Conference on, pages 83–90, Dec 2013. 2, 4
+
+[7] S. Liwicki and M. Everingham. Automatic recognition of
+ﬁngerspelled words in british sign language. In Computer Vi-
+sion and Pattern Recognition Workshops, 2009. CVPR Work-
+shops 2009. IEEE Computer Society Conference on, pages
+50–57, June 2009. 2
+
+[8] J. Nagi, F. Ducatelle, G. Di Caro, D. Ciresan, U. Meier,
+A. Giusti, F. Nagi, J. Schmidhuber, and L. Gambardella.
+Max-pooling convolutional neural networks for vision-based
+hand gesture recognition. In Signal and Image Processing
+Applications (ICSIPA), 2011 IEEE International Conference
+on, pages 342–347, Nov 2011. 1, 4
+
+[9] L. Pigou, S. Dieleman, P.-J. Kindermans, and B. Schrauwen.
+Sign language recognition using convolutional neural net-
+works. In Computer Vision - ECCV 2014 Workshops, pages
+572–578, 2015. 2
+
+[10] N. Pugeault and R. Bowden. Spelling it out: Real-time asl
+In Computer Vision Workshops
+ﬁngerspelling recognition.
+(ICCV Workshops), 2011 IEEE International Conference on,
+pages 1114–1119, Nov 2011. 2, 4, 5
+
+[11] O. Russakovsky, J. Deng, H. Su, J. Krause, S. Satheesh,
+S. Ma, Z. Huang, A. Karpathy, A. Khosla, M. Bernstein,
+A. C. Berg, and L. Fei-Fei. Imagenet large scale visual recog-
+nition challenge. International Journal of Computer Vision,
+April 2015. 2, 3
+
+[12] T. Starner, J. Weaver, and A. Pentland. Real-time american
+sign language recognition using desk and wearable computer
+based video. Pattern Analysis and Machine Intelligence,
+IEEE Transactions on, 20(12):1371–1375, Dec 1998. 1
+
+[13] A. S. L. University.
+
+Fingerspelling.
+
+”http://www.
+
+lifeprint.com/asl101/fingerspelling/”. 2
+
+[14] M. Van den Bergh and L. Van Gool. Combining rgb and tof
+cameras for real-time 3d hand gesture interaction. In Appli-
+cations of Computer Vision (WACV), 2011 IEEE Workshop
+on, pages 66–72, Jan 2011. 1, 4
+
+[15] Wikipedia.
+
+American manual alphabet.
+
+”http:
+//en.wikipedia.org/wiki/American_manual_
+alphabet”. 2
+
+[16] Z. Zafrulla, H. Brashear, T. Starner, H. Hamilton, and
+P. Presti. American sign language recognition with the
+kinect. In Proceedings of the 13th International Conference
+on Multimodal Interfaces, ICMI ’11, pages 279–286. ACM,
+2011. 2
+
+

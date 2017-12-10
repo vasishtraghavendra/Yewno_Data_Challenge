@@ -1,0 +1,863 @@
+5
+1
+0
+2
+
+ 
+
+v
+o
+N
+9
+1
+
+ 
+
+ 
+ 
+]
+L
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+8
+8
+3
+6
+0
+
+.
+
+1
+1
+5
+1
+:
+v
+i
+X
+r
+a
+
+Under review as a conference paper at ICLR 2016
+
+SENSE2VEC - A FAST AND ACCURATE METHOD
+FOR WORD SENSE DISAMBIGUATION IN
+NEURAL WORD EMBEDDINGS.
+
+Andrew Trask & Phil Michalak & John Liu
+Digital Reasoning Systems, Inc.
+Nashville, TN 37212, USA
+{andrew.trask,phil.michalak,john.liu}@digitalreasoning.com
+
+ABSTRACT
+
+Neural word representations have proven useful in Natural Language Processing
+(NLP) tasks due to their ability to efﬁciently model complex semantic and syn-
+tactic word relationships. However, most techniques model only one representa-
+tion per word, despite the fact that a single word can have multiple meanings or
+”senses”. Some techniques model words by using multiple vectors that are clus-
+tered based on context. However, recent neural approaches rarely focus on the
+application to a consuming NLP algorithm. Furthermore, the training process of
+recent word-sense models is expensive relative to single-sense embedding pro-
+cesses. This paper presents a novel approach which addresses these concerns by
+modeling multiple embeddings for each word based on supervised disambigua-
+tion, which provides a fast and accurate way for a consuming NLP model to select
+a sense-disambiguated embedding. We demonstrate that these embeddings can
+disambiguate both contrastive senses such as nominal and verbal senses as well
+as nuanced senses such as sarcasm. We further evaluate Part-of-Speech disam-
+biguated embeddings on neural dependency parsing, yielding a greater than 8%
+average error reduction in unlabeled attachment scores across 6 languages.
+
+1
+
+INTRODUCTION
+
+NLP systems seek to automate the extraction of information from human language. A key challenge
+in this task is the complexity and sparsity in natural language, which leads to a phenomenon known
+as the curse of dimensionality. To overcome this, recent work has learned real valued, distributed
+representations for words using neural networks (G.E. Hinton, 1986; Bengio et al., 2003; Morin &
+Bengio, 2005; Mnih & Hinton, 2009). These ”neural language models” embed a vocabulary into
+a smaller dimensional linear space that models ”the probability function for word sequences, ex-
+pressed in terms of these representations” (Bengio et al., 2003). The result is a vector-space model
+(VSM) that represents word meanings with vectors that capture the semantic and syntactic informa-
+tion of words (Maas & Ng, 2010). These distributed representations model shades of meaning across
+their dimensions, allowing for multiple words to have multiple real-valued relationships encoded in
+a single vector (Liang & Potts, 2015).
+Various forms of distributed representations have shown to be useful for a wide variety of NLP
+tasks including Part-of-Speech tagging, Named Entity Recognition, Analogy/Similarity Querying,
+Transliteration, and Dependency Parsing (Al-Rfou et al., 2013; Al-Rfou et al., 2015; Mikolov et al.,
+2013a;b; Chen & Manning, 2014). Extensive research has been done to tune these embeddings to
+various tasks by incorporating features such as character (compositional) information, word order
+information, and multi-word (phrase) information (Ling et al., 2015; Mikolov et al., 2013c; Zhang
+et al., 2015; Trask et al., 2015).
+Despite these advancements, most word embedding techniques share a common problem in that each
+word must encode all of its potential meanings into a single vector (Huang et al., 2012). For words
+with multiple meanings (or ”senses”), this creates a superposition in vector space where a vector
+takes on a mixture of its individual meanings. In this work, we will show that this superposition
+
+1
+
+Under review as a conference paper at ICLR 2016
+
+obfuscates the context speciﬁc meaning of a word and can have a negative effect on NLP classiﬁers
+leveraging the superposition as input data. Furthermore, we will show that disambiguating multiple
+word senses into separate embeddings alleviates this problem and the corresponding confusion to an
+NLP model.
+
+2 RELATED WORK
+
+2.1 WORD2VEC
+
+Mikolov et al. (2013a) proposed two simple methods for learning continuous word embeddings
+using neural networks based on Skip-gram or Continuous-Bag-of-Word (CBOW) models and named
+it word2vec. Word vectors built from these methods map words to points in space that effectively
+encode semantic and syntactic meaning despite ignoring word order information. Furthermore, the
+word vectors exhibited certain algebraic relations, as exempliﬁed by example: ”v[man] - v[king] +
+v[queen] ≈ v[woman]”. Subsequent work leveraging such neural word embeddings has proven to
+be effective on a variety of natural language modeling tasks (Al-Rfou et al., 2013; Al-Rfou et al.,
+2015; Chen & Manning, 2014).
+
+2.2 WANG2VEC
+
+Because word embeddings in word2vec are insensitive to word order, they are suboptimal when used
+for syntactic tasks like POS tagging or dependency parsing. Ling et al. (2015) proposed modiﬁca-
+tions to word2vec that incorporated word order. Consisting of structured skip-gram and continuous
+window methods that are together termed wang2vec, these models demonstrate signiﬁcant ability
+to model syntactic representations. They come, however, at the cost of computation speed. Fur-
+thermore, because words have a single vector representation in wang2vec, the method is unable to
+model polysemic words with multiple meanings. For instance, the word ”work” in the sentence ”We
+saw her work” can be either a verb or noun depending on the broader context in surrounding this
+sentence. This technique encodes the co-occurrence statistics for each sense of a word into one or
+more ﬁxed dimensional embeddings, generating embeddings that model multiple uses of a word.
+
+2.3 STATISTICAL MULTI-PROTOTYPE VECTOR-SPACE MODELS OF WORD MEANING
+
+Perhaps a seminal work to vector-space word-sense disambiguation, the approach by Reisinger &
+Mooney (2010) creates a vector-space model that encodes multiple meanings for words by ﬁrst
+clustering the contexts in which a word appears. Once the contexts are clustered, several prototype
+vectors can be initialized by averaging the statistically generated vectors for each word in the cluster.
+This process of computing clusters and creating embeddings based on a vector for each cluster
+has become the canonical strategy for word-sense disambiguation in vector spaces. However, this
+approach presents no strategy for the context speciﬁc selection of potentially many vectors for use
+in an NLP classiﬁer.
+
+2.4 CLUSTERING WEIGHTED AVERAGE CONTEXT EMBEDDINGS
+
+Our technique is inspired by the work of Huang et al. (2012), which uses a multi-prototype neu-
+ral vector-space model that clusters contexts to generate prototypes. Unlike Reisinger & Mooney
+(2010), the context embeddings are generated by a neural network in the following way: given a
+pre-trained word embedding model, each context embedding is generated by computing a weighted
+sum of the words in the context (weighted by tf-idf). Then, for each term, the associated context
+embeddings are clustered. The clusters are used to re-label each occurrence of each word in the cor-
+pus. Once these terms have been re-labeled with the cluster’s number, a new word model is trained
+on the labeled embeddings (with a different vector for each) generating the word-sense embeddings.
+In addition to the selection problem and clustering overhead described in the previous subsection,
+this model also suffers from the need to train neural word embeddings twice, which is a very expen-
+sive endeavor.
+
+2
+
+Under review as a conference paper at ICLR 2016
+
+2.5 CLUSTERING CONVOLUTIONAL CONTEXT EMBEDDINGS
+
+Recent work has explored leveraging convolutional approaches to modeling the context embeddings
+that are clustered into word prototypes. Unlike previous approaches, Chen et al. (2015) selects the
+number of word clusters for each word based on the number of deﬁnitions for a word in the WordNet
+Gloss (as opposed to other approaches that commonly pick a ﬁxed number of clusters). A variant
+on the MSSG model of Neelakantan et al. (2015), this work uses the WordNet Glosses dataset and
+convolutional embeddings to initialize the word prototypes.
+In addition to the selection problem, clustering overhead, and the need to train neural embeddings
+multiple times, this higher-quality model is somewhat limited by the vocabulary present in the En-
+glish WordNet resource. Furthermore, the majority of the WordNets relations connect words from
+the same Part-of-Speech (POS). ”Thus, WordNet really consists of four sub-nets, one each for nouns,
+verbs, adjectives and adverbs, with few cross-POS pointers.”1
+
+3 THE SENSE2VEC MODEL
+
+We expand on the work of Huang et al. (2012) by leveraging supervised NLP labels instead of
+unsupervised clusters to determine a particular word instance’s sense. This eliminates the need to
+train embeddings multiple times, eliminates the need for a clustering step, and creates an efﬁcient
+method by which a supervised classiﬁer may consume the appropriate word-sense embedding.
+
+Figure 1: A graphical representation of wang2vec.
+
+Figure 2: A graphical representation of sense2vec.
+
+Given a labeled corpus (either by hand or by a model) with one or more labels per word, the
+sense2vec model ﬁrst counts the number of uses (where a unique word maps set of one or more
+
+1https://wordnet.princeton.edu/
+
+3
+
+Under review as a conference paper at ICLR 2016
+
+labels/uses) of each word and generates a random ”sense embedding” for each use. A model is then
+trained using either the CBOW, Skip-gram, or Structured Skip-gram model conﬁgurations. Instead
+of predicting a token given surrounding tokens, this model predicts a word sense given surrounding
+senses.
+
+3.1 SUBJECTIVE EVALUATION - SUBJECTIVE BASELINE
+
+For subjective evaluation of these word embeddings, we trained models using several datasets for
+comparison. First, we trained using Word2vec’s Continuous Bag of Words 2 approach on the large
+unlabeled corpus used for the Google Word Analogy Task 3. Several word embeddings and their
+closest terms measured by cosine similarity are displayed in Table 1 below.
+
+bank
+banks
+banking
+
+hsbc
+
+citibank
+lender
+lending
+
+1.0
+.718
+.672
+.599 microsoft
+.586
+.566
+.559
+
+ipod
+imac
+iphones
+
+1.0
+.687
+.649
+.603
+.595
+.594
+.578
+
+so
+but
+it
+if
+even
+do
+just
+
+Table 1: Single-sense Baseline Cosine Similarities
+apple
+iphone
+ipad
+
+1.0
+bad
+.879
+good
+.858 worse
+lousy
+.842
+stupid
+.833
+horrible
+.831
+.808
+awful
+
+1.0
+.727
+.718
+.717
+.710
+.703
+.697
+
+perfect
+perfection
+perfectly
+ideal
+ﬂawless
+good
+always
+
+1.0
+.681
+.670
+.644
+.637
+.622
+.572
+
+In this table, observe that the ”bank” column is similar to proper nouns (”hsbc”, ”citibank”), verbs
+(”lending”,”banking”), and nouns (”banks”,”lender”). This is because the term ”bank” is used in 3
+different ways, as a proper noun, verb, and noun. This embedding for ”bank” has modeled a mixture
+of these three meanings. ”apple”, ”so”, ”bad”, and ”perfect” can also have a mixture of meanings. In
+some cases, such as ”apple”, one interpretation of the word is completely ignored (apple the fruit).
+In the case of ”so”, there is also an interjection sense of ”so” that is not well represented in the vector
+space.
+
+3.2 SUBJECTIVE EVALUATION - PART-OF-SPEECH DISAMBIGUATION
+
+For Part-of-Speech disambiguation, we labeled the dataset from section 3.1 with Part-of-Speech
+tags using the Polyglot Universal Dependency Part-of-Speech tagger of Al-Rfou et al. (2013) and
+trained sense2vec with identical parameters as section 3.1. In table 2, we see that this method has
+successfully disambiguated the difference between the noun ”apple” referring to the fruit and the
+proper noun ”apple” referring to the company. In table 3, we see that all three uses of the word
+”bank” have been disambiguated by their respective parts of speech, and in table 4, nuanced senses
+of the word ”so” have also been disambiguated.
+
+Table 2: Part-of-Speech Cosine Similarities for the Word: apple
+
+1.0
+
+apple
+
+apple
+apples
+pear
+peach
+
+NOUN
+NOUN .639 microsoft
+NOUN .581
+iphone
+ipad
+NOUN .579
+blueberry NOUN .570
+almond
+NOUN .541
+
+samsung
+blackberry
+
+PROPN
+1.0
+PROPN .603
+NOUN
+.591
+NOUN
+.586
+PROPN .572
+PROPN .564
+
+2command line params: -size 500 -window 10 -negative 10 -hs 0 -sample 1e-5 -iter 3 -min-count 10
+3the data.txt ﬁle generated from http://word2vec.googlecode.com/svn/trunk/demo-train-big-model-v1.sh
+
+4
+
+Under review as a conference paper at ICLR 2016
+
+Table 3: Part-of-Speech Cosine Similarities for the Word: bank
+NOUN
+1.0
+bank
+NOUN .786
+banks
+banking NOUN .629
+NOUN .619
+lender
+citibank
+PROPN .570 wachovia
+bank
+ubs
+PROPN .535
+grindlays
+
+1.0
+PROPN
+.570
+NOUN
+PROPN .536
+PROPN .523
+PROPN .503
+PROPN .492
+
+bank
+1.0
+gamble VERB .533
+VERB .485
+earn
+invest
+VERB .470
+reinvest VERB .466
+donate
+VERB .466
+
+bank
+bank
+hsbc
+
+VERB
+
+Table 4: Part-of-Speech Cosine Similarities for the Word: so
+INTJ
+INTJ
+INTJ
+INTJ
+INTJ
+INTJ
+
+ADJ
+ADJ
+condemnable ADJ
+ADJ
+ADJ
+ADJ
+
+ADV
+ADV
+CONJ
+SCONJ
+ADV
+ADV
+
+disputable
+disapprove
+contestable
+
+1.0
+.753
+.752
+.720
+.694
+.671
+
+1.0
+.527
+.520
+.513
+.505
+.503
+
+so
+too
+but
+
+because
+
+but
+really
+
+so
+
+poved
+
+1.0
+.588
+.584
+.578
+.559
+.558
+
+so
+now
+
+obviously
+basically
+
+okay
+
+actually
+
+3.3 SUBJECTIVE EVALUATION - SENTIMENT DISAMBIGUATION
+
+For Sentiment disambiguation, the IMDB labeled training corpus was labeled with Part-of-Speech
+tags using the Polyglot Part-of-Speech tagger from Al-Rfou et al. (2013). Adjectives were then
+labeled with the positive or negative sentiment associated with each comment. A CBOW sense2vec
+model was then trained on the resulting dataset, disambiguating between both Part-of-Speech and
+Sentiment (for adjectives).
+Table 5 shows the difference between the positive and negative vectors for the word ”bad”. The neg-
+ative vector is most similar to word indicating the classical meaning of bad (including the negative
+version of ”good”, e.g. ”good grief!”). The positive ”bad” vector denotes a tone of sarcasm, most
+closely relating to the positive sense of ”good” (e.g. ”good job!”).
+
+Table 5: Sentiment Cosine Similarities for the Word: bad
+
+bad
+NEG 1.0
+bad
+terrible NEG .905
+good
+horrible NEG .872 wrong
+NEG .870
+funny
+awful
+NEG .863
+good
+great
+NEG .845 weird
+stupid
+
+POS
+POS
+POS
+POS
+POS
+POS
+
+1.0
+.753
+.752
+.720
+.694
+.671
+
+Table 6 shows the positive and negative senses of the word ”perfect”. The positive version of the
+word clusters most closely with words indicating excellence. The positive version clusters with the
+more sarcastic interpretation.
+
+5
+
+Under review as a conference paper at ICLR 2016
+
+Table 6: Sentiment Cosine Similarities for the Word: perfect
+
+perfect
+
+real
+
+1.0
+
+NEG
+perfect
+NEG 0.682 wonderful
+brilliant
+incredible
+fantastic
+
+unfortunate NEG 0.680
+NEG 0.673
+NEG 0.673
+NEG 0.673
+NEG 0.661
+NEG 0.650
+
+serious
+complete
+ordinary
+typical
+
+misguided
+
+POS
+POS
+POS
+POS
+POS
+POS
+POS
+POS
+
+1.0
+0.843
+0.842
+0.840
+0.839
+0.823
+0.822
+0.814
+
+great
+
+excellent
+amazing
+
+4 NAMED ENTITY RESOLUTION
+
+To evaluate the embeddings when disambiguating on named entity resolution (NER), we labeled
+the standard word2vec dataset from section 3.2 with named entity labels. This demonstrated how
+sense2vec can also disambiguate between multi-word sequences of text as well as single word se-
+quences of text. Below, we see that the word ”Washington” is disambiguated with both a PERSON
+and a GPE sense of the word. Furthermore, we see that Hillary Clinton is very similar to titles that
+she has held within the time span of the dataset.
+
+Table 7: Disambiguation for the word: Washington
+
+George Washington
+
+Henry Knox
+
+Philip Schuyler
+Nathanael Greene
+Benjamin Lincoln
+
+William Howe
+
+GPE .665
+PERSON NAME .656 Washington D
+GPE .591
+PERSON NAME .624 Washington DC
+PERSON NAME .618
+GPE .559
+PERSON NAME .613 Warsaw Embassy GPE .524
+GPE .516
+PERSON NAME .602
+PERSON NAME .591
+GPE .507
+
+Maryland
+
+Seattle
+
+Wash
+
+Table 8: Entity resolution for the term: Hillary Clinton
+
+Secretary of State
+
+Senator
+Senate
+Chief
+
+White House
+
+Congress
+
+TITLE
+TITLE
+
+0.661
+0.613
+ORG NAME 0.564
+0.555
+ORG NAME 0.564
+ORG NAME 0.547
+
+TITLE
+
+5 NEURAL DEPENDENCY PARSING
+
+To quantitatively evaluate disambiguated sense embeddings relative to the current standard, we com-
+pared sense2vec embeddings and wang2vec embeddings on neural syntactic dependency parsing
+tasks in six languages. First, we trained two sets of embeddings on the Bulgarian, German, English,
+French, Italian, and Swedish Wikipedia datasets from the Polyglot website4. The baseline em-
+beddings were trained without any Part-of-Speech disambiguation using the structured skip-gram
+approach of Ling et al. (2015). For each language, the sense2vec embeddings were trained by
+disambiguating terms using the language speciﬁc Polyglot Part-of-Speech tagger of Al-Rfou et al.
+(2013), and embedded in the same structured skip-gram approach. Both were trained using identical
+parametrization 5.
+
+4https://sites.google.com/site/rmyeid/projects/polyglot
+5command line params: -size 50 -window 5 -negative 10 -hs 0 -sample 1e-4 -iter 5 -cap 0
+
+6
+
+Under review as a conference paper at ICLR 2016
+
+Each of these embeddings was used to train a dependency parse model using the parser outlined in
+(Chen & Manning, 2014). All were trained on the the respective language’s Universal Dependencies
+treebank. The standard splits were used.6 For the parser trained on the sense2vec emeddings, the
+POS speciﬁc embedding was used as the input. The Part-of-Speech label was determined using the
+gold-standard POS tags from the treebank. It should be noted that the parser of (Chen & Manning,
+2014) uses trained Part-of-Speech embeddings as input which are indexed based on gold-standard
+POS tags. Thus, differences in quality between parsers trained on the two embedding styles are
+due to clarity in the word embeddings as opposed to the addition of Part-of-Speech information
+because both model styles train on gold standard POS information. For each language, the Unlabeled
+Attachment Scores are outlined in Table 7.
+
+wang
+
+sense
+
+Table 9: Unlabeled Attachment Scores and Percent Error Reductions
+Set
+Dev
+Test*
+Test
+Dev
+Test*
+Test
+Dev
+Test
+Error
+Margin Abs.
+Avg.
+
+Swedish Mean
+Bulgarian German English French
+80.28
+78.94
+73.82
+68.86
+78.60
+82.47
+70.10
+60.25
+78.88
+82.51
+70.53
+60.54
+81.21
+81.94
+75.43
+72.61
+80.38
+84.44
+71.66
+64.17
+72.16
+84.60
+80.69
+64.43
+6.56% 3.98% 12.06% 8.52%
+13.69%
+10.95% 12.82% 5.50% 8.21% 12.71% 8.78%
+10.93% 14.54% 5.86% 5.32% 13.58% 9.23%
+12.32% 10.29% 6.03% 6.09% 12.39%
+
+90.03
+90.17
+90.39
+90.69
+90.41
+90.86
+7.05%
+2.47%
+5.17%
+4.76%
+
+85.02
+83.61
+83.88
+86.10
+85.48
+85.93
+7.76%
+
+Italian
+84.99
+84.99
+85.45
+85.57
+86.13
+86.18
+
+The ”Error Margin” section of table 7 describes the percentage reduction in error for each language.
+Disambiguating based on Part-of-Speech using sense2vec reduced the error in all six languages with
+an average reduction greater than 8%.
+
+6 CONCLUSION AND FUTURE WORK
+
+In this work, we have proposed a new model for word sense disambiguation that uses supervised
+NLP labeling to disambiguate between word senses. Much like previous models, it leverages a form
+of context clustering to disambiguate the use of a term. However, instead of using unsupervised clus-
+tering methods, our approach clusters using supervised labels which can analyze a speciﬁc word’s
+context and assign a label. This signiﬁcantly reduces the computational overhead of word-sense
+modeling and provides a natural mechanism for other NLP tasks to select the appropriate sense em-
+bedding. Furthermore, we show that disambiguated embeddings can increase the accuracy of syn-
+tactic dependency parsing in a variety of languages. Future work will explore how disambiguated
+embeddings perform using other varieties of supervised labels and consuming NLP tasks.
+
+REFERENCES
+Al-Rfou, Rami, Perozzi, Bryan, and Skiena, Steven. Polyglot: Distributed word representations
+for multilingual NLP. CoRR, abs/1307.1662, 2013. URL http://arxiv.org/abs/1307.
+1662.
+
+Al-Rfou, Rami, Kulkarni, Vivek, Perozzi, Bryan, and Skiena, Steven. Polyglot-NER: Massive mul-
+tilingual named entity recognition. Proceedings of the 2015 SIAM International Conference on
+Data Mining, Vancouver, British Columbia, Canada, April 30 - May 2, 2015, April 2015.
+
+Bengio, Yoshua, Ducharme, R´ejean, Vincent, Pascal, and Janvin, Christian. A neural probabilistic
+
+language model. J. Mach. Learn. Res., 3:1137–1155, March 2003. ISSN 1532-4435.
+
+6The German, French, and Italian treebanks had occasional tokens that both spanned multiple indices and
+overlapped with the index of the previous and following token (ex. 0, 0-1, 1,...), a property which is incompati-
+ble with the (Chen & Manning, 2014) parser. These tokens were removed. If their removal created a malformed
+tree, the sentence was removed automatically by the parser and logged accordingly.
+
+7
+
+Under review as a conference paper at ICLR 2016
+
+Chen, Danqi and Manning, Christopher. A fast and accurate dependency parser using neural net-
+works. In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Pro-
+cessing (EMNLP), pp. 740–750, Doha, Qatar, October 2014. Association for Computational Lin-
+guistics. URL http://www.aclweb.org/anthology/D14-1082.
+
+Chen, Tao, Xu, Ruifeng, He, Yulan, and Wang, Xuan. Improving distributed representation of word
+sense via wordnet gloss composition and context clustering. In Proceedings of the 53rd Annual
+Meeting of the Association for Computational Linguistics and the 7th International Joint Con-
+ference on Natural Language Processing (Volume 2: Short Papers), pp. 15–20, Beijing, China,
+July 2015. Association for Computational Linguistics. URL http://www.aclweb.org/
+anthology/P15-2003.
+
+G.E. Hinton, J.L. McClelland, D.E. Rumelhart. Distributed representations. Parallel dis-tributed
+
+processing: Explorations in the microstructure of cognition, 1(3):77–109, 1986.
+
+Huang, Eric H., Socher, Richard, Manning, Christopher D., and Ng, Andrew Y. Improving word
+In Proceedings of the 50th
+representations via global context and multiple word prototypes.
+Annual Meeting of the Association for Computational Linguistics: Long Papers - Volume 1, ACL
+’12, pp. 873–882, Stroudsburg, PA, USA, 2012. Association for Computational Linguistics. URL
+http://dl.acm.org/citation.cfm?id=2390524.2390645.
+
+Liang, P. and Potts, C. Bringing machine learning and compositional semantics together. Annual
+
+Reviews of Linguistics, 1(1):355–376, 2015.
+
+Ling, Wang, Dyer, Chris, Black, Alan W, and Trancoso, Isabel. Two/too simple adaptations of
+word2vec for syntax problems. In Proceedings of the 2015 Conference of the North American
+Chapter of the Association for Computational Linguistics: Human Language Technologies, pp.
+1299–1304, Denver, Colorado, May–June 2015. Association for Computational Linguistics. URL
+http://www.aclweb.org/anthology/N15-1142.
+
+Maas, Andrew L and Ng, Andrew Y. A probabilistic model for semantic word vectors. In NIPS
+
+Workshop on Deep Learning and Unsupervised Feature Learning, 2010.
+
+Mikolov, Tomas, Chen, Kai, Corrado, Greg, and Dean, Jeffrey. Efﬁcient estimation of word repre-
+sentations in vector space. CoRR, abs/1301.3781, 2013a. URL http://arxiv.org/abs/
+1301.3781.
+
+Mikolov, Tomas, Le, Quoc V., and Sutskever, Ilya. Exploiting similarities among languages for
+machine translation. CoRR, abs/1309.4168, 2013b. URL http://arxiv.org/abs/1309.
+4168.
+
+Mikolov, Tomas, Sutskever, Ilya, Chen, Kai, Corrado, Greg, and Dean, Jeffrey. Distributed repre-
+sentations of words and phrases and their compositionality. CoRR, abs/1310.4546, 2013c. URL
+http://arxiv.org/abs/1310.4546.
+
+Mnih, Andriy and Hinton, Geoffrey E. A scalable hierarchical distributed language model.
+
+In
+Koller, D., Schuurmans, D., Bengio, Y., and Bottou, L. (eds.), Advances in Neural Information
+Processing Systems 21, pp. 1081–1088. Curran Associates, Inc., 2009.
+
+Morin, Frederic and Bengio, Yoshua. Hierarchical probabilistic neural network language model. In
+Proceedings of the international workshop on artiﬁcial intelligence and statistics, pp. 246–252.
+Citeseer, 2005.
+
+Neelakantan, Arvind, Shankar, Jeevan, Passos, Alexandre, and McCallum, Andrew. Efﬁcient non-
+parametric estimation of multiple embeddings per word in vector space. CoRR, abs/1504.06654,
+2015. URL http://arxiv.org/abs/1504.06654.
+
+Reisinger, Joseph and Mooney, Raymond J. Multi-prototype vector-space models of word meaning.
+In Human Language Technologies: The 2010 Annual Conference of the North American Chapter
+of the Association for Computational Linguistics, HLT ’10, pp. 109–117, Stroudsburg, PA, USA,
+2010. Association for Computational Linguistics.
+ISBN 1-932432-65-5. URL http://dl.
+acm.org/citation.cfm?id=1857999.1858012.
+
+8
+
+Under review as a conference paper at ICLR 2016
+
+Trask, Andrew, Gilmore, David, and Russell, Matthew. Modeling order in neural word embeddings
+
+at scale. CoRR, abs/1506.02338, 2015. URL http://arxiv.org/abs/1506.02338.
+
+Zhang, Xiang, Zhao, Junbo, and LeCun, Yann. Character-level convolutional networks for text clas-
+
+siﬁcation. CoRR, abs/1509.01626, 2015. URL http://arxiv.org/abs/1509.01626.
+
+9
+
+

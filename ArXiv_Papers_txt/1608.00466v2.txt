@@ -1,0 +1,1438 @@
+Learning Semantically Coherent and Reusable Kernels in Convolution
+
+Neural Nets for Sentence Classiﬁcation
+
+Madhusudan Lakshmana and Sundararajan Sellamanickam
+
+Microsoft Research
+Bangalore, India
+
+Shirish Shevade
+
+Indian Institute of Science, Bangalore, India
+
+Keerthi Selvaraj
+
+CISL, Microsoft, Sunnyvale, CA
+
+Abstract
+
+The purpose of
+this work is to em-
+pirically study desirable properties such
+as semantic coherence, attention mecha-
+nism and kernel reusability in Convolu-
+tion Neural Networks (CNNs) for learn-
+ing sentence classiﬁcation tasks. We pro-
+pose to learn semantically coherent ker-
+nels using clustering scheme combined
+with Word2Vec representation and domain
+knowledge such as SentiWordNet. We
+also suggest a technique to visualize atten-
+tion mechanism of CNNs. These ideas are
+useful for decision explanation purpose.
+Reusable property enables kernels learned
+on one problem to be used in another prob-
+lem. This helps in efﬁcient learning as
+only a few additional domain speciﬁc ker-
+nels may have to be learned. Experimen-
+tal results demonstrate the usefulness of
+our approach. The performance of the
+proposed approach, which uses semantic
+and re-usability properties, is close to that
+of the state-of-the-art approaches on many
+real-world datasets.
+
+Introduction
+
+1
+In recent years, convolutional neural networks
+(CNNs) have proved to be very effective in
+achieving state-of-the-art results for text-centric
+tasks (Kalchbrenner et al., 2014; Kim, 2014; Hu et
+al., 2014). Our focus is on learning sentence clas-
+siﬁcation tasks. In a sentence classiﬁcation task,
+the goal is to predict class label information for
+one or more sentences. Examples of such tasks
+include classifying sentiments (e.g., good or bad)
+and identifying question types. However, barring
+some limited work, there is not much discussion or
+empirical evidence provided on the functional be-
+
+havior of the learned kernels (aka ﬁlters) and other
+properties such as temporal invariance and atten-
+tion mechanism capabilities. Furthermore, we are
+not aware of any work that provides enough evi-
+dence for the existence of properties such as se-
+mantic coherence and reusability of learned ker-
+nels. Our goal is to learn CNNs having semanti-
+cally coherent kernels that are helpful in explain-
+ing the decision of the model. For the purpose of
+illustration, we use the CNN architecture proposed
+in (Kim, 2014); however, the core ideas presented
+here are applicable to several other network archi-
+tectures as well.
+
+In any classiﬁcation problem, it is often impor-
+tant to reason out the decision made by the model.
+For example, we gain conﬁdence about the model
+if we know that the right phrases or parts of the
+sentence were used by the model to predict the
+sentiment (e.g., positivity in phrases such as liked
+such movies). In CNNs, learning semantically co-
+herent kernels helps in reasoning as we can iden-
+tify the kernels that contribute to the decision. A
+kernel is semantically coherent when it ﬁres for a
+collection of k-grams that have similar meaning
+(e.g., liked such movies, loved this ﬁlm). Table 1
+gives an illustration of k-grams that ﬁre for a few
+kernels in the CNN model obtained from the CNN
+architecture (Kim, 2014). It is clearly seen that the
+learned kernels are not semantically coherent. Al-
+though the learned CNN model gives good perfor-
+mance, it becomes difﬁcult to explain the decision
+without semantic coherence.
+
+To address this problem, we propose to learn
+semantically coherent kernels. Our approach in-
+volves clustering of k-grams that occur in the
+sentence corpus. We use a distance function
+that is a weighted combination of distances in
+the Word2Vec (Mikolov et al., 2013) and Senti-
+WordNet (Baccianella et al., 2010) representation
+spaces, resulting in meaningfully polarized clus-
+
+6
+1
+0
+2
+
+ 
+t
+c
+O
+0
+1
+
+ 
+
+ 
+ 
+]
+L
+C
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+6
+6
+4
+0
+0
+
+.
+
+8
+0
+6
+1
+:
+v
+i
+X
+r
+a
+
+3 - Gram
+the nagging suspicion
+unattractive , unbearably
+attractive holiday contraption
+the rich promise
+’re old enough
+
+4-Gram
+albeit depressing view of
+strangely tempting bouquet of
+deceptively buoyant until it
+sweet without relying on
+sincere but dramatically conﬂicted
+
+5-Gram
+picture postcard perfect , too
+as the worst and only
+of the best rock documentaries
+simply the best family ﬁlm
+what evans had , lost
+
+Table 1: The top scoring k-grams that match learned kernels obtained from the CNN architecture (Kim,
+2014) for the Movie Review (MR) dataset. Clearly, the k-grams are not semantically coherent.
+
+ters. This helps to enhance semantic coherence
+of clusters. We deﬁne a parametrized convolu-
+tion kernel for each cluster and jointly learn these
+kernel parameters along with weights of a linear
+softmax classiﬁer output layer. The set-up for im-
+posing semantic coherence in kernels is also well
+suited for obtaining solution insights by identify-
+ing or visualizing words in a sentence as used by
+kernels to make the decision. We propose a scor-
+ing scheme that scores each word using the max
+pooled output scores of kernels and, use a simple
+and effective visualization technique to highlight
+the words in the sentence that express the senti-
+ment; this helps to visualize the attentive capabil-
+ity of CNNs.
+
+Suppose we assume that the learned kernels
+have semantic coherence. Then, one question that
+naturally arises is: can we reuse the learned ker-
+nels from one application (or dataset, e.g., Movie
+Review (MR)) to another similar application (e.g.,
+Internet Movie Database (IMDB))? If the learned
+kernels have such a property then it is of signif-
+icant help, as we can directly use these kernels
+without learning in several other similar applica-
+tions. However, there may be some application
+speciﬁc semantics not covered by these ﬁxed ker-
+nels.
+In such cases, we can improve the per-
+formance by learning a few additional ﬁlters but
+keeping the learned kernels from the other appli-
+cation ﬁxed. This helps to reduce the training time
+signiﬁcantly for new applications.
+
+Contributions: (1) We propose an approach to
+learn semantically coherent kernels and our exper-
+imental results show that, with semantically co-
+herent kernels we can achieve performance close
+to state-of-the-art results. (2) We suggest a novel
+visualization technique to display words of promi-
+nence and demonstrate that both semantic coher-
+ence kernels and visualization technique help to
+reason out the decision. (3) We present the idea
+of reusability of learned kernels in similar appli-
+cations and test on four different combinations
+of classiﬁcation tasks. We ﬁnd that the kernels
+learned in CNNs are reusable and signiﬁcant re-
+
+duction in training time is indeed possible.
+
+2 Related Work
+
+CNNs have been very successful for image clas-
+siﬁcation problems as they make use of internal
+structure of data such as the 2D structure of im-
+age data through convolution layers (Krizhevsky
+et al., 2012). In the text domain, CNNs have been
+used for a variety of problems including sentence
+modeling, word embedding learning and senti-
+ment analysis, by making use of the 1D structure
+of document data.
+
+More relevant to the work in this paper is the
+work of (Kim, 2014), where it was demonstrated
+that a simple CNN with one layer of convolution
+on top of static pre-trained word vectors, obtained
+using Word2Vec (Mikolov et al., 2013), achieved
+excellent results on sentiment analysis and ques-
+tion classiﬁcation tasks. Kim (2014) also stud-
+ied the use of multichannel representation and
+variable size ﬁlters. Kalchbrenner et al. (2014)
+proposed Dynamic CNN (DCNN) that alternated
+wide convolutional layers with dynamic k-max
+pooling to model sentences. Yin and Sch¨utze
+(2015) proposed Multichannel Variable-size CNN
+(MVCNN) architecture for sentence classiﬁcation.
+It combines different versions of word embed-
+dings and variable sized ﬁlters in a CNN with mul-
+tiple layers of convolution.
+
+Le and Mikolov (2014) proposed an unsuper-
+vised framework that learns continuous distributed
+vector representations for variable-length pieces
+of texts, such as sentences or paragraphs. The vec-
+tor representations are learned to predict the sur-
+rounding context words sampled from the para-
+graph. The focus is to learn paragraph vectors and
+task speciﬁc features are not taken into account.
+
+Wang et al. (2015) proposed an architecture,
+genCNN, to predict a word sequence by exploiting
+both long/short range dependencies present in the
+history of words. Johnson and Zhang (2014) com-
+pared the performance of two types of CNNs: seq-
+CNN in which every text region is represented by
+
+x, x ≥ 0). This is followed by a max-pooling
+operation to produce the feature output as gj =
+max{fj,1,··· , fj,n−k+1}. Thus, the convolution
+layer produces an m dimensional feature vector g
+using m kernels. The second layer is a linear clas-
+siﬁer layer that computes the cth class probability
+score as: pc = exp(sc)
+c g and
+wc is the weight vector corresponding to the cth
+class.
+
+where sc = wT
+
+(cid:80)K
+
+˜c=1 exp(s˜c)
+
+We use Word2Vec representations learned from
+Google News data, for representing words. Each
+word is represented as a 300 dimensional real val-
+ued vector. Following Kim (2014), we use 3
+kernel widths (k = 3, 4, 5) in our experiments;
+note that these kernel widths correspond to con-
+volving through 3-grams, 4-grams and 5-grams re-
+spectively in a sentence. Unless otherwise speci-
+ﬁed, we use 100 kernels for each k resulting in
+m = 300.
+
+3.1 Learning Semantically Coherent Kernels
+Our goal is to design kernels where each kernel
+captures some semantics (e.g., liked such movies,
+loved this ﬁlm). We call a set of k-grams that
+have similar meaning as semantically coherent.
+We expect a semantically coherent kernel to pro-
+duce high scores for k-grams having similar mean-
+ing. Table 1 gives an illustration of k-grams that
+have top-5 highest cosine similarity scores for a
+few kernels using Kim (2014)’s network depicted
+in Figure 1. We see that the top-5 k-grams do
+not have similar meaning; thus, the learned ker-
+nel lacks semantic coherence. Therefore, it is not
+clear what these kernels represent and how to use
+high scoring ﬁlter outputs to reason out the deci-
+sion.
+
+To learn semantically coherent kernels, we take
+a two-step approach.
+In the ﬁrst step, we se-
+lect a subset of k-grams from the sentence cor-
+pus and group them into a desired number of
+clusters. This clustering step helps to group k-
+grams that are semantically coherent. We asso-
+ciate a kernel v with each cluster as a weighted
+combination of Word2Vec representations of the
+k-grams that are members of the cluster. More
+zlpl where Cj denote the
+set of indices for the k-grams that constitute the
+jth cluster; zl and pl denote the learnable weight
+and concatenated Word2Vec representation asso-
+ciated with the lth k-gram. Thus, each kernel is
+parametrized and we learn the parameters of the
+
+formally, vj = (cid:80)
+
+l∈Cj
+
+Figure 1: CNN architecture from Kim (2014) used
+in our experiments.
+
+a ﬁxed dimensional vector, and bow-CNN, which
+uses bag-of-word conversion in the convolution
+layer.
+
+Zhang et al. (2015) applied CNNs only on
+characters and demonstrated that deep CNNs do
+not require the knowledge of words when trained
+on large-scale data sets. However, capturing se-
+mantic information using character-level CNNs
+is difﬁcult.
+dos Santos and Gatti (2014) de-
+signed a Character to Sentence CNN (CharSCNN)
+that jointly uses character-level, word-level and
+sentence-level representations to perform senti-
+ment analysis using two convolutional layers.
+
+3 Learning Semantically Coherent
+
+Kernels, Visualizing Kernel Outputs
+and Reusable Kernels
+
+In this section, we ﬁrst brieﬂy describe the CNN
+architecture used in this work. Then, present the
+notion of semantic coherence and make some ob-
+servations from analyzing the ﬁlters on benchmark
+datasets. This is followed by our ideas to learn se-
+mantically coherent kernels and visualize the ﬁlter
+outputs, both aimed at helping to reason out the
+decision.
+
+CNN Architecture. We use the CNN archi-
+tecture proposed in (Kim, 2014) (see Figure 1).
+This architecture has a convolution layer followed
+by a linear classiﬁer layer. Let xi ∈ Rd denote
+a d-dimensional representation (e.g., Word2Vec)
+of the ith word in a sentence. We concatenate
+these vectors as x1:n to represent the sentence.
+Each kernel vj ∈ Rdk is convolved with a sen-
+tence to produce a single feature output gj as fol-
+lows. With k representing the kernel width, a
+feature map fj is produced with the ith feature
+value computed as: fj,i = ReLU (vT
+j xi:i+k−1)
+where ReLU denotes the rectiﬁed linear unit func-
+tion (ReLU (x) = 0, x < 0 and ReLU (x) =
+
+3 - Gram
+enjoy the ﬁlm
+
+enjoy this movie
+liked this ﬁlm
+enjoying this ﬁlm
+appreciate the ﬁlm
+
+4-Gram
+impressive and highly
+entertaining
+year ’s most intriguing
+out of the intriguing
+the characters are intriguing
+strong and politically potent
+
+5-Gram
+by sumptuous ocean visuals and
+
+3 - Gram (not so good)
+neurotic , and
+
+a fascinating document of an
+a fascinating portrait of a
+each interesting the movie is
+and beautifully rendered ﬁlm one
+
+sincere grief and
+self important and
+romantic problems of
+self important ,
+
+Table 2: The top scoring k-grams that match learned semantic coherent kernels for the MR dataset.
+Clearly, the ﬁrst three kernels are semantically coherent. The last kernel is not as coherent as others.
+
+kernels (i.e., zl∀l) jointly with the weights (wc∀c)
+of the linear classiﬁer layer. We call this model as
+Weighted k-gram Averaging (WkA). A naive ap-
+proach is to represent the kernel as the centroid
+of the cluster, i.e., set zl = 1|Cj|∀l ∈ Cj. As we
+show in the experiments section, signiﬁcant per-
+formance improvement is achieved by learning the
+kernel parameters. We note that the WkA model
+is built using the same architecture (Figure 1) but
+our kernels vj∀j are constrained via the param-
+eters zl∀l to lie in the subspaces spanned by the
+k-grams in Cj∀j. On the other hand, the kernel pa-
+rameters vj∀j are learned by optimizing them as
+free variables in Kim’s model using the same ar-
+chitecture. Therefore, we can expect some degra-
+dation in the performance of our model; but, we
+learn semantically coherent kernels that are easy
+to use for explanation purpose.
+
+Selecting k-grams. The WkA model complex-
+ity is dependent on the number of k-grams that are
+used to form the kernels. Since the number of k-
+grams can be very large in the data corpus, it helps
+to control the model complexity by learning with
+a selected set of k-grams. We experimented with
+three simple selection heuristics. Details are given
+in Section 4 and supplemental material.
+
+Clustering using Domain Knowledge. To
+perform clustering, we need to deﬁne a distance
+function. Since we represent a k-gram using the
+Word2Vec representation that captures distribu-
+tional semantics using contextual
+information
+in Rd, Euclidean distance is a good distance
+function to use. We discover the clusters using the
+K-means algorithm. However, visual inspection
+showed that
+the quality of clusters was not
+good. The main reason is that some words with
+opposite meanings get similar
+representations
+(due to similar contexts in which they occur
+while learning Word2Vec representation). Some
+(at-
+examples with cosine similarity score are:
+(good,bad,0.71),
+tractive,unattractive,0.72),
+
+such as
+
+(bright,dim,0.59)
+
+(able,unable,0.68),
+and
+(worst,best,0.58).
+This is not desirable in
+applications
+sentiment classiﬁcation
+where k-grams with opposite sentiments are not
+semantically coherent. Therefore, it is important
+to form sentiment polarized clusters in such
+applications; that is, k-grams expressing the same
+sentiment and semantic should occur together
+in every cluster. To form sentiment polarized
+clusters, we need an additional representation
+of k-grams that can capture the sentiment. For
+this purpose, we bring in domain knowledge
+via SentiWordNet knowledge base (Esuli and
+Sebastiani, 2006; Baccianella et al., 2010). Using
+this knowledge base, we assign a sentiment score
+for each word as explained below.
+
+SentiWordNet Representation. SentiWordNet
+gives a 2-tuple of positive and negative scores for
+each sense of a word. There are several ways in
+which we can assign a SentiWordNet score for
+a word in a sentence. The best way is to ﬁnd
+the sense of the word and use the correspond-
+ing 2-tuple. Simpler techniques are to aggregate
+the 2-tuples by averaging or using the maximum
+element-wise score in the tuples.
+In our exper-
+iments, we found that the maximum aggregation
+technique works well. Thus, the SentiWordNet
+representation of a k-gram is a 2k dimensional
+vector.
+
+Forming Sentiment Polarized Clusters. We
+concatenate the Word2Vec and SentiWordNet rep-
+resentations. Note that these representations cap-
+ture the semantic information derived from con-
+text seen in a large corpus and sentiment infor-
+mation derived from task speciﬁc data corpus re-
+spectively. Given the joint representation, we
+modify the distance function as a weighted com-
+bination of distance functions in the Word2Vec
+and SentiWordNet representation spaces. We set
+these weights by manually inspecting the quality
+of clusters. Table 2 shows a few kernels with top
+
+scoring k-grams obtained with our learned seman-
+tically coherent kernels for the MR (Movie Re-
+view) dataset. We see that most of the kernels are
+semantically coherent. Though the k-grams in the
+last column are noisy, we can improve the seman-
+tic coherent quality of kernels using better distance
+functions and optimizing the weights by treating
+them as hyperparameters.
+
+While Table 2 is useful to qualitatively as-
+sess semantic coherence by visual inspection, we
+could make use of the weighted distance func-
+tion (described above) to deﬁne a computable se-
+mantic coherent score for each cluster as follows.
+We compute a normalized average score (Gj) of
+weighted distances of all pairs in the jth cluster
+Cj. Then, we deﬁne the semantic coherence score
+as: Sj = 1− Gj; the normalization is done so that
+the semantic coherence score lies in the interval
+[0, 1]. Higher values of Sj indicate stronger se-
+mantic coherence. To reduce computational cost,
+we computed Sj for each ﬁlter using only top scor-
+ing 50 k-grams. Figure 2(a) shows the seman-
+tic coherence scores of 300 learned ﬁlters on the
+MR dataset. We see that the weighted k-gram
+model has signiﬁcantly higher mass towards the
+right as compared to the CNN-Static model (Kim,
+2014). For example, the WkA model has 48%
+of ﬁlters with score more than 0.6; this is signiﬁ-
+cantly higher compared to 7% ﬁlters in the CNN-
+Static model.
+
+Optimizing hyperparameters using averaged se-
+mantic coherence score over the clusters as the ob-
+jective function is left as a future research work.
+
+3.2 Visualizing Kernel Outputs
+
+We propose a simple but effective technique to vi-
+sualize words (in a sentence) that are discovered
+as important by kernels in making the decision.
+In Figure 2(b), we present a few sentences with
+words marked with a graded color map and font
+sizes; the marked words with red/dark red colors
+with larger font sizes are identiﬁed as important
+using our approach by the learned semantically co-
+herent kernels.
+
+We generated these marked sentences as fol-
+lows. For a given sentence, we identify the k-gram
+that ﬁres as the max pooled output of each ker-
+nel. Then, we associate respective weighted kernel
+output score for each word in the selected k-gram
+for all kernels; here, the weight can be set to 1
+or as the linear classiﬁer feature weight depending
+
+on what we would like to visualize. Finally, we
+sum the scores for each word, as the same word
+can be part of multiple selected k-grams and nor-
+malize the scores to the range [0, 255]. The nor-
+malized scores are used as intensity values in a
+graded color map. For example, a zero intensity
+value represents black color and the highest value
+of 255 corresponds to dark red color. Further-
+more, it helps to use higher font sizes for ease of
+visualization. For example, we mapped 5 increas-
+ing font sizes to 5 equally spaced intensity range
+intervals, for generating Figure 2(b). We see that
+several highlighted important k-grams nicely rep-
+resent the sentiments that help to reason out the
+decision and it also illustrates the attention capa-
+bility of CNNs.
+
+3.3 Reusable Kernels
+
+We call a kernel reusable when a kernel learned
+in one application (or dataset, e.g., MR) serves
+as a useful kernel in similar applications (e.g.,
+IMDB). We expect this to happen in CNNs when
+k-gram models are used and similar k-grams ap-
+pear in similar applications (e.g., across movie
+review datasets, across electronic product review
+datasets).
+In particular, since we learn semanti-
+cally coherent kernels, we expect this property to
+hold as these kernels represent distinct semantic
+notions as seen in Table 2. There are several ways
+to use learned kernels on a new dataset. A sim-
+ple baseline is to use them as ﬁxed kernels and
+learn only the classiﬁer layer outputs. Another
+way is to adjust the weights of k-grams in each
+kernel with weight regularization using previously
+learned weights. We can extend further by adding
+a few more kernels and learn them either with
+ﬁxed or weight regularized reusable kernels.
+
+In our experiments, we used ﬁxed kernels and
+learning with additional ﬁlters. The need for addi-
+tional kernels arises because some domain speciﬁc
+k-grams will often be present and signiﬁcant im-
+provement in performance can be achieved by us-
+ing additional ﬁlters to cover these k-grams. One
+key advantage of using reusable kernels is that
+we can achieve signiﬁcant reduction in training
+time on new applications as we need to learn only
+smaller number of parameters. As we show in the
+next section, 20−50 times speed-up is possible on
+real-world problems.
+
+(a)
+
+(b)
+
+Figure 2: Figure (a) shows the histogram of semantic coherence scores of 300 learned ﬁlters from the
+WkA and CNN-Static (Kim, 2014) models on the MR dataset. The WkA model exhibits higher semantic
+coherence. Figure (b) illustrates our visualization technique for positive (top 3) and negative sentences
+in a sentiment classiﬁcation task.
+
+Dataset
+
+Train
+
+Split Size
+
+MR
+SST-1
+SST-2
+SUBJ
+IMDB
+
+10662
+8544
+6920
+10000
+22500
+
+Validation
+Split Size
+10-CV
+1101
+872
+
+10-CV
+2500
+
+Test
+
+Split Size
+
+-
+
+2210
+1821
+
+-
+
+25000
+
+Table 3: Statistics of Datasets. (CV: Cross Validation)
+
+4 Experimental Evaluation
+In this section, we demonstrate the efﬁcacy of
+learning semantically coherent kernels by compar-
+ing the performance with a few baselines and the
+CNN-Static model (Kim, 2014) (Figure 1). As
+emphasized earlier, our core ideas can be easily
+extended and applied in other sophisticated CNN
+models (e.g., multichannel (Kim, 2014) and learn-
+ing Word2Vec representations). We also demon-
+strate through several examples that the learned
+kernels in CNNs can be reused in similar appli-
+cations and signiﬁcant reduction in training time
+can be achieved. Overall, we are able to achieve
+performance close to the state-of-the-art methods
+but with semantic and reusable properties.
+
+4.1 Experimental Setup
+Datasets. We conducted a comprehensive set of
+our experiments on 5 popular benchmark datasets
+used for sentence classiﬁcation tasks (Kim, 2014).
+They are: MR, IMDB, SST-1, SST-2 and SUBJ
+(Subjectivity). The ﬁrst 4 tasks (datasets) are
+sentiment classiﬁcation tasks and all are binary
+classiﬁcation tasks except SST-1 (which has ﬁne-
+
+grained sentiment labels with 5 classes). The
+SUBJ dataset is again a binary classiﬁcation task
+where sentences are labeled as Subjective or Ob-
+jective. The statistics of the datasets are given in
+Table 3. More details can be found in the supple-
+mental material.
+
+Models. We compare the performance of sev-
+eral models. All the methods differ in the sen-
+tence model (representation) they form, i.e., the
+feature input vector that forms the input to the
+classiﬁer layer. We can categorize these methods
+into three categories. The ﬁrst category of models
+aggregate the Word2Vec representations of words
+in a sentence and they do not use convolution ﬁl-
+ters. We have two baselines in this category. The
+ﬁrst baseline uses a sentence model that averages
+the Word2Vec representations with equal weights.
+In the second baseline, we assign a weight for
+each word in the vocabulary and form the sen-
+tence representation as a weighted combination;
+we learn these weights jointly with the classiﬁer
+layer weights. The models learned using these
+methods are referred as Simple Word2Vec Averag-
+ing and Weighted Word2Vec Averaging in Table 4.
+The second category of models uses convolu-
+tion ﬁlter (kernel) representation obtained using k-
+gram clusters; here again, we have simple averag-
+ing and weighted averaging of k-gram Word2Vec
+representations to form the kernel representation.
+These methods are referred as Simple k-gram Av-
+eraging (SkA) and Weighted k-gram Averaging
+(WkA) in Table 4. The number of k-grams can
+be extremely large. For example, the number
+of unique 3-grams in MR and IMDB datasets
+
+Model
+Simple Word2Vec Averaging
+Weighted Word2Vec Averaging
+Simple k-gram Averaging (SkA)
+Weighted k-gram Averaging (WkA)
+WkA + Parse Tree
+WkA + POS-Tag
+WkA + 10% ﬂexible ﬁlters (FF)
+WkA + 25% ﬂexible ﬁlters (FF)
+CNN-Static (CNN-S) (Kim, 2014)
+DCNN (Kalchbrenner et al., 2014)
+MV-RNN (Socher et al., 2012)
+
+MR
+76.76
+77.97
+61.67
+78.65
+78.68
+79.04
+79.75
+80.02
+81.0
+-
+79.0
+
+IMDB SUBJ SST-1 SST-2
+82.09
+78.36
+82.98
+88.39
+61.89
+58.02
+88.76
+83.25
+83.86
+89.24
+83.47
+89.24
+83.69
+89.45
+90.16
+84.29
+90.85∗
+86.8
+86.8
+-
+82.9
+-
+
+88.03
+91.55
+70.65
+91.95
+92.17
+92.02
+92.51
+92.68
+93.0
+-
+-
+
+39.28
+44.34
+32.21
+45.97
+46.33
+45.75
+45.84
+46.11
+45.5
+48.5
+44.4
+
+Table 4: CNN-Static refers to a CNN model with Word2Vec representation. DCNN refers to dynamic
+CNN with k-max pooling. MV-RNN refers to Matrix-Vector Recursive Neural Network with parse trees.
+The numbers in italics are as reported in the respective papers. The number with ∗ was obtained by
+executing the code quoted in (Kim, 2014) where the IMDB dataset result was not reported.
+
+is given by 169000 and 6.5 million respectively.
+Therefore, as discussed earlier, we experimented
+with three different heuristics in order to control
+the complexity. In the ﬁrst heuristic, we shortlist
+the k-grams (e.g., around 50000−100000 for each
+k) using sentiment information available in each
+k-gram; we used a dictionary of positive and neg-
+ative sentiment words and, if a k-gram does not
+contain any sentiment word from this dictionary,
+we drop it. We did not use any shortlisting us-
+ing sentiment dictionary in the SUBJ dataset since
+this is not a sentiment classiﬁcation problem; but,
+we sampled 100000 k-grams for each k. Results
+obtained using the ﬁrst heuristic are referred as the
+row WkA in Table 4. With the goal of improving
+the coverage over k-grams, we also identiﬁed ad-
+ditional k-grams that are obtained as outputs of a
+syntactic tree parser. As the third heuristic, we se-
+lected k-grams that contain at least one word be-
+longing to the POS tag categories of verbs, adjec-
+tives and their derivatives. The results obtained us-
+ing these heuristics are reported as: WkA + Parse
+Tree and WkA + POS-Tag respectively.
+
+The third category of models are some of the
+CNN (Kim, 2014; Kalchbrenner et al., 2014) and
+RNN models (Socher et al., 2012) reported in
+the literature. We emphasize that our intention
+is not to get the best performance using complex
+network architectures; but,
+to learn network
+models where the learned kernels are semantically
+coherent which helps to reason out
+through
+inspection of ﬁred features and visualization
+technique.
+
+and
+
+the
+
+Hyper-parameter
+
+Training
+Set-
+(cid:80)n
+tings. We used L1 regularized negative log
+λ(|w| + |z|) −
+likelihood function (i.e.,
+i=1 log p(yi|Xi; w, z))
+as
+objective
+1
+n
+function to learn the model parameters. Here, Xi
+and yi denote the input sentence representation
+and class label information respectively for the
+ith example, with the class probabilities deﬁned
+using the softmax function explained earlier; w,
+z and n denote the linear classiﬁer layer weights
+(collated over the classes), kernel parameters
+(collated over all the clusters) and number of
+examples respectively.
+the kernel
+parameters z are nothing but the free variables v
+when we trained the CNN-S model. We trained
+the models for different regularization constants
+and many passes (50 − 100) over the training
+set using mini-batch with AdaDelta learning rate
+updates (Zeiler, 2012) and Dropout (Srivastava
+et al., 2014) of 0.5. We chose the model that
+gives the best validation accuracy and report the
+test set accuracy for this model. To compute
+the distance function for clustering, we set the
+weights for the distance functions after several
+experimentation and visualizing the quality of
+clusters. We used 100 kernels each for k-grams
+with k = 3, 4, 5 (Kim, 2014). More details can be
+found in the supplemental material.
+
+Note that
+
+4.2 Experimental Results
+Comparison of Models. Table 4 gives the test
+accuracy results of the various models described
+in Section 4.1 on 5 benchmark datasets.
+It
+
+is interesting to see that weighted averaging of
+Word2Vec representation gives reasonable per-
+formance. Learning the weights for the sen-
+tence models signiﬁcantly improves the perfor-
+mance; this can be seen by comparing pairs of re-
+sults in (ﬁrst,second) and (third, fourth) rows for
+Word2Vec and k-gram based models respectively.
+Recall that we learn semantically coherent kernels
+in the second category of models. and we see that
+the WkA model gives similar performance com-
+pared to the ﬂexible but non-interpretable CNN-
+S model. As we can see, the performance of the
+WkA model is quite good even with such a lim-
+ited set of k-grams. And, the performance im-
+proves signiﬁcantly on several datasets as we bring
+in additional k-grams using syntactic parse tree
+and POS tag based information to form the clus-
+ters. We see that there is still some performance
+gap with the CNN-S model. As explained earlier,
+one reason is that our kernel parameters are con-
+strained to be part of the subspaces spanned by the
+clusters, as opposed to treating them as free vari-
+ables in the CNN-S model. This can be addressed,
+if needed, by adding a few ﬁlters (e.g., 10% or
+25% of the total number of semantically coher-
+ent kernels) and learn these ﬁlters jointly with se-
+mantically coherent ﬁlters. These models are re-
+ferred as WkA with respective percentage of ﬂex-
+ible ﬁlters added. As we can see, there is a clear
+trend in performance improvement as more ﬁlters
+are added and the performance gap reduces signif-
+icantly with the CNN-S model. But, we lose some
+reasoning capability, as we would not be able to
+explain the reason when any of these added ﬁlters
+ﬁre in making a decision. Note that we can trade-
+off between interpretability and improved perfor-
+mance accuracy, by controlling the percentage of
+ﬂexible ﬁlters. When reasoning out is an important
+requirement with limited accuracy loss (e.g., 1-2%
+as seen from the table), the approach of learning
+semantically coherent kernels can be signiﬁcantly
+useful. Furthermore, our approach nicely discov-
+ers the important words as highlighted with the vi-
+sualization technique demonstrated earlier in Fig-
+ure 2. Overall, we see that the approach of learn-
+ing semantically coherent kernels is quite effec-
+tive.
+
+Results from Reusable Kernel Experiment.
+We conducted these experiments on 4 datasets
+MR, SST-1, SST-2 and IMDB. Since the ﬁrst
+three datasets share common sentences, we reused
+
+Model
+Fixed (WkA)
+Fixed (CNN-S)
+Fixed (WkA)
++10% FF
+Fixed (CNN-S)
++10% FF
+
+MR
+73.78
+77.72
+78.77
+
+IMDB SST-1
+82.50
+41.76
+44.43
+85.78
+89.17
+43.30
+
+SST-2
+80.67
+82.81
+84.24
+
+79.73
+
+89.54
+
+43.57
+
+84.24
+
+Table 5: Reusable Kernel Experiment Results.
+
+kernels learned from IMDB for these datasets.
+As another experiment, we reused kernels learned
+from MR on IMDB. From Table 5, we see that de-
+cent accuracy is achievable by using ﬁxed kernels
+from WkA and CNN-S models. The reason be-
+hind the observed signiﬁcant performance differ-
+ence of these models with ﬁxed kernels is that the
+CNN-S model uses all the k-grams to form the ker-
+nel. As we can see, the performance gap is signif-
+icantly reduced by adding just 10% of additional
+kernels; note that we added the same number of
+kernels to CNN-S model for fair comparison. But,
+the improvement achieved by our model is more
+(4.2%) as the k-gram coverage is improved signif-
+icantly; it is just 1.6% with the CNN-S model as it
+has covered a larger fraction already. Overall, we
+see that the kernels learned in CNNs are indeed
+reusable with both WkA and CNN-S models.
+
+We measured the training time taken with full
+training (i.e., no reusable kernels) of our WkA
+model and with ﬁxed kernels on the SST-1
+dataset. While the full training takes nearly 2
+hours, it just takes 2 minutes with ﬁxed kernels.
+Note that only the classiﬁer layer needs to be
+learned with ﬁxed reusable kernels. Adding 10%
+kernels increased the training time to approxi-
+mately 4 minutes. Thus, we see an order of magni-
+tude improvement in training time while achieving
+similar performance.
+
+5 Conclusion
+
+In this work, we proposed to learn semantically
+coherent kernels using clustering scheme com-
+bined with Word2Vec representation and domain
+knowledge such as SentiWordNet. We suggested
+an effective technique to visualize words discov-
+ered by kernels. Semantically coherent kernels
+and identifying prominent words help to reason
+out the decision. We introduced kernel reusabil-
+ity and showed that kernels learned in one appli-
+cation are useful in similar applications, achieving
+close to state-of-the-art performance but with re-
+duced training time.
+
+References
+[Baccianella et al.2010] Stefano Baccianella, Andrea
+Esuli, and Fabrizio Sebastiani. 2010. Sentiword-
+net 3.0: An enhanced lexical resource for sen-
+timent analysis and opinion mining.
+In Nico-
+letta Calzolari (Conference Chair), Khalid Choukri,
+Bente Maegaard, Joseph Mariani, Jan Odijk, Ste-
+lios Piperidis, Mike Rosner, and Daniel Tapias,
+editors, Proceedings of the Seventh conference on
+International Language Resources and Evaluation
+(LREC’10), Valletta, Malta, may. European Lan-
+guage Resources Association (ELRA).
+
+[Bengio et al.2003] Yoshua Bengio, R´ejean Ducharme,
+Pascal Vincent, and Christian Janvin. 2003. A neu-
+ral probabilistic language model. The Journal of
+Machine Learning Research, 3:1137–1155.
+
+[Brown et al.1992] Peter F Brown, Peter V Desouza,
+Robert L Mercer, Vincent J Della Pietra, and
+Jenifer C Lai.
+1992. Class-based n-gram mod-
+els of natural language. Computational linguistics,
+18(4):467–479.
+
+[Chen et al.2015] Kan Chen, Jiang Wang, Liang-Chieh
+Chen, Haoyuan Gao, Wei Xu, and Ram Nevatia.
+2015. ABC-CNN: an attention based convolu-
+tional neural network for visual question answering.
+CoRR, abs/1511.05960.
+
+[dos Santos and Gatti2014] Cicero dos Santos
+
+and
+2014. Deep convolutional neural
+Maira Gatti.
+networks for sentiment analysis of short texts.
+In
+Proceedings of COLING 2014, the 25th Interna-
+tional Conference on Computational Linguistics:
+Technical Papers, pages 69–78, Dublin, Ireland,
+August. Dublin City University and Association for
+Computational Linguistics.
+
+[Duchi et al.2011] John Duchi, Elad Hazan, and Yoram
+Singer. 2011. Adaptive subgradient methods for on-
+line learning and stochastic optimization. The Jour-
+nal of Machine Learning Research, 12:2121–2159.
+
+[Esuli and Sebastiani2006] Andrea Esuli and Fabrizio
+Sebastiani. 2006. Sentiwordnet: A publicly avail-
+In Pro-
+able lexical resource for opinion mining.
+ceedings of LREC, volume 6, pages 417–422. Cite-
+seer.
+
+[Hu et al.2014] Baotian Hu, Zhengdong Lu, Hang Li,
+2014. Convolutional neural
+and Qingcai Chen.
+network architectures for matching natural language
+sentences. In Advances in Neural Information Pro-
+cessing Systems, pages 2042–2050.
+
+[Johnson and Zhang2014] Rie
+
+and Tong
+Zhang. 2014. Effective use of word order for text
+categorization with convolutional neural networks.
+CoRR.
+
+Johnson
+
+[Kalchbrenner et al.2014] Nal Kalchbrenner, Edward
+Grefenstette, and Phil Blunsom. 2014. A convo-
+lutional neural network for modelling sentences. In
+
+Proceedings of the 52nd Annual Meeting of the As-
+sociation for Computational Linguistics (Volume 1:
+Long Papers), pages 655–665, Baltimore, Maryland,
+June. Association for Computational Linguistics.
+
+[Kim2014] Yoon Kim. 2014. Convolutional neural net-
+works for sentence classiﬁcation. In Proceedings of
+the 2014 Conference on Empirical Methods in Nat-
+ural Language Processing (EMNLP), pages 1746–
+1751, Doha, Qatar, October. Association for Com-
+putational Linguistics.
+
+[Krizhevsky et al.2012] Alex
+
+Krizhevsky,
+
+Ilya
+Sutskever, and Geoffrey E Hinton.
+Im-
+agenet classiﬁcation with deep convolutional neural
+In Advances in neural
+information
+networks.
+processing systems, pages 1097–1105.
+
+2012.
+
+[Kumar et al.2015] Ankit Kumar, Ozan Irsoy, Jonathan
+Su, James Bradbury, Robert English, Brian Pierce,
+Peter Ondruska,
+Ishaan Gulrajani, and Richard
+Socher. 2015. Ask me anything: Dynamic mem-
+ory networks for natural language processing. arXiv
+preprint arXiv:1506.07285.
+
+[Le and Mikolov2014] Quoc V Le and Tomas Mikolov.
+2014. Distributed representations of sentences and
+documents. In Proceedings of ICML.
+
+[Luo et al.2014] Yong Luo, Jian Tang, Jun Yan, Chao
+Xu, and Zheng Chen. 2014. Pre-trained multi-view
+word embedding using two-side neural network. In
+AAAI, pages 1982–1988.
+
+[Maas et al.2011] Andrew L. Maas, Raymond E. Daly,
+Peter T. Pham, Dan Huang, Andrew Y. Ng, and
+Christopher Potts. 2011. Learning word vectors for
+sentiment analysis. In Proceedings of the 49th An-
+nual Meeting of the Association for Computational
+Linguistics: Human Language Technologies, pages
+142–150, Portland, Oregon, USA, June. Association
+for Computational Linguistics.
+
+[Mikolov et al.2013] Tomas Mikolov, Kai Chen, Greg
+Corrado, and Jeffrey Dean. 2013. Efﬁcient estima-
+tion of word representations in vector space. ICLR
+Workshop, 2013.
+
+[Mou et al.2015] Lili Mou, Hao Peng, Ge Li, Yan Xu,
+Lu Zhang, and Zhi Jin. 2015. Discriminative neural
+sentence modeling by tree-based convolution. page
+23152325.
+
+[Pang and Lee2004] Bo Pang and Lillian Lee. 2004.
+A sentimental education: Sentiment analysis using
+subjectivity summarization based on minimum cuts.
+In Proceedings of the 42nd annual meeting on As-
+sociation for Computational Linguistics, page 271.
+Association for Computational Linguistics.
+
+[Pang and Lee2005] Bo Pang and Lillian Lee. 2005.
+Seeing stars: Exploiting class relationships for senti-
+ment categorization with respect to rating scales. In
+Proceedings of the 43rd Annual Meeting of the As-
+sociation for Computational Linguistics (ACL’05),
+pages 115–124, Ann Arbor, Michigan, June. Asso-
+ciation for Computational Linguistics.
+
+[Wang et al.2015] Mingxuan Wang, Zhengdong Lu,
+Hang Li, Wenbin Jiang, and Qun Liu.
+2015.
+gencnn: A convolutional architecture for word se-
+quence prediction. In Proceedings of the 53rd An-
+nual Meeting of the Association for Computational
+Linguistics and the 7th International Joint Confer-
+ence on Natural Language Processing (Volume 1:
+Long Papers), pages 1567–1576, Beijing, China,
+July. Association for Computational Linguistics.
+
+[Yin and Sch¨utze2015] Wenpeng Yin and Hinrich
+Sch¨utze. 2015. Multichannel variable-size convo-
+In Proceedings
+lution for sentence classiﬁcation.
+of
+the Nineteenth Conference on Computational
+Natural Language Learning, pages 204–214, Bei-
+jing, China, July. Association for Computational
+Linguistics.
+
+[Yin et al.2016] Wenpeng Yin, Sebastian Ebert, and
+Hinrich Sch¨utze. 2016. Attention-based convolu-
+tional neural network for machine comprehension.
+arXiv preprint arXiv:1602.04341.
+
+[Zeiler2012] Matthew D Zeiler.
+
+2012. Adadelta:
+an adaptive learning rate method. arXiv preprint
+arXiv:1212.5701.
+
+[Zhang et al.2015] Xiang Zhang, Junbo Zhao, and Yann
+LeCun. 2015. Character-level convolutional net-
+works for text classiﬁcation. In Advances in Neural
+Information Processing Systems, pages 649–657.
+
+[Zhang et al.2016] Rui Zhang, Honglak Lee,
+
+and
+Dragomir R. Radev.
+2016. Dependency sen-
+sitive convolutional neural networks for modeling
+In Proceedings of the
+sentences and documents.
+2016 Conference of the North American Chapter of
+the Association for Computational Linguistics: Hu-
+man Language Technologies, pages 1512–1521, San
+Diego, California, June. Association for Computa-
+tional Linguistics.
+
+[Zhao and Wu2016] Zhiwei Zhao and Youzheng Wu.
+2016. Attention-based convolutional neural net-
+works for sentence classiﬁcation. Interspeech 2016,
+pages 705–709.
+
+[Rong2014] Xin Rong.
+
+2014.
+learning explained.
+
+rameter
+arXiv:1411.2738.
+
+word2vec pa-
+arXiv preprint
+
+[Socher et al.2012] Richard Socher, Brody Huval,
+Christopher D. Manning, and Andrew Y. Ng.
+Semantic compositionality through recur-
+2012.
+In Proceedings of the
+sive matrix-vector spaces.
+2012 Joint Conference on Empirical Methods in
+Natural Language Processing and Computational
+Natural Language Learning, pages 1201–1211, Jeju
+Island, Korea, July. Association for Computational
+Linguistics.
+
+[Socher et al.2013] Richard Socher, Alex Perelygin,
+Jean Wu, Jason Chuang, Christopher D. Manning,
+Andrew Ng, and Christopher Potts. 2013. Recur-
+sive deep models for semantic compositionality over
+In Proceedings of the 2013
+a sentiment treebank.
+Conference on Empirical Methods in Natural Lan-
+guage Processing, pages 1631–1642, Seattle, Wash-
+ington, USA, October. Association for Computa-
+tional Linguistics.
+
+[Srivastava et al.2014] Nitish Srivastava, Geoffrey E
+Hinton, Alex Krizhevsky, Ilya Sutskever, and Rus-
+lan Salakhutdinov. 2014. Dropout: a simple way to
+prevent neural networks from overﬁtting. Journal of
+Machine Learning Research, 15(1):1929–1958.
+
+[Tai et al.2015] Kai Sheng Tai, Richard Socher, and
+Christopher D Manning.
+Improved se-
+mantic representations from tree-structured long
+arXiv preprint
+short-term memory networks.
+arXiv:1503.00075.
+
+2015.
+
+[Tang2015] Duyu Tang. 2015. Sentiment-speciﬁc rep-
+resentation learning for document-level sentiment
+analysis. In Proceedings of the Eighth ACM Interna-
+tional Conference on Web Search and Data Mining,
+pages 447–452. ACM.
+
+[Turian et al.2010] Joseph Turian, Lev-Arie Ratinov,
+and Yoshua Bengio. 2010. Word representations:
+A simple and general method for semi-supervised
+learning. In Proceedings of the 48th Annual Meet-
+ing of the Association for Computational Linguis-
+tics, pages 384–394, Uppsala, Sweden, July. Asso-
+ciation for Computational Linguistics.
+
+[Wan et al.2013] Li Wan, Matthew Zeiler, Sixin Zhang,
+Yann L Cun, and Rob Fergus. 2013. Regularization
+of neural networks using dropconnect. In Proceed-
+ings of the 30th International Conference on Ma-
+chine Learning (ICML-13), pages 1058–1066.
+
+[Wang and Manning2012] Sida Wang and Christopher
+Manning. 2012. Baselines and bigrams: Simple,
+good sentiment and topic classiﬁcation. In Proceed-
+ings of the 50th Annual Meeting of the Association
+for Computational Linguistics (Volume 2: Short Pa-
+pers), pages 90–94, Jeju Island, Korea, July. Associ-
+ation for Computational Linguistics.
+
+A Supplemental Material
+A.1 Selection of k-grams
+Dictionary based Selection. The dictionary of
+positive and negative words that we used is avail-
+able1.
+
+Parse Trees. We used the Stanford parser (ver-
+sion 3.6, NLTK Python interface) to generate the
+parse tree for the sentences. All the k-grams hav-
+ing 3,4 and 5 words are added to the set selected
+using the above mentioned dictionary based set.
+
+POS-Tag. We used the Stanford POS tagger to
+
+tag words in a sentence.
+
+splits. The dataset is a ﬁne grained version
+with 5 labels(very positive, positive, neu-
+tral, negative and very negative) introduced
+in (Socher et al., 2013) 4.
+
+• SST2 : Stanford Sentiment Treebank 2 is a
+subset to SST1 with neutral reviews removed,
+positive and very positive labeled as positive,
+negative and very negative labeled as nega-
+tive.
+
+• IMDB : Internet Movie DataBase is the large
+movie review dataset with 25000 train and
+25000 test samples (Maas et al., 2011)5.
+
+A.2 Experiments Details
+Variable length sentences. The variable length
+sentences are handled by padding zeros.
+
+While the dataset SST1 corresponds to a 5-class
+problems, rest of the datasets are binary classiﬁca-
+tion problems.
+
+Training related hyper-parameters.
+
+Hyperparameter
+
+Kernel Window Sizes (k-grams)
+
+Number of Kernels (for each k-gram)
+
+Regularization
+
+Value
+3,4,5
+100
+L1
+
+Regularization parameter (λ) range
+
+1e-06 to 1e-08
+
+Dropout
+
+Weights for Word2Vec and SentiWordNet Representations
+
+(Distance function computation)
+
+0.5
+1, 10
+
+Table 6: Hyperparameters
+
+For the AdaDelta update rule, we used the same
+
+hyperparameters suggested in (Zeiler, 2012).
+
+A.3 Datasets Details
+
+• Movie Review (MR) : Movie review dataset
+contains 5331 positive and 5331 negative re-
+views introduced in (Pang and Lee, 2005)2.
+• SUBJ : The dataset contains 5000 subjective
+and 5000 objective sentences introduced in
+(Pang and Lee, 2004)3. The problem is to
+classify a given sentence as subjective or ob-
+jective.
+
+• SST1 : Stanford Sentiment Treebank 1 is
+an extension to MR with the Train/Test/Dev
+
+1https://github.com/jeffreybreen/twitter-sentiment-
+
+analysis-tutorial-201107/tree/master/data/opinion-lexicon-
+English
+
+2https://www.cs.cornell.edu/people/pabo/movie-review-
+
+data/
+
+data/
+
+3https://www.cs.cornell.edu/people/pabo/movie-review-
+
+4http://nlp.stanford.edu/sentiment/
+5http://ai.stanford.edu/ amaas/data/sentiment/
+
+

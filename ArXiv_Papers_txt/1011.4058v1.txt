@@ -1,0 +1,834 @@
+0
+1
+0
+2
+
+ 
+
+v
+o
+N
+7
+1
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+8
+5
+0
+4
+
+.
+
+1
+1
+0
+1
+:
+v
+i
+X
+r
+a
+
+Modeling Image Structure with Factorized
+
+Phase-Coupled Boltzmann Machines
+
+Charles F. Cadieu & Kilian Koepsell
+
+Redwood Center for Theoretical Neuroscience
+
+Helen Wills Neuroscience Institute
+University of California, Berkeley
+
+Berkeley, CA 94720
+
+{cadieu, kilian}@berkeley.edu
+
+Abstract
+
+We describe a model for capturing the statistical structure of local amplitude and
+local spatial phase in natural images. The model is based on a recently devel-
+oped, factorized third-order Boltzmann machine that was shown to be effective
+at capturing higher-order structure in images by modeling dependencies among
+squared ﬁlter outputs [1]. Here, we extend this model to Lp-spherically symmet-
+ric subspaces. In order to model local amplitude and phase structure in images, we
+focus on the case of two dimensional subspaces, and the L2-norm. When trained
+on natural images the model learns subspaces resembling quadrature-pair Gabor
+ﬁlters. We then introduce an additional set of hidden units that model the depen-
+dencies among subspace phases. These hidden units form a combinatorial mixture
+of phase coupling distributions, concentrated in the sum and difference of phase
+pairs. When adapted to natural images, these distributions capture local spatial
+phase structure in natural images.
+
+1
+
+Introduction
+
+In recent years a number of models have emerged for describing higher-order structure in images
+(i.e., beyond sparse, Gabor-like decompositions). These models utilize distributed representations of
+covariance matrices to form an inﬁnite or combinatorial mixture of Gaussians model of the data [2,
+1]. These models have been shown to effectively capture the non-stationary variance structure of
+natural images. A variety of related models have focused on the local radial (in vectorized image
+space) structure of natural images [3, 4, 5, 6, 7]. While these models represent a signiﬁcant step
+forwards in modeling higher-order natural image structure, they only implicitly model local phase
+alignments across space and scale. Such local phase alignments are implicated as being a hallmark
+of edges, contours, and other shape structure in natural images [8]. The model proposed in this paper
+attempts to extend these models to capture both amplitude and phase in natural images.
+In this paper, we ﬁrst extend the recent factorized, third-order Boltzmann machine model of Ranzato
+& Hinton [1] to the case of Lp-spherically symmetric distributions.
+In order to directly model
+the dependencies among local amplitude and phase variables, we consider the restricted case of
+two-dimensional subspaces with L2-norm. When adapted to natural images, the subspace ﬁlters
+converge to quadrature-pair Gabor-like functions, similar to previous work [7]. The dependencies
+among amplitudes are modeled using a set of hidden units, similar to Ranzato & Hinton [1]. Phase
+dependencies between subspaces are modeled using another set of hidden units as a mixture of
+phase coupling “covariance” matrices: conditioned on the hidden units, phases are modeled via a
+phase-coupled distribution [9].
+
+1
+
+1.1 Modeling Local Amplitude and Phase
+
+Our model may be viewed within the same framework as a number of recent models that attempt
+to capture higher-order structure in images by factorizing the coefﬁcients of oriented, bandpass
+ﬁlters [3, 4, 5, 6, 7, 10, 11]. These models are currently the best probabilistic models of natural
+image structure: they produce state-of-the-art denoising [3], and achieve lower entropy encodings
+of natural images [5]. They can be viewed as sharing a common mathematical form in which the
+ﬁlter coefﬁcients, x, are factored into a non-negative component z and a scalar component u, where
+x = z u. The non-negative factors, z, are modeled as either an independent set of variables each
+shared by a pair of linear components [7], a set of variables with learned dependencies to the linear
+components [6], or as a single radial component [5, 4]. The scalar factor, u, is modeled in a number
+of ways: as an independent angular unit vector [5, 4], as a correlated noise process [3], as the phase
+angle of paired ﬁlters [7], or as a sparse decomposition of latent variables [10].
+By separating the ﬁlter coefﬁcients into two sets of variables, it is possible for higher levels of anal-
+ysis to model higher-order statistical structure that was previously entangled in the ﬁlter coefﬁcients
+themselves. For example, the non-negative variables z are usually related to the local contrast or
+power within an image region, and Karklin & Lewicki have shown that it is possible to train a sec-
+ond layer to learn the structure in these variables via sparse coding [10]. Similarly, Lyu & Simoncelli
+learn an MRF model on these variables and show that the resulting model achieves state-of-the-art
+denoising [3]. It is generally less clear what structure is represented in the scalar variables u. Here
+we take inspiration from Zetzsche’s observations regarding the circular symmetry of joint distribu-
+tions of related ﬁlter coefﬁcients and conjecture that this quantity should be modeled as the sine or
+cosine of an underlying phase variable, i.e., u = sin(θ) or u = cos(θ) [12].
+One of the main contributions of this paper is a model of the joint structure of local phase in natural
+images. For the case of phases in a complex pyramid, the empirical marginal distribution of phases
+is always uniform across a corpus of natural images (data not shown); however, the empirical distri-
+bution of pairwise phase differences is often concentrated around a preferred phase. We can write
+the joint distribution of a pair of phase variables with a dependency in the difference of the phase
+variables as a von Mises1 distribution in the difference of the phases:
+
+p(θi, θj) =
+
+1
+
+2πI0(k)
+
+exp(κ cos(θi − θj − µ))
+
+(1)
+
+This distribution is parameterized by a concentration κ and a phase offset µ. Using trigonometric
+identities we can re-express the cosine of the difference as a sum of bivariate terms of the form
+cos(θi) sin(θj). One may view these terms as the pairwise statistics for angular variables, just as
+the the bivariate terms in the covariance matrix are the pairwise statistics for a Gaussian. This logic
+extends to multivariate distributions with n > 2.
+In the next section we describe an extension to the mean and covariance Restricted Boltzmann
+Machine (mcRBM) of Ranzato & Hinton [1]. Our extension represents local amplitude and phase in
+its factors. We model the amplitude dependencies with a set of hidden variables, and we model the
+phase dependencies among factors as a combinatorial mixture of phase-coupling distributions [9].
+This model is shown schematically in Fig. 1.
+
+2 Model
+
+We ﬁrst review the factorized third-order Boltzmann machine of Ranzato and Hinton [1] named
+mcRBM because it models both the mean and covariance structure of the data. We then describe
+an extension that models pairs of factors as two dimensional subspaces, which we call the mpRBM.
+The mpRBM provides a phase angle between pairs. The joint statistics between phase angles are
+not explicitly modeled by the mpRBM. Thus we propose additional hidden factors that model the
+pair-wise phase dependencies as a product of phase coupling distributions. For convenience we
+name this model mpkRBM, where k references the phase coupling matrix K that is generated by
+conditioning on the phase-coupling hidden units.
+
+1A von Mises distribution for an angular variable φ with concentration parameter, k, and mean, µ, is deﬁned
+
+as p(φ) :=
+
+2πI0(k) ek cos(φ−µ), where I0(k) is the zeroth order modiﬁed Bessel function.
+
+1
+
+2
+
+Figure 1: The mpkRBM model is shown schematically. The visible units vi are connected to a set
+of factors through the matrix Cif l. These factors come in pairs, as indicated by the horizontal line
+linking neighboring triangles. The squared output of each factor connects to the subspace coupling
+n through the matrix Pf n. Another set of factors is connected to the sine and cosine
+hidden units hp
+representations of each factor (second layer triangles) through the matrix Qf lg. This second set of
+factors connects to the phase coupling hidden units hk
+t . Single-stroke vertical lines indicate linear
+interactions, while double stroke lines indicate quadratic interactions. Note that the mean factors,
+hm, and biases are omitted for clarity. See text for further explanation.
+
+3
+
+vihpnhktPfnQflgRgtimagephase coupling hidden unitssubspace coupling hidden unitsCifl2.1 mcRBM
+
+The mcRBM deﬁnes a probability distribution by specifying an energy function E. The probability
+distribution is then given as p(v) ∝ exp(−E(v)), where v ∈ RD is the vectorized input image patch
+with D pixels. The mcRBM has two major parts of the energy, the covariance contributions, Ec,
+and the mean contributions, Em.
+The covariance terms are deﬁned as:
+Ec(v, hc) = − 1
+2
+
+||v|| )2 − N(cid:88)
+
+N(cid:88)
+
+D(cid:88)
+
+F(cid:88)
+
+nhc
+bc
+n
+
+Pf n(
+
+Cif
+
+hc
+n
+
+(2)
+
+vi
+
+n=1
+
+f =1
+
+i=1
+
+n=1
+
+where P ∈ RF×N is a matrix with positive entries, N is the number of hidden units and bc is a
+vector of biases. The columns of the matrix C ∈ RD×F are the image domain ﬁlters and their
+squared outputs are weighted by each row in P . The P matrix can be considered as a weighting on
+the squared outputs of the image ﬁlters. We normalize the visible units (||v||L2 = 1) following the
+procedure in [1]. Each term in the ﬁrst sum includes two visible units and one hidden unit and is
+a third-order Boltzmann machine. However, the third-order interactions are restricted by the form
+i=1 Cif vi)2 is a deterministic mapping from the image
+domain. The hidden units combine combinatorially to produce a zero-mean Gaussian distribution
+with an inverse covariance matrix that is a function of the hidden units:
+
+of the model into factors. Each factor, ((cid:80)D
+
+(3)
+Because the representation in the hidden units is distributed, the model can describe a combinatorial
+number of covariance matrices.
+The mean contribution to the energy, Em is given as:
+
+Σ−1 = C diag(P hc)C
+
+(cid:48)
+
+Em(v, hm) = − M(cid:88)
+
+D(cid:88)
+
+Wijvi − M(cid:88)
+
+hm
+j
+
+j=1
+
+i=1
+
+j=1
+
+bm
+j hm
+j
+
+(4)
+
+that connect directly to the visible units through the matrix Wij.
+terms are the mean hidden biases. The form of the mean contribution is a standard RBM
+
+with M binary hidden units hm
+j
+The bm
+j
+[13]. Note that the conditional over both sets of hidden units is factorial.
+The conditional distribution over the visible units given the hidden units is a Gaussian distribution,
+which is a function of the hidden variable states:
+
+p(v|hc, hm) ∼ N (Σ(
+
+Wijhm
+
+j ), Σ)
+
+(5)
+
+M(cid:88)
+
+j=1
+
+D(cid:88)
+
+i − D(cid:88)
+
+v2
+
+i=1
+
+i=1
+
+where Σ is given as in Eq. 3. The mean of the speciﬁed Gaussian is a function of both the mean hm
+and covariance hc hidden units.
+The total energy is given by:
+
+E(v, hc, hm) = Ec(v, hc) + Em(v, hm) +
+
+1
+2
+
+bv
+i vi
+
+(6)
+
+with the last two terms a penalty on the variance of the visible units introduced because Ec is
+invariant to the norm of the visible units and biases bv
+
+i on the visible units.
+
+2.2 mpRBM
+
+A number of recent results indicate that the local structure of image patches is well modeled by Lp-
+spherically symmetric subspaces [6]. To produce Lp-spherically symmetric subspaces we impose a
+pairing of factors into an Lp subspace. The covariance energy term in the mcRBM is thus altered to
+give:
+
+Ep(v, hp) = − 1
+2
+
+N(cid:88)
+
+F(cid:88)
+
+hp
+n
+
+Pf n
+
+(cid:34) L(cid:88)
+
+D(cid:88)
+
+(
+
+n=1
+
+f =1
+
+l
+
+i=1
+
+4
+
+(cid:35)1/α
+
+− N(cid:88)
+
+n=1
+
+Cif l
+
+vi
+||v|| )α
+
+bc
+nhc
+n
+
+(7)
+
+Now the tensor Cif l is a set of ﬁlters for each factor, f spanning the L dimensional subspace over
+the index l. The distribution over the visible conditioned on the hidden units can be expressed as
+a mixture of Lp distributions. Note that the hidden units remain independent conditioned on the
+visible units.
+The optimal choice of L and α is an interesting project related to recent models [14] but is beyond
+the scope of this paper. Here, we have chosen to focus on modeling the structure in the space
+complementary to the norms of the subspaces. To achieve a tractable form of the subspace structure
+we select the special case of L = 2 and α = 2. The choice of α = 2 is motivated by subspace-ICA
+models [6] and sparse coding with complex basis functions [7] where the amplitude within each
+complex basis function subspace is modeled as a sparse component.
+
+2.3 mpkRBM
+
+While the formulation of Lp-spherically symmetric subspace models the spherically symmetric dis-
+tributions of natural images, there are likely to be residual dependencies between the subspaces in
+the non-radial directions. For example, elongated edge structure will produce dependencies in the
+phase alignments across space and through spatial scale [8]. Such dependencies are not captured, or
+are at least only implicitly captured in the mpRBM. By formulating the mpRBM with L = 2 and
+α = 2 we can deﬁne a phase angle within each subspace. The dependencies between these phase
+angles will capture image structure such as phase alignments due to edges. We deﬁne a new vari-
+able, xf l, which is a deterministic function of the visible units: xf 1 = cos(θf ) and xf 2 = sin(θf ),
+where θf = arg
+, and j is the imaginary unit and arg(.) is the
+complex argument or phase.
+We now use a mathematical form that is similar to the covariance model contribution in the mcRBM
+to model the joint distribution of phases. We deﬁne the energy of the phase coupling contribution,
+denoted Ek, as,
+
+((cid:80)D
+i=1 Cif 1vi) + j((cid:80)D
+
+i=1 Cif 2vd)
+
+(cid:16)
+
+(cid:17)
+
+Ek(v, hk) = − 1
+2
+
+T(cid:88)
+
+G(cid:88)
+
+hk
+t
+
+Rgt(
+
+L(cid:88)
+
+F(cid:88)
+
+Qf lgxf l)2 − T(cid:88)
+
+t=1
+
+g=1
+
+l=1
+
+f =1
+
+t=1
+
+bk
+t hk
+t
+
+(8)
+
+t that modulate the columns of the matrix R ∈ RG×T . The rows of R
+with T binary hidden units hk
+then modulate the squared projections of the vector x through the matrix Q ∈ RF×L×G. The term
+t hidden units. Similar to the hc terms in the mcRBM, the hk units
+t is a vector of biases for the hk
+bk
+in the mpkRBM contribute pair-wise dependencies in the sine-cosine space of the phases. Pair-wise
+dependencies in the sine-cosine space can be re-expressed using trigonometric identities as terms
+in the sums and differences of the phase pairs, identical to the phase coupling described in Eq. 1.
+Such explicit dependencies may be important to model because edges in images exhibit structured
+dependencies in the differences of local spatial phase.
+Because the phase coupling energy is additive in each hk
+tioned on the hidden units is factorial. The probability of a given hk
+
+t term the hidden unit distribution condi-
+
+t is given as:
+
+ 1
+
+2
+
+G(cid:88)
+
+L(cid:88)
+
+F(cid:88)
+
+p(hk
+
+t |v) = σ
+
+Rgt(
+
+Qf lgxf l)2 + bk
+t
+
+g=1
+
+l=1
+
+f =1
+
+
+
+(9)
+
+where the sigmoid, or logistic, function is σ(y) = (1 + exp(−y))−1.
+We can see the dependency structure imposed by the hk units by considering the conditional distri-
+bution in the space of the phases, θ:
+
+(cid:48)
+K = Q diag(Rhk)Q
+Kx)
+
+p(θ|hk) ∝ exp(− 1
+2 x
+
+(cid:48)
+
+(10)
+
+Therefore, the hk units provide a combinatorial code of phase-coupling dependencies. The number
+of phase-coupling matrices that the model can generate is exponential in the number of hk hidden
+units because the hidden unit representation is binary and combinatorial. Again, instead of allowing
+arbitrary three way interactions between the x variables and the hidden units, we have chosen a
+
+5
+
+speciﬁc factorization where the squared factors are ((cid:80)L
+
+(cid:80)F
+
+l=1
+
+f =1 Qf lgxf l)2. Because there are no
+direct interactions between the hidden units, hk, the model still has the form of a conventional
+Restricted Boltzmann Machine. We call this model a mpkRBM because it builds upon the mpRBM
+and the k references the coupling matrix in the pair-wise phase distribution produced by conditioning
+on hk.
+Combining the three types of hidden units, hp, hm, and hk, allows each type of hidden unit to model
+structure captured by the corresponding functional form. For example, the hp hidden units will
+generate phase dependencies implicitly through their activations. However, if the phase structure of
+the data contains additional structure not captured implicitly by the hp and hm hidden units, there
+will be a learning signal for the hk units. Conversely, the phase statistics that are produced implicitly
+by the hp and hm units will be ignored by the hk terms because the learning signal is driven by the
+differences in the data and model distributions.
+
+3 Learning
+
+We learn the parameters of the model by stochastic gradient ascent of the log-likelihood. We express
+the likelihood in terms of the energy with the hidden units integrated out (omitting the visible squared
+term and biases):
+
+F (v) = − N(cid:88)
+− T(cid:88)
+− M(cid:88)
+
+t=1
+
+n=1
+
+log(1 + exp(
+
+log(1 + exp(
+
+log(1 + exp(
+
+(cid:34) L(cid:88)
+D(cid:88)
+F(cid:88)
+L(cid:88)
+
+i=1
+
+(
+
+l
+
+l=1
+
+f =1
+
+Pf n
+
+Rgt(
+
+f =1
+
+1
+2
+
+F(cid:88)
+G(cid:88)
+D(cid:88)
+
+1
+2
+
+g=1
+
+Wijvi + bm
+
+j ))
+
+(cid:35)1/α
+
+Cif l
+
+vi
+||v|| )α
+
++ bc
+
+n))
+
+(11)
+
+Qf lgxf l)2 + bk
+
+t ))
+
+j=1
+
+i=1
+
+It is not possible to efﬁciently sample the distribution over the visible units conditioned on the
+hidden units exactly (in contrast, sampling from the visible units conditioned on the hidden units in
+a standard RBM is efﬁcient and exact). We choose to integrate out the hidden variables, instead of
+taking the conditional distribution, to achieve better estimates of the model statistics.
+Maximizing the log-likelihood the gradient update for the model parameters (denoted as Θ ∈
+{R, Q, bk, C, P, bc, W, bm, bv} is given as:
+
+∂L
+∂Θ
+
+(cid:105)data
+
+= (cid:104) ∂F
+∂Θ
+
+(cid:105)model − (cid:104) ∂F
+∂Θ
+
+(12)
+where (cid:104).(cid:105)ρ indicates the expectation taken over the distribution ρ . Calculating the expectation over
+the data distribution is straightforward. However, calculating the expectation over the model distri-
+bution requires computationally expensive sampling from the equilibrium distribution. Therefore,
+we use standard techniques to approximate the expectation of the gradients under the model distri-
+bution following the procedure in [15, 1]. To summarize, in Contrastive Divergence learning [13]
+the model distribution is approximated by running a dynamic sampler starting at the data for only
+one step. Given the energy function with the hidden units integrated out, we run hybrid Monte Carlo
+sampling [16] starting at the data for one dynamical simulation to produce an approximate sample
+from the model distribution. For each dynamical simulation we draw a random momentum and run
+20 leap-frog steps while adapting the step size to achieve a rejection rate of about 10%.
+
+3.1 Learning parameters
+
+We trained the models on image patches selected randomly from the Berkeley Segmentation
+Database. We subtracted the image mean, and whitened 16x16 color image patches preserving
+99% of the image variance. This resulted in D = 138 visible units. We examined a model with 256
+hc covariance units, 256 hk phase-coupling units, and 100 hm mean units. We initialized the values
+of the matrix C to random values and normalized each image domain vector to have unit length.
+We initialized the matrices W and Q to small random values with variances equal to 0.05, and 0.1
+
+6
+
+Figure 2: Learned Lp Weights, C: A) and B) show the individual components of each ﬁlter pair
+Cif 1 and Cif 2, respectively. Each subimage shows the image domain weights in the unwhitened
+color image space. C) shows the amplitude
+if 2) as a function of space, and D) shows
+the phase arg(Cif 1 + iCif 2) as a function of space. Each panel preserves the ordering such that the
+image in position (1,1) of A) corresponds to the same subspace of C as the image in position (1,1)
+of B), C), and D).
+
+if 1 + C 2
+
+(cid:113)
+
+(C 2
+
+7
+
+ABCDFigure 3: Learned Mean Weights, W : Each subimage shows a column of W in the unwhitened color
+image domain. These functions resemble those found by the mcRBM.
+
+respectively. We initialized the biases, bc, bm, bk, and bv to 2.0, -2.0, 0.0, and 0.0 respectively. The
+learning rates for R, Q, P , C, W , bq, bc, bm, bv, were set to 0.0015, 0.1, 0.0015, 0.15, 0.015,
+0.0005, 0.0015, 0.0075, and 0.0015, respectively.
+After each learning update we normalized the lengths of the C vectors to have the average of the
+lengths. This allowed the lengths of the C vectors to grow or shrink to match the data distribution,
+but prevented any relative scaling between the subspaces. After each update we also set any positive
+values in P to zero and normalized the columns to have unit L2-norm. Finally, we normalized the
+lengths of the columns of R to have unit L2-norm. We learned on mini-batches of 128 image patches
+and learned the various parts of the model sequentially. We adapted the parameters of a mpRBM
+model with L = 2 and α = 2 and ﬁxed the matrix P to the negative identity for 10,000 iterations.
+We then adapted the parameters, including P , for another 30,000 iterations. We then added the
+hk units to this learned model and adapted the values in Q for 20,000 iterations while holding the
+matrix R ﬁxed to the identity. Next we adapted R for 20,000 iterations. Finally, we allowed all of
+the parameters in the model to adapt for 40,000 iterations.
+
+4 Experiments
+
+4.1 Learning on Natural Images
+
+Here we examine the structure represented in the model parameters R, Q, P , and C after training
+the mpkRBM on natural images. The subspace ﬁlters in the C learn localized oriented band-pass
+ﬁlters roughly in quadrature, see Fig. 2. We have observed that the ﬁlters in the matrix C appear
+to learn more textured patterns than those in the mcRBM, but a more rigorous analysis is needed
+to verify such an observation. The weights in the matrix P adapt to group subspaces with similar
+spatial position and spatial frequency. See Fig. 4 for a depiction of the image ﬁlters with the highest
+weights to each hidden unit hp. The values in the learned matrix W are similar to those learned by
+the mcRBM and are shown in Fig. 3.
+The learned R and Q weights are harder to visualize as they express dependencies in a layer removed
+from the image domain. However, we can view the subspaces that are weighted highest by each
+column of Q. For each column in Fig. 5 we depict the image domain ﬁlters (C) that are weighted
+highest by the corresponding column in Q. We similarly show the image domain ﬁlters that are
+weighted highest by each column in R in Fig. 6.
+
+5 Discussion
+
+The mpRBM and mpkRBM suggest a number of interesting future directions. For example, it should
+be possible to learn the dimensionality of the subspaces by introducing a weighting matrix in the L
+dimensional space of the tensor C. However, it is not clear how to deﬁne an appropriate angle within
+these subspaces for the phase-coupling factors. Although, it would be reasonable to learn a separate
+
+8
+
+Figure 4: Learned Lp groupings, P : A random selection (out of 256) columns in P . Each column
+depicts the top 6 weighted subspaces in C for a speciﬁc column in P . Each subspace in C is two-
+dimensional and we show the unwhitened image domain weights for both subspaces in A) and B).
+The corresponding image domain amplitudes and phases for the subspaces are shown in C) and D).
+There is clear grouping of subspaces with similar positions, orientations, and scales.
+
+Figure 5: Learned Phase Projections, Q: The ﬁrst 32 (out of 256) columns in Q are shown. The
+entries in each column of Q weight the cosine or sine of each subspace. Because the cosine and sine
+correspond to speciﬁc vectors in the tensor C, we show the image domain projection of these vectors
+that take the highest weight in the column of Q. In this ﬁgure, the 6 image domain projections with
+the highest magnitude weights are shown in the rows for different columns of Q (each is shown in a
+different column of the ﬁgure).
+
+9
+
+ABCDFigure 6: Learned Phase Coupling, R: The ﬁrst 32 (out of 256) columns in R. Each column in R
+produces a different coupling matrix (see Eq. 10). The values in this matrix indicate phase coupling
+between pairs of subspaces. Therefore, for the matrix K produced by a speciﬁc column of R, we
+ﬁnd the couplings with the highest magnitude. Given these sorted pairs, we take the unique top 6
+entries. Finally, we plot the image domain ﬁlters corresponding to these 6 entries (shown in the
+rows). As in Fig. 5 these entries can be mapped to vectors in the tensor C and thus plotted in the
+image domain. Different columns of R are shown in different columns of the ﬁgure.
+
+set of factors, C, for the hp units and the hk units, thus freeing the constraint of L = 2 for the hp
+units. It may also be possible to extend the mpRBM to a nested form of Lp distributions suggested
+in [14]. It is also worth exploring the behavior of the phase-coupling hidden units as the number of
+hidden units is varied. As we had little prior expectation as to the structure of the learned R and Q
+matrices, the choice of 100 hk hidden units was rather arbitrary.
+
+6 Conclusions
+
+In this paper we have introduced two new factorized Boltzmann machines: the mpRBM and the mp-
+kRBM, which each extend the factorized third-order Boltzmann machine (the mcRBM) of Ranzato
+and Hinton [1]. The form of these additional hidden unit factors are motivated by image models of
+subspace structure [6] and phase alignments due to edges in natural images [8]. Focusing on the
+mpkRBM, we have shown that such a model learns phase structure in natural images.
+
+7 Acknowledgments
+
+We would like to thank Marc’Aurelio Ranzato for helpful comments and discussions. We would
+also like to thank Bruno A. Olshausen for his contributions to early drafts of this document. This
+work has been supported by NSF grant IIS-0917342 (KK) and NSF grant IIS-0705939 to Bruno A.
+Olshausen.
+
+10
+
+References
+
+[1] M. Ranzato and G. Hinton. Modeling pixel means and covariances using factorized third-order
+boltzmann machines. In Proc. of Computer Vision and Pattern Recognition Conference (CVPR
+2010). 2010.
+
+[2] Y. Karklin and M.S. Lewicki. Emergence of complex cell properties by learning to generalize
+
+in natural scenes. Nature, 457(7225):83–86, 2008.
+
+[3] S. Lyu and E.P. Simoncelli. Modeling multiscale subbands of photographic images with ﬁelds
+of Gaussian scale mixtures. IEEE Trans. Patt. Analysis and Machine Intelligence, 31(4):693–
+706, April 2009.
+
+[4] S. Lyu and E.P. Simoncelli. Nonlinear Extraction of Independent Components of Natural
+
+Images Using Radial Gaussianization. Neural Computation, 21(6):1485–1519, 2009.
+
+[5] F. Sinz and M. Bethge. The Conjoint Effect of Divisive Normalization and Orientation Se-
+lectivity on Redundancy Reduction in Natural Images. In Frontiers in Computational Neuro-
+science. Conference Abstract: Bernstein Symposium 2008, 2008.
+
+[6] U. Koster and A. Hyvarinen. A two-layer ICA-like model estimated by score matching. Lec-
+
+ture Notes in Computer Science, 4669:798, 2007.
+
+[7] C. F. Cadieu and B. A. Olshausen. Learning transformational invariants from natural movies.
+In D. Koller, D. Schuurmans, Y. Bengio, and L. Bottou, editors, Advances in Neural Informa-
+tion Processing Systems 21, pages 209–216. MIT Press, 2009.
+
+[8] P. Kovesi. Phase congruency: A low-level image invariant. In Psychological Research Psy-
+
+chologische Forschung, volume 64, pages 136–148. Springer-Verlag., 2000.
+
+[9] C. F. Cadieu and K. Koepsell. Phase coupling estimation from multivariate phase statistics.
+
+Neural Computation, 22(12):3107–3126, 2010.
+
+[10] Y. Karklin and M.S. Lewicki. A hierarchical bayesian model for learning nonlinear statistical
+
+regularities in nonstationary natural signals. Neural Computation, 17(2):397–423, 2005.
+
+[11] O. Schwartz and E.P. Simoncelli. Natural signal statistics and sensory gain control. Nature
+
+neuroscience, 4(8):819–825, 2001.
+
+[12] C. Zetzsche, G. Krieger, and B. Wegmann. The atoms of vision: Cartesian or polar? Journal
+
+of the Optical Society of America A, 16(7):1554–1565, 1999.
+
+[13] G.E. Hinton. Training products of experts by minimizing contrastive divergence. Neural
+
+Computation, 14(8):1771–1800, 2002.
+
+[14] F. Sinz, E. P. Simoncelli, and M. Bethge. Hierarchical modeling of local image features through
+In Adv. Neural Information Processing Systems 22, vol-
+
+lp-nested symmetric distributions.
+ume 22, pages 1696–1704. May 2010.
+
+[15] G. E. Hinton, S. Osindero, M. Welling, and Y. Teh. Unsupervised discovery of non-linear
+
+structure using contrastive backpropagation. Cognitive Science, 30(4):725–731, 2006.
+
+[16] R.M. Neal. Probabilistic inference using markov chain monte carlo methods. Technical Report
+
+CRG-TR-93-1, Dept. of Computer Science, University of Toronto, 1993.
+
+11
+
+

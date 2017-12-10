@@ -1,0 +1,799 @@
+6
+1
+0
+2
+
+ 
+
+n
+u
+J
+ 
+
+2
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+5
+2
+6
+0
+0
+
+.
+
+6
+0
+6
+1
+:
+v
+i
+X
+r
+a
+
+Storytelling of Photo Stream with Bidirectional
+
+Multi-thread Recurrent Neural Network
+
+Yu Liu
+
+University at Buffalo, SUNY
+
+yliu44@buffalo.edu
+
+Jianlong Fu
+
+Microsoft Research Asia
+jianf@microsoft.com
+
+Tao Mei
+
+Microsoft Research Asia
+tmei@microsoft.com
+
+Chang Wen Chen
+
+University at Buffalo, SUNY
+
+chencw@buffalo.edu
+
+Abstract
+
+Visual storytelling aims to generate human-level narrative language (i.e., a natural
+paragraph with multiple sentences) from a photo streams. A typical photo story
+consists of a global timeline with multi-thread local storylines, where each storyline
+occurs in one different scene. Such complex structure leads to large content
+gaps at scene transitions between consecutive photos. Most existing image/video
+captioning methods can only achieve limited performance, because the units in
+traditional recurrent neural networks (RNN) tend to “forget” the previous state
+when the visual sequence is inconsistent. In this paper, we propose a novel visual
+storytelling approach with Bidirectional Multi-thread Recurrent Neural Network
+(BMRNN). First, based on the mined local storylines, a skip gated recurrent unit
+(sGRU) with delay control is proposed to maintain longer range visual information.
+Second, by using sGRU as basic units, the BMRNN is trained to align the local
+storylines into the global sequential timeline. Third, a new training scheme with a
+storyline-constrained objective function is proposed by jointly considering both
+global and local matches. Experiments on three standard storytelling datasets show
+that the BMRNN model outperforms the state-of-the-art methods.
+
+1
+
+Intruduction
+
+After the tremendous success recently achieved in image captioning and video captioning tasks
+[21, 12, 11, 17, 15, 22, 4, 23], it becomes promising to move forward to resolving visual stories,
+sequences of images that depicts events as they occur and change [9]. In this paper, we focus on
+Visual Storytelling, a new vision-to-language task that translates images streams to sequences of
+sentences as stories.
+However, it is a challenging issue due to the visual story’s complex structure, which we call cross-
+skipping structure. To our observation, a typical story usually has a global sequential timeline and
+multi-thread local storylines, analogy to a movie of story always narrates along a global time axis
+while crosscutting between multiple sub-stories. For example, ﬁgure 1 shows a typical visual story,
+with black arrows as timeline and blue/red arrows as two cross-skipping storylines. Intuitively,
+photos with similar scenes are likely to share a storyline, and thus the cross-skipping structure can
+be automatically detected by considering scene similarity (Details in Section 3.1). We emphasize
+that cross-skipping is typical phenomenon in majority of visual stories, taking a 74.9% partition of a
+public visual story dataset [9] in our measure. However, this cross-skipping structure is a disaster for
+current exist sequential models, such as RNN with GRU or LSTM [22, 4, 23]. It can lead to very
+large gaps at the boundary between skips, which contains long-term dependencies that RNN cannot
+practically learn due to its limited memory on long intervals in input/output sequence [1].
+
+Figure 1: The skip-structure of a visual story example. Intuitively, the photos that share the same scene can
+form local skips along timeline. Here we have two skips denoted by blue and red arrows. The black arrow
+represents the visual ﬂow along global timeline. [Best viewed in color]
+
+However, in our case, this particular type of gap can be bridged, as we call it pseudo-gap, by using
+the skip information in each storyline. In the visual story with ﬁve photos of ﬁgure 1, for example,
+the fourth photo is largely gapped from the third in visual. But to model the fourth, we bridged
+the gap by also using the information of the ﬁrst photo. To this end, we propose a novel neural
+network called skip Gated Recurrent Unit (sGRU) (Section 2), and a Bidirectional Multi-thread RNN
+(BMRNN) architecture (Section 3), to solve the pseudo-gap problem. Speciﬁcally, rather than a
+normal RNN model can only model global timeline, our BMRNN is designed also to capture the
+skip information along storylines. And we equip sGRU with a preservation scheme that is able to
+memorize the captured skip information and compensate the pseudo-gap. Seamlessly integration of
+the two design by using the sGRU as basic units in BMRNN is proposed to solve this problem.
+To our best knowledge, this work is the ﬁrst to model visual story structure and generate human-level
+narrative language. We highlight the contributions as follows:
+
+• We propose a new skip Gated Recurrent Unit (sGRU) as basic units in RNN, with a
+preservation scheme and non-linear mapping to keep the long-range information that could
+be lost by general GRU.
+• We built a Bidirectional Multi-thread RNN (BMRNN) framework, which can capture the
+skip information in visual stories to model the local storyline. A storyline-constrained
+objective function is further proposed to jointly consider both the global and local matches.
+• We conduce both quantitative and subjective experiments on three widely-used storytelling
+datasets, NYC, Disney [18] and SIND [9], and obtain the performance gain of recall@1
+over the-state-of-the-art with 22.8%, 15.6%, 15.7%, respectively.
+
+Related Works
+
+Thank to the prospective growing of research interest in translating visual type information into
+language, there are great number of works raised in vision-to-language modeling. They can be
+divided into three families by the input/output form: single-frame to single-sentence, multi-frame to
+single-sentence and multi-frame to multi-sentence.
+Single-frame to single-sentence modeling These models focus on image captioning task, which
+can be classiﬁed into two categories: semantic element detection based methods [14, 6, 16, 24]
+or Convolutional Neural Network (CNN) based methods[21, 12, 11, 17, 15]. In semantic element
+detection based methods, the regions of interest are ﬁrst detected and represented with low level
+features. The detected regions are then projected to an intermediate space deﬁned by a group
+of semantic elements, such as object, action, scene, attributes etc., which then ﬁll in a sentence
+template. Although this type of visual modeling is intuitive for visual component classiﬁcation, it
+cannot contain rich semantics since each visual component requires explicit human annotation. In
+CNN based models, the fully-connected (FC) layer output of a CNN is extracted to represent the
+input images for classiﬁcation [13]. It has convincingly shown the ability in image representation,
+which encourage the surge of recent research in capturing the semantic relation between vision and
+descriptive language. Hence, it is natural for us to use CNN features as our image representor.
+Multi-frames to single-sentence modeling This family of models, mainly focus on video captioning,
+captures the temporal dynamics in variable-length of video frames sequence, to map to a variable-
+length of words [22, 4, 23]. The sequence-to-sequence modeling are mainly relied on a RNN
+framework, such as Long-Short-Term-Memory (LSTM) networks [8]. Moreover, bidirectional RNN
+
+2
+
+(BRNN) is explored recently to model the sequence in both forward and backward pass [19]. However,
+the shortcoming of all above works is that, within one model, they can only capture temporal structure
+of a short video clip with near-duplicated consecutive frames, due to the design of normal RNN unit
+(details in Section 2.2) that cannot learn long-dependencies at large intervals in sequences [1].
+Similar to our problem formulation, [25] argues that a video has local-global temporal structure,
+where the local structure refers to the ﬁne-grained motion of actions. They employ a 3D CNN to
+extract local action feature and an attention-based LSTM to exploit the global structure. However,
+the long-dependency problem is still unsolved that their model can only handle the local structures of
+video segments consisting of consecutive near-duplicated frames.
+Multi-frame to multi-sentence modeling [18] claims to be the ﬁrst to handle the image streams to
+sequences of sentences task. They use a coherence model in textual domain, which resolves the entity
+transition patterns frequently appear in the whole text. A bidirectional RNN is used to model the
+sentence sequence to match the images. However, they mainly focus on textual domain coherence
+rather than visual domain structure. In contrast, we believe that interpretation from vision domain is
+more conﬁrm to human-cognition-way for vision-to-language purposed task, and should be more
+suitable for the visual storytelling task. We validate this point in our experiments in Section 4.2.
+
+2 Skip Gated Recurrent Unit (sGRU)
+
+In this section we introduce our designed sGRU model. We ﬁrst review the Gated Recurrent Unit [2].
+Then we introduce our sGRU with modiﬁcation on classical GRU by adding a preservation scheme,
+which can keep the current time step information in a sequence to arbitrary future time step.
+
+2.1 The GRU Model
+
+The GRU, as proposed in [2], is a hidden unit used in RNN model for capturing long-range depen-
+dencies in sequence modeling. It becomes more and more popular in sequence modeling, as has
+been shown to perform as well as LSTM [8] on sequence modeling tasks [3] but with much more
+compact structure. An RNN has multiple GRU cells, where each cell models the memory at a time of
+recurrence. In Figure 2(a), the circuit in black shows the graphical depiction of the GRU design. The
+following equations represent the operations of components:
+
+zt = σ(Wzxxt + Wzhht−1)
+rt = σ(Wrxxt + Wrhht−1)
+
+(cid:101)h = tanh(Whxxt + Whhrt (cid:12) ht−1)
+ht = zt(cid:101)h + (1 − zt)ht−1
+
+(1)
+
+where t is the current time step, xt is the input,(cid:101)h is the current hidden state and ht is the output. zt
+
+and rt are update gate and reset gate, respectively. Note that we omit the bias b in every equation
+for compact expression. By deﬁnition, the update gate zt controls how much information from the
+previous will be delivered to the current, and the reset gate rt decides how much information from
+the pervious to drop if it is found to be irrelevant to the future. In other words, if rt is close to 0, the
+current unit is forced to ignore the previous ht−1 and reset with the current input only.
+
+2.2 The sGRU Model
+
+At the time step t, the motivation of reset gate rt in GRU is to stop irrelevant information in ht−1
+from going any further to future [2]. We notice that rt is controlled by comparing ht−1 to the current
+input xt. The logic behind this design of GRU, in other words, is that the current input xt decides
+whether or not ht−1 can be passed through the reset gate to the future. If xt believes ht−1 is irrelevant,
+all the information from previous units will be dropped and will not ﬂow to future.
+However, the above logic is harmful when pseudo-gap appears. Speciﬁcally, if the pseudo-gap
+happens between time step t − 1 and t while t − 1 is useful to predict at future t + i, the information
+in ht−1 will be droped at t and never passed to t + i. Just as the case happens at time step t = 2 and
+i = 2 in ﬁgure 1. According to our statistics, the pseudo-gap problem exists in 74.9% of story photo
+streams. Thus, the design of reset gate in GRU will lose much useful information and impair to the
+
+3
+
+Figure 2: (a) Our skip-GRU model and (b) the framework of our BMRNN model.
+
+modeling of visual stories. Note that this issue also exists in other type of RNNs, such as LSTM since
+it employs a similar dropping scheme by its forget gate [8] to keep its efﬁcient but limited memory,
+thus cannot practically learn the long-term dependency either [1].
+To this end, we propose a preservation scheme to compensate the missing information at pseudo-gap.
+As shown in ﬁgure 2, we add the red part to the original design of GRU. If we know that the output at
+time step p is needed at t, or we call the ordered pair (p, t) a skip, indicated by skip matrix R where
+Rpt = 1. The name skip here follows the same intuition as in ﬁgure 1 in introduction. The cell of p is
+called skip-ancestor, and the cell at t is called skip-descendant. As shown in ﬁgure 2, the information
+of hp has been saved for a delay time |t − p| and is reused together with ht−1 to predict the hidden
+
+of(cid:101)h at time step t. Thus we name the new unit skip Gated Recurrent Unit (sGRU), and deﬁne its
+
+operations as:
+
+zt = σ(Wzxxt + Wzhht−1)
+rt = σ(Wrxxt + Wrhht−1)
+st = σ(Wsxxt + Wshhp)
+
+(cid:101)h = tanh(Whxxt + Whhrt (cid:12) ht−1 +
+ht = zt(cid:101)h + (1 − zt)ht−1
+
+(cid:88)(cid:88)(cid:88)
+
+p
+
+Rpt · Whpst (cid:12) hp)
+
+(2)
+
+where the st represents the skip gate to control how much information is used from hp. Similar
+to other gates, the design of skip gate st is controlled by current input and skip ancestor’s output.
+Prior to the learning of sGRU, the skip relation matrix R is calculated ofﬂine, in our case, by an
+unsupervised photo alignment model (Section 3.2). Intuitively, the skip relation corresponds to the
+local storyline structure in the story photo streams. Note that R is a sparse matrix where each row
+contains up to one non-zero value, which equals to 1 and indicate the skip ancestor.
+The advantages of such a design are two folds. First, the preservation scheme with delay can maintain
+the longer dependency and bridge the pseudo-gap. The information missed by general GRU at
+pseudo-gap will be kept in sGRU. Second, the skip gate ensures the non-linear mapping through
+skips. Otherwise, one may alternatively takes linear combination of hp with xt in the formula 2, just
+as a common variations on LSTM [7, 10]. However, we found the linear combination empirically
+yield worse performance in experiments. Without the power of non-linear mapping in skip gate, these
+models are unable to capture the deep semantic relation between the additional skip information and
+the current input. Thus, our proposed sGRU model is capable of capturing the longer dependency in
+cross-skipping structure.
+3 Architecture
+
+We propose a Bidirectional Multi-thread RNN to model the complex visual structure of visual stories
+and generate narrative language. As shown in ﬁgure 2(b), our framework includes three main parts:
+
+4
+
+(1) image and sentence representation based on an pre-trained joint embedding, (2) a skip relation
+detection and (3) a BMRNN network integrated with sGRU for visual structure modeling and text
+story generation.
+Given a photo stream denoted as S = {I1, I2, ..., IN}, we ﬁrst extract the CNN features C =
+{f c1, f c2, ..., f cN} from the fc7 layer of VGGNet [20]. N is the length of the photo stream. We
+then project the image features to an embedding space to product the embedding vector X =
+{x1, x2, ..., xN}. The embedding of images and sentences are jointly learned with image-sentence
+pairs in dataset as in [21]. We employ this embedding model since it is rank-preserving in learning
+of embedding space, which is desired in our retrieval task. Meanwhile, the CNN features of photo
+streams are also used to detect the skip relation R, Finally, the proposed BMRNN model integrates the
+sGRU and use the skip relation to model the complex visual ﬂow based on input of image embedding
+vectors X = {x1, x2, ..., xN}. The sentence embedding vectors H = {h1, h2, ..., hN} are predicted
+for retrieval. We introduce the skip relation detection and BMRNN model in Section 3.1 and Section
+3.2, respectively, followed by the the loss function and training process speciﬁed in Section 3.4.
+
+3.1 Skip-Relation Detection
+
+To detect the visual structure and local connections corresponding to storylines, we employ an
+unsupervised skip-detection based on the CNN feature of images C = {f c1, f c2, ..., f cN}. First, we
+utilize the afﬁnity propagation (AP) [5] to cluster the images, to detect different scenes that appear in
+the story. We take use of AP rather than other methods because it does not explicitly need cluster
+numbers to be decided in advance. As many previous works have validated, CNN features perform
+very reasonable results in object detection and scene representation. Thus, we deﬁne the likelihood of
+two images sharing similar scene as their inner product of CNN features:
+
+(3)
+Then, with the clustering results, we connect the images in same cluster along the original temporal
+order. The skip relation matrix R can be produced where at position (i, j):
+
+j
+
+sim(Ii, Ij) = f ci ∗ f cT
+
+skip(i, j)exist
+otherwise
+
+.
+
+(4)
+
+(cid:26) 1
+
+0
+
+Rij =
+
+3.2 BMRNN Model
+
+The role of BMRNN is to model the complex structure of visual stories. In our problem, the bidirec-
+tional framework can consider moments of both past and future simultaneously. The sGRU is used as
+basic unit, whose additional skip connections lead to the multi-thread form of BMRNN. We rewrite
+
+the sGRU in the formula 2 into a compact form: (zt, rt, st,(cid:101)h, ht) = sGRU (xt, ht−1, R, hp; W ), to
+
+deﬁne the operations of our BMRNN components as:
+
+t ,(cid:101)hf , hf
+t ,(cid:101)hb, hb
+
+(zf
+t , rf
+(zb
+t , rb
+
+t , sf
+t , sb
+
+t ) = sGRU (xt, hf
+t ) = sGRU (xt, hb
+ht = W f
+t + W b
+
+t−1, R, hf
+t+1, RT , hb
+hhb
+t
+
+h hf
+
+p ; W f )
+p; W b)
+
+(5)
+
+where the superscript f indicates the forward pass and b is for the backward pass. The two passes
+neither have any inter-communication nor share any parameters, except the input xt. Each pass
+is learned independently and ﬂexibly. In the test, we empirically validate that this independent
+parameter setting achieves better performance than the sharing one. At last, the outputs of two passes
+are merged to generate the ﬁnal output of whole framework. In training, we learn the parameters
+h} in the formula 5 of our model. Note that the skip relation matrix of
+W = {W f , W b, W f
+backward pass Rb can be easily obtained by transpose of the forward pass Rf , i.e. Rb = (Rf )T .
+
+h , W b
+
+3.3 Training
+
+Previous work [18] only measures the global compatibility between image streams and the sentence
+sequences, without taking into account the local compatibility in the structure of storyline. Instead,
+we deﬁne a new compatibility score function that consider both of them:
+
+5
+
+c(H, V ) = α
+
+(cid:88)
+
+t=1...N
+
+(cid:88)
+
+ht · vt + (1 − α)
+
+(cid:88)
+
+i
+
+m(Hi, Vi)
+
+where
+
+m(Hi, Vi) =
+
+1
+ni
+
+h · v
+
+h∈Hi,v∈Vi
+
+(6)
+
+Where H = {h1, h2, ..., HN} is the output of our BMRNN model with a story photo stream input
+and V = {v1, v2, ..., vN} is the sentence sequence to be matched. (Hi, Vi) ⊂ (H, V ) denotes a
+sub-story with length ni, and m(Hi, Vi) calculates the local compatibility. For the cost function, we
+employ the contrastive loss with margin as in [12] [18] [21], which calculates:
+
+(cid:88)
+
+(cid:16)(cid:88)
+
+V (cid:48) max{0, γ − c(H, V ) + c(H, V
+
+(cid:48)
+
+)} +
+
+(H,V )
+
+(cid:88)
+H(cid:48) max{0, γ − c(H, V ) + c(H
+
+, V )}(cid:17)
+
+(cid:48)
+
+(7)
+
+The negative (contrastive) pairs are sampled randomly from the training dataset. In our training,
+127 negative pairs are generated for each positive sample. Minimization on the cost function will
+encourage higher compatibility between aligned image-sentence sequence pairs, and punish on
+random-aligned pairs. In the dataset of NYC and Disney, the negative samples are very unlikely to
+have the same length with the positive samples [18]. As the result, the compatibility in the negative
+pairs is almost always low. So the punishment term on the negative samples do NOT take much
+effect in helping the model learning. However, in the SIND, all stories have the same length N = 5.
+Thus the punishment term for negative samples becomes as important as that of positive term in cost
+function.
+
+4 Experiment
+
+In experiments, we compare our approach with a group of state-of-art methods from both exist models
+and variations of our own model. We evaluate the performance in two kind of measures, a series of
+quantitative measures and user study.
+
+4.1 Experiment Setting
+
+Dataset
+
+To evaluate our BMRNN model on the visual storytelling task, we use three different recently
+proposed dataset, the SIND [9], NYC and Disneyland dataset [18]. All the three datasets consist of
+sequential image-stream-to-sentence-sequence pairs. The SIND is the ﬁrst dataset particularly for
+sequential vision-to-language task. It contains 48,043 stories with 210,819 unique photos. The image
+streams are extracted from Flickr and the text stories are written by AMT. Each story consists of 5
+images and 5 corresponding sentences written in sense of story. The dataset has been split by the
+authors into 38,386 stories as training set, 4,837 as test set and 4,820 as validation set.
+The NYC and Disney datasets are automatically generated from blog posts searched with travel
+topics “nyc” and “disneyland”, respectively, where each blog contains a stream of images and its
+descriptive blog post. For one image, the associated paragraph in blog post is processed to summarize
+a descriptive sentence. Although these sentences are not created diligently for storytelling purpose,
+they can be treated as a semantically meaningful authoring to the image streams [18] under context of
+the travel blog posts. Thus they can also be used as qualiﬁed story datasets for our problem. Unlike
+SIND, the stream length is not uniform, varying from minimum length of 2 to maximum of 226
+photos. We also follow the splitting of dataset in [18] that 80% as training set, 10% as validation set
+and the others as test set.
+
+Tasks
+
+We compare our approach with many state-of-art candidate methods in task of generating story
+sentences for photo streams. We use the image streams in test set as input to the framework and the
+corresponding text story as groundtruth. The models retrieve the best stories from the training set. We
+use the Recall@K metric and median rank to evaluate the retrieved stories. The recall@K indicate
+the recall rate of the groundtruth retrieval given top K candidates, and the median rank is the median
+
+6
+
+rank value of the retrieved groundtruth. The higher recall@K and lower median rank value, the better
+performance is indicated.
+
+Baselines
+
+In our experiment, we consider both state-of-art methods from the existing models and variation of
+our own BMRNN model. Since the visual storytelling is a promising while new research direction,
+there are few existed research works that have focused on the task and addressed this problem. To the
+best of our knowledge, the only closely related work is [18], a sentence sequence generation from
+image streams based on coherent recurrent convolutional networks (CRCN). Besides, we also take
+other state-of-art models in vision-to-language tasks as baseline, such as video description using
+CNN and BRNN (CNN+BRNN) of [19]. Particularly, the (CNN+BRNN) model without sGRU
+is also a variation to our model. Thus comparing between us and (CNN+BRNN) can evaluate the
+effectiveness of our proposed sGRU architecture. To validate our claim on the non-linear mapping
+power of sGRU, we also compare to CLSTM unit where the variation is in linear fashion [7], in a
+bidirectional framework as us. Thus we call this baseline as (B-CLSTM) We also test the K-nearest
+search (1NN) and random retrieval scheme as simple baselines.
+
+4.2 Quantitative Results and Discussion
+
+The quantitative results of story sentences retrieval are shown in table 1 and 2. We observe that
+we perform better in a large margin than other candidates baselines on all datasets, that conﬁrms
+our analysis on the unique cross-skipping structure of visual stories. It can be further validated
+that our BMRNN model is effective to capture and leverage this skip relations to improve in visual
+storytelling. Speciﬁcally, comparing with (CRCN) shows that visual modeling on photo stream can
+better approach the visual storytelling task, rather than only capture coherence in textual domain,
+although they adopt an additional K-nearest candidates search to largely reduce the search scope on
+test set prior to retrieval. We found that we outperform (CNN+BRNN) method, which veriﬁes the
+importance of our proposed sGRU architecture in capturing the cross-skipping structure. More deeply,
+it is because of the non-linear design that empowers the sGRU to capture the skipping information,
+since it achieves higher results than (B-CLSTM) where a linear scheme is used. Note that we take
+use the same VGGNet fc7 feature [20] in all baselines for fair comparison.
+We also ﬁnd out that the visual models (CNN+BRNN) and (B-CLSTM) all yield fairly higher results
+than (CRCN) in the retrieval metrics. This verify again our believe that modeling from visual domain
+than textual domain can better approach the storytelling task. The results of (B-CLSTM) is almost
+equal to (CNN+BRNN), showing failure of that the context design. Since it is unable to discover
+a common context shared by all photos in a visual story. The (1NN) baseline shows unsatisfactory
+results, indicating that the visual story is never simple concatenation of individual image captions.
+
+NYC
+
+Disneyland
+
+CNN+BRNN[19]
+
+Random
+
+1NN
+
+R@1 R@5 R@10 Medr
+332
+0.26
+9.18
+45
+14
+19.97
+14
+19.77
+16
+14.29
+37.10
+5
+Table 1: Retrieval metrics evaluation of sentence generation on NYC and Disney dataset
+
+R@1 R@5 R@10 Medr
+763
+0.17
+5.95
+63.5
+19
+16.23
+18
+15.10
+14
+11.67
+31.73
+8
+
+B-CLSTM[7]
+CRCN[18]
+BMRNN
+
+0.25
+13.57
+28.7
+29.91
+31.19
+46.86
+
+1.95
+27.21
+46.04
+45.20
+43.2
+58.63
+
+1.17
+19.05
+37.48
+38.92
+31.29
+50.71
+
+0.59
+20.71
+39.53
+41.07
+43.57
+53.50
+
+Random
+
+1NN
+
+CNN+BRNN[19]
+
+B-CLSTM[7]
+CRCN[18]
+BMRNN
+
+SIND
+
+R@1 R@5 R@10 Medr
+2753
+0.0
+74
+4.8
+14
+21.39
+18
+21.47
+9.87
+21
+8
+25.56
+
+0.04
+13.00
+38.72
+37.30
+28.74
+45.17
+
+0.10
+21.07
+46.96
+47.39
+39.51
+53.69
+
+Table 2: Evaluation of sentence generation on SIND
+dataset.
+
+7
+
+GT
+
+CRCN
+BMRNN
+
+Mean Score
+
+GT
+-
+
+CRCN BMRNN
+86.0%
+97.0%
+13.5%
+
+-
+
+2.0%
+7.0% 67.0%
+8.48
+3.77
+
+-
+
+5.19
+
+Table 3: The evaluation results of user study.
+The row 1-3 are pairwise preference and the
+last row is the mean evaluation scores.
+
+Figure 3: Examples of visual storytelling result on SIND. Three stories are generated for each story photo
+stream: groundtruth story, story generated by proposed BMRNN method and story from baseline CRCN method.
+
+4.3 User Study
+
+We perform an user study to test the preference on the generated stories by groundtruth, our model
+and baselines. Since only (CRCN) is originally proposed for the sequential vision-to-language task,
+we choose this method as our baseline in our user study. We randomly sampled 200 stories from
+the test set of SIND dataset, each associated with three stories: story from groundtruth (GT),story
+generated by [18] (CRCN) and story by our proposed method (BMRNN). Please see the ﬁgure 3 for
+examples. Then 10 users are invited to score on the stories with a subjective score 1-10 (Good story
+= 10). All the the three story, including the groundtruth stories, are read by users and evaluated.
+The table 3 shows our user study results, where the last row is the mean score over all samples. We
+infer the user preference between two stories by comparing their scores from a same person. Equal
+scores indicate no preference to any method and thus are not considered in preference inference. The
+rows 1-3 in table 3 show pairwise preference of each method against others.
+We observe that the stories by our method is better than (CRCN) in user study. Over all users, our
+mean score are higher than (CRCN). For particular each user, in 68.0% cases we are more preferred
+than (CRCN), while in only 13.5% cases it is opposite. It is also true in another aspects, where we
+are more likely to catch up groundtruth at 7.0% than (CRCN) at 2.0%. These results all validated that
+our results are more preferred than the baseline.
+
+5 Conclusion
+
+In this paper, we focus on visual storytelling task, which enables generating human-level narrative
+language from a photo stream. To solve the cross-skipping problem in typical stories, we propose a
+novel BMRNN model with sGRU architecture that is able to model the complex structure in photo
+streams. Experiments show the effectiveness of our model in both quantitative evaluations and a
+user study. The proposed BMRNN model can outperform the-state-of-art methods in vision-to-
+language tasks. In future, we will continue exploring the modeling of visual sequences and its related
+applications.
+
+8
+
+References
+[1] Y. Bengio and P. Frasconi. Learning long-term dependencies with gradient-denscent is difﬁcult. TNN,
+
+1994.
+
+[2] K. Cho, B. V. Merrienboer, C. Gulcehre, D. Bahdanau, F. Bougares, H. Schwenk, and Y. Bengio. Learning
+
+phrase representations using rnn encoder decoder for statistical machine translation. EMNLP, 2014.
+
+[3] J. Chung, C. Gulcehre, K. Cho, and Y. Bengio. Empirical evaluation of gated recurrent neural networks on
+
+sequence modeling. NIPS Deep Learning Workshop, 2014.
+
+[4] J. Donahue, L. A. Hendricks, S. Guadarrama, M. Rohrbach, S. Venugopalan, K. Saenko, and T. Darrell.
+
+Long-term recurrent convolutional networks for visual recognition and description. CVPR, 2015.
+
+[5] B. J. F. D. Dueck. Clustering by passing messages between data points. Science, 2007.
+
+[6] A. Farhadi, M. Hejrati, M. A. Sadeghi, P. Young, C. Rashtchian, J. Hockenmaier, and D. Forsyth. Every
+
+picture tells a story: Generating sentences from images. 2010.
+
+[7] S. Ghosh, O. Vinyals, B. Strope, S. Roy, T. Dean, and L. Heck. Contextual lstm (clstm) models for large
+
+scale nlp tasks. arXiv:1602.06291, 2016.
+
+[8] S. Hochreiter and J. Schmidhuber. Long short-term memory. Neural Computation, 1997.
+
+[9] T. H. Huang, F. Ferraro, N. Mostafazadeh, I. Misra, A. Agrawal, J. Devlin, R. Girshick, X. He, P. Kohli,
+D. Batra, C. L. Zitnick, D. Parikh, L. Vanderwende, M. Galley, and M. Mitchell. Visual storytelling.
+NAACL, 2016.
+
+[10] X. Jia, E. Gavves, B. Fernando, and T. Tuytelaars. Guiding long-short term memory for image caption
+
+generation. ICCV, 2015.
+
+[11] A. Karpathy and F.-F. Li. Deep visual-semantic alignments for generating image descriptions. 2015.
+
+[12] R. Kiros, R. Salakhutdinov, and R. S. Zemel. Unifying visual semantic embeddings with multimodal
+
+neural language models. NIPS deep learning workshop, 2014.
+
+[13] A. Krizhevsky, I. Sutskever, and G. E. Hinton. Imagenet classiﬁcation with deep convolutional neural
+
+networks. 2012.
+
+[14] G. Kulkarni, V. Premraj, V. Ordonez, S. Dhar, S. Li, Y. Choi, A. C. Berg, and T. Berg. Babytalk:
+
+Understanding and generating simple image descriptions. TPAMI, 2013.
+
+[15] J. Mao, W. Xu, Y. Yang, J. Wang, Z. Huang, and A. Yuille. Deep captioning with multimodal recurrent
+
+neural networks (m-rnn). ICLR, 2015.
+
+[16] M. Mitchell, X. Han, J. Dodge, A. Mensch, A. Goyal, A. Berg, K. Yamaguchi, T. Berg, K. Stratos, and
+
+H. D. III. Midge: Generating image descriptions from computer vision detections. EACL, 2012.
+
+[17] O.Vinyals, A. Toshev, S. Bengio, and D. Erhan. Show and tell: A neural image caption generator. 2015.
+
+[18] C. C. Park and G. Kim. Expressing an image stream with a sequence of natural sentences. NIPS, 2015.
+
+[19] Á. Peris, M. Bolaños, P. Radeva, and F. Casacuberta. Video description using bidirectional recurrent neural
+
+networks. arXiv:1604.03390, 2016.
+
+[20] K. Simonyan and A. Zisserman. Very deep convolutional networks for large-scale image recognition.
+
+ICLR, 2015.
+
+[21] I. Vendrov, R. Kiros, S. Fidler, and R. Urtasun. Order-embeddings of images and language. ICLR, 2016.
+
+[22] S. Venugopalan, M. Rohrbach, J. Donahue, R. Mooney, T. Darrell, and K. Saenko. Sequence to sequence -
+
+video to text. ICCV, 2015.
+
+[23] S. Venugopalan, H. Xu, J. Donahue, M. Rohrbach, R. Mooney, and K. Saenko. Translating videos to
+
+natural language using deep recurrent neural networks. NAACL, 2015.
+
+[24] Y. Yang, C. L. Teo, H. D. III, and Y. Aloimonos. Corpus-guided sentence generation of natural images.
+
+2011.
+
+[25] L. Yao, A. Torabi, K. Cho, N. Ballas, C. Pal, H. Larochelle, and A. Courville. Describing videos by
+
+exploiting temporal structure. ICCV, 2015.
+
+9
+
+

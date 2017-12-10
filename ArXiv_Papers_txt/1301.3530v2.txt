@@ -1,0 +1,930 @@
+3
+1
+0
+2
+
+ 
+
+n
+a
+J
+ 
+
+5
+2
+
+ 
+ 
+]
+E
+N
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+0
+3
+5
+3
+
+.
+
+1
+0
+3
+1
+:
+v
+i
+X
+r
+a
+
+The Neural Representation Benchmark and its
+
+Evaluation on Brain and Machine
+
+Charles F. Cadieu, Ha Hong, Dan Yamins, Nicolas Pinto, Najib J. Majaj, James J. DiCarlo
+
+McGovern Institute for Brain Research and
+Department of Brain and Cognitive Sciences
+
+Massachusetts Institute of Technology
+
+Cambridge, MA 02139
+cadieu@mit.edu
+
+Abstract
+
+A key requirement for the development of effective learning representations is
+their evaluation and comparison to representations we know to be effective. In
+natural sensory domains, the community has viewed the brain as a source of in-
+spiration and as an implicit benchmark for success. However, it has not been
+possible to directly test representational learning algorithms directly against the
+representations contained in neural systems. Here, we propose a new benchmark
+for visual representations on which we have directly tested the neural representa-
+tion in multiple visual cortical areas in macaque (utilizing data from [Majaj et al.,
+2012]), and on which any computer vision algorithm that produces a feature space
+can be tested. The benchmark measures the effectiveness of the neural or machine
+representation by computing the classiﬁcation loss on the ordered eigendecom-
+position of a kernel matrix [Montavon et al., 2011]. In our analysis we ﬁnd that
+the neural representation in visual area IT is superior to visual area V4, indicating
+an increase in representational performance in higher levels of the cortical visual
+hierarchy. In our analysis of representational learning algorithms, we ﬁnd that
+three-layer models approach the representational performance of V4 and the algo-
+rithm in [Le et al., 2012] surpasses the performance of V4. Impressively, we ﬁnd
+that a recent supervised algorithm [Krizhevsky et al., 2012] achieves performance
+comparable to that of IT for an intermediate level of image variation difﬁculty,
+and surpasses IT at a higher difﬁculty level. We believe this result represents a
+major milestone: it is the ﬁrst learning algorithm we have found that exceeds our
+current estimate of IT representation performance. To enable researchers to utilize
+this benchmark, we make available image datasets, analysis tools, and neural mea-
+surements of V4 and IT. We hope that this benchmark will assist the community
+in matching the representational performance of visual cortex and will serve as an
+initial rallying point for further correspondence between representations derived
+in brains and machines.
+
+1
+
+Introduction
+
+One of the primary goals of representational learning is to produce algorithms that learn transforma-
+tions from unstructured data and produce representational spaces that are well suited to problems of
+interest, such as visual object recognition or auditory speech recognition. In the pursuit of this goal,
+the brain and the representations that it produces has been used as a source of inspiration and even
+suggested as a benchmark for success in the ﬁeld. In this work, we attempt to provide a new bench-
+mark to measure progress in representational learning with deﬁned measures of success relative to
+high-level visual cortex.
+
+1
+
+The machine learning and signal processing communities have achieved many successes by incor-
+porating insights from neural processing, even when a complete understanding of the neural systems
+was lacking. The initial formulations of neural networks took explicit inspiration for how neurons
+might transform their inputs [Rosenblatt, 1958]. David Lowe, in his original formulation of the
+SIFT algorithm cites inspiration from complex cells in primary visual cortex [Lowe, 2004] and IT
+cortex [Lowe, 2000]. The concepts of hierarchical processing and intermediate features also have a
+history of cross pollination between computer vision and neuroscience [Fukushima, 1980; Riesen-
+huber and Poggio, 1999; Stringer and Rolls, 2002; Serre et al., 2007; Pinto et al., 2009]. This cross
+pollination has also had great inﬂuence on the ﬁeld of neuroscience and has suggested ways to in-
+vestigate how the brain works, suggesting speciﬁc hypotheses about its computational principles.
+For the work presented here, the architectures and algorithms devised for hierarchical (deep) neural
+networks may serve as concrete hypotheses for the computational mechanisms used by the visual
+cortex to achieve fast and robust object recognition. We believe that the neuroscience ﬁeld needs
+more concrete hypotheses and we hope that the latest representational learning algorithms will ﬁll
+that void.
+How do we measure representational efﬁcacy? Any quantitative evaluation of progress made in rep-
+resentational learning must address this question. Here we advocate for the use of “kernel analysis,”
+formulated in the works of [Braun, 2006; Braun et al., 2008; Montavon et al., 2011]. We believe
+that kernel analysis has two main advantages. First, it measures the accuracy of a representation as a
+function of the complexity of the task decision boundary. This allows us to identify representations
+that achieve high accuracy for a given complexity. This also avoids a measurement confound that
+arises when using cross-validated accuracy: the decision boundary’s complexity and/or constraints
+are dependent on the size and choice of the training dataset, factors that can strongly affect accuracy
+scores. By measuring how the accuracy is affected by the complexity of the decision boundary,
+kernel analysis allows us to explicitly take this dependency into account. Second, kernel analysis
+is particularly advantageous for comparisons between models and the brain because it is robust to
+the number of samples used in the measurement. While our ability to measure neural activity in
+the brain has increased exponentially (see [Stevenson and Kording, 2011] for an analysis of simul-
+taneous recording growth rate, which is related to the number stimuli that can be measured), we
+are still orders of magnitude away from the dataset sizes achieved in the machine learning commu-
+nity. For this reason, measures that are useful in this low-sample regime are particularly important
+when evaluating the performance of neural representations. Kernel analysis exhibits this property
+as it converges quickly as a function of the number of samples (in our case images) used in the
+analysis. Therefore, while other measures of representational efﬁcacy may be related to kernel anal-
+ysis (such as cross-validated classiﬁcation accuracies, or counting the number of support vectors)
+we here utilize kernel analysis for its convergence properties and explicit measurement of accuracy
+versus complexity.
+In general, there are a number of methodologies we might consider when comparing algorithms
+to neural responses. One approach is to model neural variation directly [Wu et al., 2006]. This
+approach is valid scientiﬁcally in the pursuit of understanding neural mechanisms, but it lacks a
+representational aspect. For example, some details of neural activity may have no representational
+value, insofar as their variation does not relate to any variable we are interested in representing
+outside the neural mechanism. Therefore, we seek a measure that blends the neural measurement
+with the representational tasks of interest. This approach does have its downsides; most troubling
+of which is that we must choose a speciﬁc aspect of the world that is represented in the neural
+system. We can hope that our chosen task is one that the neural system effectively represents –
+ideally, one that the neural system has been optimized to represent. A major, unaccomplished, goal
+of computational neuroscience is to determine the representation formed in the brain by ﬁnding
+the mapping between external factors and neural response. In the methodology we propose, we do
+not claim to have solved the problem of choosing the aspects of the world that the brain has been
+optimized to represent, but we do believe we have chosen a reasonable task or aspect of the visual
+environment: category-level object recognition.1
+
+1In relation to the scientiﬁc goal of ﬁnding those aspects of the world that the brain is representing, kernel
+analysis may be a way to measure which aspects of the world the brain has been optimized to represent: the
+attributes of the environment that the neural representation is found to perform well on, may be those aspects
+that the brain has been optimized to represent. However, such an examination is beyond the scope of this paper.
+
+2
+
+This work builds on a series of previous efforts to measure the representational efﬁcacy of mod-
+els against that of the brain. The work of Nikolaus Kriegeskorte and colleagues, see for exam-
+ple [Kriegeskorte et al., 2008b], examined the variation present in neural populations to visual stim-
+uli presentations and compared this variation to the variation produced in model feature spaces to the
+same stimuli. This work has inﬂuenced us in the pursuit of ﬁnding such mappings, but it has a major
+downside for our purposes: it does not measure the variations in the neural or model spaces that are
+relevant for a particular task, such as class-level object classiﬁcation2. There exist a number of pub-
+lished accounts of neural datasets that might be useful for the type of comparison we seek [Wallis
+and Rolls, 1997; Hung et al., 2005; Kiani et al., 2007; Rust and DiCarlo, 2010; Zhang et al., 2011],
+but these measurements have not been released, are often made on only a handful of images, and the
+measures given – typically cross-validated performance – are not as robust to low image counts as
+the kernel analysis metric we use here.
+In comparing algorithms to the brain, it is important to choose carefully the neural system to mea-
+sure and the type of neural measurement to make. In this work we analyze the ventral stream of
+macaque monkey, a non-human primate species. Using macaque visual cortex allows us to leverage
+an extensive literature that includes behavioral measurements [Fabre-Thorpe et al., 1998], neural
+anatomy [Felleman and Van Essen, 1991], extensive physiological measurements in numerous cor-
+tical visual areas, and measurements using a variety of techniques, from single cell measurements,
+to fMRI (for a review of high-level processing see [Orban, 2008]). These experiments indicate that
+macaque has visual abilities that are close to those of humans, that the ventral cortical process-
+ing stream (spanning V1, V2, V4, and IT) is relevant for object recognition, and that multi-unit
+recordings in high-level visual areas exhibit responses that are increasingly robust to object identity
+preserving variations (for a review see [DiCarlo et al., 2012]).
+With these considerations in mind, we describe a neural representation benchmark that may be
+used to judge the representational efﬁcacy of representational learning algorithms. Importantly, we
+present a measurement of visual areas V4 and IT in macaque cortex on this benchmark. These
+measurements allow researchers to test their algorithms against a known, high-performing repre-
+sentation. They may also provide an evaluation and thus facilitate a long sought goal of artiﬁcial
+intelligence: to achieve representations as effective as those found in the brain. Our preliminary
+evaluation of machine representations indicates that we may be coming close to this goal.
+The paper is organized as follows. In the Methods section we describe the images and task we use,
+the neural measurements, the use of kernel analysis, and our suggested protocol for measuring al-
+gorithms. In the Results section we provide the kernel analysis measurement on V4 and IT, on a
+number of control models, and on some recently published high-performing neural network mod-
+els. We conclude with a discussion of additional aspects of the neural system that will need to be
+investigated to ultimately conclude that representational learning algorithms are as effective as the
+brain.
+
+2 Methods
+
+The proposed benchmark utilizes an image dataset composed of seven object classes and is broken
+down into three levels of variation, which present increasing levels of difﬁculty. We measure the
+representational efﬁcacy of a feature space using kernel analysis, which measures the classiﬁcation
+loss under an eigendecomposition of the representation’s kernel matrix (kernel PCA).
+
+2.1
+
+Image dataset generation
+
+For the representational task, we have chosen class-level object recognition under the effect of image
+variations due to object exemplar, geometric transformations (position, scale, and rotation/pose), and
+background. The task is deﬁned through an image generation process. An image is constructed by
+ﬁrst choosing one of seven categories, then one of seven object exemplars from that category, then
+a randomly chosen background image, and ﬁnally the variation parameters drawn from one of three
+distributions. The three different variation parameter distributions systematically increase the degree
+
+2However, see [Kriegeskorte et al., 2008a] and [Mur et al., 2012], for discussion of methodologies to account
+for dissimilarity matrices by class-distance matrices. Such a methodology will produce a single summary
+number, and not the accuracy-complexity curves we achieve with kernel analysis.
+
+3
+
+of variation that is sampled, from Low Variation, which presents objects at a ﬁxed position, scale,
+and pose, to Medium Variation, to High Variation, which presents objects at positions spanning the
+image, under multi-octave scale dilation, and from a wide range of poses. Example images for each
+variation level are shown in Figure 1.
+
+Figure 1: Example testing images for each variation level. For each variation level, Low, Medium
+and High Variation, we show two example images from the Car class and two example images from
+the Animal class. The car images shown all contain the same object instance, thus showing the
+image variability due only to the variation parameters and backgrounds. The animal images contain
+either a cow object instance or an elephant object instance, thus showing variability due to exemplar,
+variation parameters, and background.
+
+The resulting image set has several advantages and disadvantages. Advantageously, this procedure
+eliminates dependencies between objects and backgrounds that may be found in real-world im-
+ages [Oliva and Torralba, 2007], and introduces a controlled amount of variability or difﬁculty in
+the task, which has been used to produce image datasets that are known to be difﬁcult for current
+algorithms [Pinto et al., 2008, 2010, 2011]. While the resulting images may have an artiﬁcial quality
+to them, having such control allows us to scientiﬁcally investigate neural coding in relation to these
+parameters. The disadvantages of using this image set are that it does not expose contextual effects
+that are present in the real world and may be used by both neural and machine systems, and we do
+not (currently) include other relevant variations, e.g. lighting, texture, natural deformations, or oc-
+clusion. We view these disadvantages as opportunities for future datasets and neural measurements.
+
+2.2 Kernel analysis methodology
+
+In measuring the efﬁcacy of a representation we seek a measure that will favor representations that
+allow for a simple task solution to be learned. For this measure, we turn to the work presented
+in [Montavon et al., 2011], which is based on theory presented in [Braun, 2006], and [Braun et al.,
+2008]. We provide a brief description of this measure and refer the reader to those references for
+additional details and justiﬁcation.
+The measurement procedure, which we refer to here as kernel analysis, utilizes kernel principal
+component analysis to determine how much of the task in question can be solved by the leading
+kernel principal components. Kernel principal components analysis will decompose the variation
+in the representational space due to the stimuli in question. A good representation will have high
+variability in relation to the task in question. Therefore, if the leading kernel principal components
+are effective at modeling the task, the representational space is effective for that task. In contrast, an
+ineffective representational space will have very little variation relevant for the task in question and
+variation relevant for the task is only contained in the eigenvectors corresponding to the smallest
+eigenvalues of the kernel principal component analysis. Intuitively, a good representation is one
+that learns a simple boundary from a small number of randomly-chosen examples, while a poor
+representation makes a more complicated boundary, requiring many examples to do so.
+Following [Montavon et al., 2011], kernel analysis consists of estimating the d ﬁrst components of
+the kernel feature space and ﬁtting a linear model on this low-rank representation to minimize the
+loss function for the task. The subspaces formed by the d ﬁrst components controls the complex-
+
+4
+
+High VariationMedium VariationLow Variation"Car""Animal"ity of the model and the accuracy is measured by the loss in that subspace e(d). We refer to the
+dimensionality of the subspace d as the complexity and 1 − e(d) as the accuracy. Thus, the curve
+1 − e(d) provides us with a measurement of the accuracy as a function of the model complexity for
+the given representational space. The curves produced by different representational spaces will in-
+form us about the simplicity of the task in that representational space, with higher curves indicating
+that the problem is simpler for the representation.
+One of the advantages of kernel analysis is that the kernel PCA method converges favorably from a
+limited number of samples. Braun et al. [2008] show that the kernel PCA projections obtained with a
+ﬁnite and typically small number of samples n (images) are close with multiplicative errors to those
+that would be obtained in the asymptotic case where n (cid:55)→ ∞. This result is especially important
+in our setting as the number of images we can reasonably obtain from the neural measurements
+is comparatively low. Therefore, kernel analysis provides us with a methodology for assessing
+representational effectiveness that has favorable properties in the low image sample regime, here
+thousands of images.
+We next present the speciﬁc computational procedure for computing kernel analysis. Given the
+learning problem p(x, y) and a set of n data points {(x1, y1), ..., (xn, yn)} drawn independently
+from p(x, y) we evaluate a representation deﬁned as a mapping x (cid:55)→ φ(x). For our case, the inputs
+x are images, the y are category labels, and the φ denotes a feature extraction process.
+As suggested by [Montavon et al., 2011], we utilize the Gaussian kernel because this kernel implies
+a smoothness of the task of interest in the input space [Smola et al., 1998]. We compute the kernel
+matrix Kσ associated to the data set as
+
+kσ(φ(x1), φ(x1))
+
+...
+
+kσ(φ(xn), φ(x1))
+
+Kσ =
+
+ ,
+
+...
+
+kσ(φ(x1), φ(xn))
+
+...
+
+... kσ(φ(xn), φ(xn))
+
+(1)
+
+(3)
+
+(4)
+
+where the standard Gaussian kernel is deﬁned as kσ(x, x(cid:48)) = exp(−||x − x(cid:48)||2/2σ2).
+We perform an eigendecomposition of Kσ where the eigenvectors u1, ..., un are sorted in decreasing
+magnitude of their corresponding eigenvalues λ1, ..., λn:
+
+Kσ = (u1|...|un)· diag(λ1, ..., λn)· (u1|...|un)T .
+
+(2)
+Let ˆUd = (u1|...|ud) and ˆΛd = diag(λ1, ..., λd) be the d-dimensional approximation of the eigen-
+decomposition. Note that we have dropped, for the moment, the dependency on σ. We then solve
+the learning problem using a linear model in the corresponding subspace. For our problem we ﬁnd
+the least squares solution to the multi-way regression problem denoted as Θ∗
+
+d and deﬁned as
+
+d = argminΘ || ˆUdΘ − Y ||2
+Θ∗
+
+F = ˆU T
+
+d Y.
+
+The resulting model prediction is then ˆYd = ˆUdΘ∗
+1
+n
+
+e(d, σ) =
+
+d. The resulting loss, with dependence on σ is
+|| ˆYd − Y ||2
+F .
+
+To remove the dependence of the kernel on σ we ﬁnd the value that minimizes the loss at that
+dimensionality d: e(d) = argminσ e(d, σ). Finally, for convenience we plot accuracy (1 − e(d))
+against normalized complexity (d/D), where D is total dimensionality.
+Note that we have chosen to use a squared error loss function for our multi-way classiﬁcation prob-
+lem. While it might be more appropriate to evaluate a multi-way logistic loss function, we have
+chosen to use the least-squares loss for its computational simplicity, because it provides a stronger
+requirement on the representational space to reduce variance within class and to increase variance
+between classes, and it allows us to distinguish representations that may be identical in terms of
+separability for a certain dimensionality d but still have differences in their feature mappings. The
+kernel analysis of deep Boltzmann machines in [Montavon and M¨uller, 2012] also uses a mean
+squared loss function in the classiﬁcation problem setting.
+In the discussion above, Y = (y1, . . . , yn) represents the vector of task labels for the images
+(x1, . . . , xn). In our speciﬁc case, the yi are category identity values, and are assumed to be discrete
+
+5
+
+binary values in equations 3 and 4 above. To generalize to the case of multiway categorization, we
+use a version of the common one-versus-all strategy. Assuming k distinct categories, we form the
+label matrix
+
+(cid:26)1 if image xi is in category j
+
+(5)
+
+Y = (yij) =
+
+0 otherwise
+
+where j ∈ [1, . . . , k]. Then for each category j, we compute the per-class prediction Y j
+d by replacing
+Y in equations 3 and 4 with Yj, the j-th column of Y. The overall error is then the average over
+classes of the per-class error, e.g.
+
+(cid:28) 1
+
+n
+
+(cid:29)
+
+e(d, σ) = (cid:104)ej(d, σ)(cid:105)j =
+
+|| ˆY j
+
+d − Yj||2
+
+F
+
+.
+
+j
+
+(6)
+
+Minimization over σ then proceeds as in the binary case.
+
+2.3 Suggested protocol
+
+To evaluate both neural representations and machine representations we measure the kernel analysis
+curves and area under the curves (KA-AUC) for each variation. The testing image dataset consists of
+seven object classes with seven instances per object class, broken down into three levels of variation,
+with 490 images in Low Variation, 1960 in Medium Variation, and 1960 in High Variation. The
+classes are Animals, Cars, Chairs, Faces, Fruits, Planes and Tables. To measure statistical variation
+due to subsampling of image variation parameters we evaluate 10 pre-deﬁned subsets of images,
+each taking 80% of the data from each variation level. Within each subset we equalize the number
+of images from each class. For each representation, we maximize over the values of the Gaussian
+kernel σ parameter chosen at 10%, 50%, and 90% quantiles in the distance distribution. For each
+variation level and representation, this procedure produces a kernel analysis curve and AUC for each
+of the subsets, and we compute the mean and standard deviation of the AUC values.
+We also provide a training dataset that may be used for model selection. This dataset allows both
+unsupervised and supervised training of representational learning algorithms.
+
+2.4 Provided data and tools
+
+To allow researchers to utilize this dataset we provide the following tools and downloadable data:
+• Testing images: a set of images containing seven object classes with seven instances per object
+class, broken down into three levels of variation, with 490 images in Low Variation, 1960 in
+Medium Variation, and 1960 in High Variation. The classes are Animals, Cars, Chairs, Faces,
+Fruits, Planes and Tables. Computing features on this set of images is sufﬁcient to evaluate an
+algorithm. Each image is grayscale and 256 by 256 pixels. To prevent over-ﬁtting, candidate
+algorithms should not be trained on this dataset, and any parameter estimation involved in model
+selection should be estimated independently of these testing images.
+• Training images: a set of 128,000 images consisting of 16 object classes with 16 object instances
+per object class, these images are produced from a similar rendering procedure as the testing
+image set. The training set contains no speciﬁc constituent objects or background images in
+common with the testing set, but it does have new objects in each of the original seven categories,
+in addition to 9 new categories. This image set can therefore be used for independent model
+selection and learning, using either supervised for unsupervised methods, see Appendix A. Use
+of this training set is, however, optional.
+
+• Testing set kernel analysis curves and KA-AUC values for V4 and IT.
+• Tools to evaluate kernel analysis from features produced by a model to be tested.
+These tools and datasets can be found at: http://dicarlolab.mit.edu/neuralbenchmark.
+
+2.5 Neural data collection
+
+We collected 168 multi-unit sites from IT cortex and 128 multi-unit sites from V4. To form the
+neural feature vectors for IT and V4 we normalized responses by background ﬁring rate and by
+variance within a presentation of all images within a variation. See Appendix B for details. This
+
+6
+
+post-processing procedure has been shown to account for human performance [Majaj et al., 2012]
+(also see [Hung et al., 2005; Rust and DiCarlo, 2010] for results utilizing a similar procedure).
+
+2.6 Machine representations
+
+We evaluate a number of machine representations from the literature, including several recent best
+of breed representational learning algorithms and visual representation models, as well as a feed-
+forward three layer hierarchical model optimized on the training set.
+V1-like We evaluate the V1-like representation from Pinto et al.’s V1S+ [Pinto et al., 2008]. This
+model attempts to capture a ﬁrst-order account of primary visual cortex (V1). It computes a collec-
+tion of locally-normalized, thresholded Gabor wavelet functions spanning orientation and frequency.
+This model is a simple, baseline biologically-plausible representation, against which more sophisti-
+cated representations can be compared.
+High-throughput L3 model class (HT-L3) We evaluate the same three layer hierarchical convolu-
+tional neural net model class described in [Pinto et al., 2009] and [Pinto and Cox, 2011], the “L3
+model class”. Each model in this class, is a three layer model in which each layer sequentially
+performs local ﬁltering, thresholding, saturation, pooling, and normalization. To choose a high
+performing model from this class, we performed a high-throughput search of the parameter space,
+using kernel-analysis performance on the provided training image set as the optimization criterion.
+The top performing model on the training set is then evaluated on the testing set (Top HT-L3). See
+Appendix A for further details.
+Coates et al. NIPS 2012 We evaluate the unsupervised feature learning model in [Coates et al.,
+2012], which learns 150,000 features from millions of unlabeled images collected from the Internet.
+We evaluate the second layer “complex cells,” a 10,000 dimensional feature space, by rescaling
+the input images to 96 by 96 pixels and computing the model’s output on a 3 by 3 grid of non-
+overlapping 32 by 32 pixel windows. The resulting output is 90,000 dimensional.
+Le et al. ICML 2012 We evaluate the model in [Le et al., 2012], which is a hierarchical locally
+connected sparse auto encoder with pooling and local contrast normalization and is trained unsu-
+pervised from a dataset of 10 million images downloaded from the Internet and ﬁne-tuned with
+ImageNet images and labels. We use the penultimate layer outputs (69696 features) of the network
+for the feature representation (the layer before class-label prediction). Images are resized to the
+model’s input dimensions, here 200 by 200 pixels.
+Krizhevsky et al. NIPS 2012 (SuperVision) We evaluate the deep convolutional neural network
+model ‘SuperVision’ described in [Krizhevsky et al., 2012], which is trained by supervised learning
+on the ImageNet 2011 Fall release (∼15M images, 22K classes) with additional training on the
+LSVRC-2012 dataset (1000 classes). The authors computed the features of the penultimate layer of
+their model (4096 features) on the testing images by cropping out the center 224 by 224 pixels (this
+is the input size to their model). This mimics the procedure described in [Krizhevsky et al., 2012],
+in which this feature is fed into logistic regression to predict class labels.
+
+3 Results
+
+Evaluation of neural representations
+
+In Figure 2 we present kernel analysis curves obtained from the measured V4 and IT neural popula-
+tions for each variation level. KA-AUC values for V4 are 0.88, 0.66, and 0.56, and for IT are 0.90,
+0.86, and 0.72, for Low, Medium, and High Variation, respectively. For each variation level, our
+bootstrap analysis indicates that the KA-AUC measurements between IT and V4 are signiﬁcantly
+different (see Table 1).
+At Low Variation there is not a large difference between V4 and IT. This might be expected, as this
+variation level does not test for variability due to scale, position, or pose, which are variations that
+the neural responses in IT are more tolerant to than in V4. The higher variation sets, Medium and
+High Variation, show increased separation between V4 and IT, and reduced performance for both
+representations, indicating the increased difﬁculty of the task under these representations. However,
+the IT representation maintains high accuracy at low complexity even in the High Variation condi-
+
+7
+
+Figure 2: Kernel analysis curves of V4 and IT. Each panel shows the kernel analysis curves for
+each variation level. Accuracy, one minus loss (1− e(d)), is plotted against complexity, the normal-
+ized dimensionality of the eigendecomposition (d/D). Shaded regions indicate the maximum and
+minimum accuracy obtained over testing subsets, which are often smaller than the line thickness.
+
+tion. The IT representation under Medium and High Variation shows a sharp increase in accuracy
+at low complexity, indicating that the IT representation is able to accurately capture the class-level
+object recognition task with a simple decision boundary. Note that these kernel analysis measure-
+
+8
+
+High VariationMedium VariationLow VariationIT (est.)V4 (est.)IT (est.)V4 (est.)IT (est.)V4 (est.)Table 1: Kernel analysis results. For each representation we measure the KA-AUC at each variation
+level for each testing subset. The means over testing subsets are given in the table, with standard
+deviations in parentheses. Top performing models are highlighted. Note that our measurements of
+IT and V4 Cortex are our current best estimates (est.) and are subject to experimental limitations.
+
+IT Cortex (est.)
+V4 Cortex (est.)
+V1-like
+Top HT-L3
+Coates et al. NIPS 2012
+Le et al. ICML 2012
+Krizhevsky et al. NIPS 2012
+
+Low Variation Medium Variation High Variation
+0.72 (2.2e-03)
+0.90 (2.4e-03)
+0.56 (3.2e-03)
+0.88 (2.0e-03)
+0.84 (2.0e-03)
+0.52 (2.0e-03)
+0.92 (1.4e-03)
+0.53 (1.7e-03)
+0.52 (2.9e-03)
+0.83 (1.5e-03)
+0.57 (3.0e-03)
+0.90 (2.4e-03)
+0.75 (3.0e-03)
+0.88 (2.6e-03)
+
+0.86 (1.2e-03)
+0.66 (3.2e-03)
+0.57 (2.9e-03)
+0.62 (1.8e-03)
+0.54 (3.0e-03)
+0.69 (2.5e-03)
+0.85 (2.0e-03)
+
+ments are only our current estimate of representation in V4 and IT. We discuss the limitations of
+these estimates in the discussion section and provide an extrapolation in Appendix C.
+
+Evaluation of machine representations
+
+In Figure 3 we present the kernel analysis evaluation for the machine representations we have evalu-
+ated along with the neural representations for comparison. The corresponding KA-AUC numbers are
+presented in Table 1. The V1-like model shows high accuracy at low complexity on Low Variation
+but performs quite poorly on Medium Variation and High Variation, indicating that these tasks are
+interesting tests of the object recognition problem. The Top HT-L3 model is the highest performing
+representation at Low Variation and achieves performance that approaches V4 on Medium Variation
+and High Variation. The model presented in [Coates et al., 2012] performs similarity to the V1-like
+model on all variation levels. This low performance may be due to the large variety of images this
+model was trained on, its relatively shallow architecture, and/or the mismatch in our testing image
+size and the 32 by 32 pixel patches of the base model. The model presented in [Le et al., 2012]
+performs comparably to IT on Low Variation, and surpasses V4 at Medium and Variations.
+The model in [Krizhevsky et al., 2012] performs comparably to V4 at Low Variation, nearly matches
+the performance of IT at Medium Variation, and surpasses IT representation on High Variation. In-
+terestingly, this model matches IT performance at Medium Variation across the entire complexity
+range and exceeds it across the complexity range at High Variation. We view this result as highly
+signiﬁcant as it is the ﬁrst model we have measured that matches our current estimate of IT repre-
+sentation performance at Medium Variation and surpasses it at High Variation.
+
+4 Discussion
+
+There are a number of issues related to our measurement of macaque visual cortex, including view-
+ing time, behavioral paradigm, neural subsampling, and mapping the neural recording to a neural
+feature, that will be necessary to address in determining the ultimate representational measurement
+of macaque visual cortex. The presentation time of the images shown to the animals was intention-
+ally brief (100 ms), but is close to typical ﬁxation time (∼200 ms). Therefore, it will be interesting
+to measure how the neural representational space changes with increased viewing time, especially
+considering that natural viewing conditions typically allow for longer ﬁxation times and multiple
+ﬁxations. Another aspect to consider is that animals are engaged in passive viewing during the ex-
+perimental procedure. Does actively performing a task inﬂuence the neural representation? This
+question may be related to what are commonly referred to as attentional phenomena [e.g. biased
+competition]. Current experimental techniques only allow us to measure a small portion of the neu-
+rons in a cortical area. While our analysis in Appendix C suggests that we are reaching saturation
+in our estimate of KA-AUC with our current neural sample, our sample is biased spatially on the
+cortical sheet because of our use of electrode grids. This bias likely leads to an underestimate of
+KA-AUC. Finally, the neural code is a topic of heated debate in the neuroscience community and
+the mapping from multi-unit recordings to the neural feature vector we have used for our analysis
+is only one possible mapping. Importantly, this mapping has been shown to account for human
+
+9
+
+Figure 3: Kernel analysis curves of brain and machine. “V4 (est.)” and “IT (est.)” are brain
+representations and all others are machine representations. Each panel shows the kernel analysis
+curves for each variation level. Accuracy, one minus loss (1−e(d)), is plotted against complexity, the
+normalized dimensionality of the eigendecomposition (d/D). Shaded regions indicate the maximum
+and minimum accuracy obtained over testing subsets, which are often smaller than the line thickness.
+
+behavioral performance [Majaj et al., 2012]. However, as we gain more knowledge about cortical
+processing (such as intrinsic dynamics [Canolty et al., 2010]) our best guess at the neural code may
+evolve and update our neural representation benchmark accordingly.
+
+10
+
+High VariationMedium VariationLow VariationIT (est.)V4 (est.)IT (est.)V4 (est.)IT (est.)V4 (est.)Another aspect that our measurement does not address is the direct impact of visual experience on
+the representations observed in IT cortex. Interestingly, the macaques involved in these studies have
+had little or no real-world experience with a number of the object categories used in our evaluation,
+though they do beneﬁt from millions of years of evolution and years of postnatal experience. How-
+ever, learning effects in adult IT cortex are well observed [Kobatake et al., 1998; Baker et al., 2002;
+Sigala and Logothetis, 2002], even with passive viewing [Li and DiCarlo, 2010]. Remaining unan-
+swered questions are: how has the exposure during the experimental protocol affected the neural
+representation, and could the neural representation be further enhanced with increased exposure?
+A related question: is the training set we have provided sufﬁcient to achieve IT level performance on
+the testing set? We do not have a positive example of such transfer, and we expect that algorithms
+leveraging massive amounts of visual data may produce the best results on the testing set. Such
+algorithms, and their data dependence, will be informative. Furthermore, to what extent do we
+need to build additional structure into our representations and representational learning algorithms
+to achieve representations equivalent to those found in the brain?
+Could human neural representation, if measured, be better than what we observe in macaque IT cor-
+tex? If the volume of cortical tissue is related to representational efﬁcacy, it is likely that the human
+ventral stream would achieve even better performance. While determining human homologues of
+macaque visual cortex is under active investigation, it is known that primary visual cortex in humans
+is twice as large as in macaque [Van Essen, 2003]. While this is suggestive that human visual repre-
+sentation may be even better under our metric, the scaling of human visual cortex over macaque may
+be optimizing representational aspects that we are not measuring here. In summary, we suspect that
+the estimates for representational performance in macaque we have presented here provide a lower
+bound in performance of the human visual system. One way to address human visual representation
+may be through the use of fMRI or inference of the human representational space from behavioral
+measurements. We, and others in the neuroscience ﬁeld, are actively pursuing these directions.
+
+Where are we today?
+
+Under our analysis, we believe that the ﬁeld has made signiﬁcant advances with recent algorithms.
+On the intermediate level variation task (Medium Variation) these advances are quite evident: the
+recent representational learning algorithm in [Le et al., 2012] surpasses the representation in V4 and,
+surprisingly, the supervised algorithm of [Krizhevsky et al., 2012] matches the representation in IT.
+These advances are also evident on the high level variation task (High Variation): the [Le et al.,
+2012] algorithm is narrowly better than V4 and the [Krizhevsky et al., 2012] algorithm beats IT by
+an ample margin. It will be informative to measure the elements of these models that lead to this
+performance and it will be interesting to see if purely unsupervised algorithms can achieve similar
+performance.
+
+A vision for the future
+
+The methodology we have proposed here can be extended to other sensory domains where repre-
+sentation is critical and neural representations are thought to be effective. For example, it should
+be possible to deﬁne similar task protocols for auditory stimuli and measure the neural responses in
+auditory cortex. Such measurements would not only have implications for discovering effective au-
+ditory representations, but may also provide the data necessary to validate representational learning
+algorithms that are effective in multiple contexts. Representational learning algorithms that prove
+effective across these domains may serve as hypotheses for a canonical cortical algorithm, a ‘holy
+grail’ for artiﬁcial intelligence research.
+
+Acknowledgments
+
+This work was supported by the U.S. National Eye Institute (NIH NEI: 5R01EY014970-09), the National
+Science Foundation (NSF: 0964269), and the Defense Advanced Research Projects Agency (DARPA: HR0011-
+10-C-0032). C.F.C was supported by the U.S. National Eye Institute (NIH: F32 EY022845-01). We thank
+Adam Coates, Quoc Le, and Alex Krizhevsky for their help in evaluating their models and comments on the
+paper.
+
+11
+
+References
+CI Baker, M Behrmann, and CR Olson. Impact of learning on representation of parts and wholes in monkey
+
+inferotemporal cortex. Nature Neuroscience, 2002.
+
+ML Braun. Accurate Error Bounds for the Eigenvalues of the Kernel Matrix. JMLR, 2006.
+ML Braun, JM Buhmann, and KR M¨uller. On relevant dimensions in kernel feature spaces. JMLR, 2008.
+RT Canolty, K Ganguly, SW Kennerley, CF Cadieu, K Koepsell, JD Wallis, and JM Carmena. Oscillatory
+
+phase coupling coordinates anatomically dispersed functional cell assemblies. PNAS, 2010.
+
+MM Churchland, JP Cunningham, MT Kaufman, JD Foster, P Nuyujukian, SI Ryu, and KV Shenoy. Neural
+
+population dynamics during reaching. Nature, 2012.
+
+A Coates, A Karpathy, and A Ng. Emergence of Object-Selective Features in Unsupervised Feature Learning.
+
+NIPS, 2012.
+
+JJ DiCarlo, D Zoccolan, and NC Rust. How Does the Brain Solve Visual Object Recognition? Neuron, 2012.
+M Fabre-Thorpe, G Richard, and SJ Thorpe. Rapid categorization of natural images by rhesus monkeys.
+
+Neuroreport, 1998.
+
+DJ Felleman and DC Van Essen. Distributed hierarchical processing in the primate cerebral cortex. Cerebral
+
+cortex, 1991.
+
+K Fukushima. Neocognitron: A self-organizing neural network model for a mechanism of pattern recognition
+
+unaffected by shift in position. Biological cybernetics, 1980.
+
+CP Hung, G Kreiman, T Poggio, and JJ DiCarlo. Fast readout of object identity from macaque inferior temporal
+
+cortex. Science, 2005.
+
+R Kiani, H Esteky, K Mirpour, and K Tanaka. Object category structure in response patterns of neuronal
+
+population in monkey inferior temporal cortex. Journal of Neurophysiology, 2007.
+
+E Kobatake, G Wang, and K Tanaka. Effects of shape-discrimination training on the selectivity of inferotem-
+
+poral cells in adult monkeys. Journal of Neurophysiology, 1998.
+
+N Kriegeskorte, Mur M, and Bandettini P. Representational Similarity Analysis – Connecting the Branches of
+
+Systems Neuroscience. Frontiers in Systems Neuroscience, 2008a.
+
+N Kriegeskorte, M Mur, DA Ruff, R Kiani, J Bodurka, H Esteky, K Tanaka, and PA Bandettini. Matching
+
+categorical object representations in inferior temporal cortex of man and monkey. Neuron, 2008b.
+
+A Krizhevsky, I Sutskever, and G Hinton. ImageNet classiﬁcation with deep convolutional neural networks.
+
+NIPS, 2012.
+
+QV Le, R Monga, M Devin, K Chen, GS Corrado, J Dean, and AY Ng. Building high-level features using large
+
+scale unsupervised learning. ICML, 2012.
+
+N Li and JJ DiCarlo. Unsupervised Natural Visual Experience Rapidly Reshapes Size-Invariant Object Repre-
+
+sentation in Inferior Temporal Cortex. Neuron, 2010.
+
+DG Lowe. Towards a computational model for object recognition in IT cortex. In BMVC, 2000.
+DG Lowe. Distinctive Image Features from Scale-Invariant Keypoints.
+
+International Journal of Computer
+
+Vision, 2004.
+
+N Majaj, H Hong, E Solomon, and JJ DiCarlo. A uniﬁed neuronal population code fully explains human object
+
+recognition. In COSYNE, 2012.
+
+G Montavon and KR M¨uller. Deep Boltzmann Machines and the Centering Trick. Neural Networks: Tricks of
+
+the Trade, 2012.
+
+G Montavon, ML Braun, and KR M¨uller. Kernel Analysis of Deep Networks. JMLR, 2011.
+M Mur, DA Ruff, J Bodurka, P De Weerd, PA Bandettini, and N Kriegeskorte. Categorical, Yet Graded – Single-
+Image Activation Proﬁles of Human Category-Selective Cortical Regions. The Journal of Neuroscience,
+2012.
+
+A Oliva and A Torralba. The role of context in object recognition. Trends in Cognitive Sciences, 2007.
+GA Orban. Higher order visual processing in macaque extrastriate cortex. Physiological Reviews, 2008.
+N Pinto and D Cox. Beyond simple features: A large-scale feature search approach to unconstrained face
+
+recognition. FG, 2011.
+
+N Pinto, David D Cox, and JJ DiCarlo. Why is Real-World Visual Object Recognition Hard? PLoS Computa-
+
+tional Biology, 2008.
+
+N Pinto, D Doukhan, JJ DiCarlo, and DD Cox. A High-Throughput Screening Approach to Discovering Good
+
+Forms of Biologically Inspired Visual Representation. PLoS Computational Biology, 2009.
+
+12
+
+N Pinto, N Majaj, Y Barhomi, E Solomon, and JJ DiCarlo. Human versus machine: comparing visual object
+
+recognition systems on a level playing ﬁeld. In COSYNE, 2010.
+
+N Pinto, Y Barhomi, DD Cox, and JJ DiCarlo. Comparing state-of-the-art visual features on invariant object
+
+recognition tasks. WACV, 2011.
+
+M Riesenhuber and T Poggio. Hierarchical models of object recognition in cortex. Nature Neuroscience, 1999.
+F Rosenblatt. The perceptron: A probabilistic model for information storage and organization in the brain.
+
+Psychological review, 1958.
+
+NC Rust and JJ DiCarlo. Selectivity and tolerance (“invariance”) both increase as visual information propagates
+
+from cortical area V4 to IT. Journal of Neuroscience, 2010.
+
+T Serre, L Wolf, S Bileschi, M Riesenhuber, and T Poggio. Robust Object Recognition with Cortex-Like
+
+Mechanisms. PAMI, 2007.
+
+N Sigala and NK Logothetis. Visual categorization shapes feature selectivity in the primate temporal cortex.
+
+Nature, 2002.
+
+AJ Smola, B Sch¨olkopf, and KR M¨uller. The connection between regularization operators and support vector
+
+kernels. Neural Networks, 1998.
+
+IH Stevenson and KP Kording. How advances in neural recording affect data analysis. Nature Neuroscience,
+
+2011.
+
+IH Stevenson, BM London, ER Oby, and NA Sachs. Functional Connectivity and Tuning Curves in Populations
+
+of Simultaneously Recorded Neurons. PLOS Computational Biology, 2012.
+
+SM Stringer and ET Rolls. Invariant Object Recognition in the Visual System with Novel Views of 3D Objects.
+
+Neural Computation, 2002.
+
+DC Van Essen. Organization of Visual Areas in Macaque and Human Cerebral Cortex. In The Visual Neuro-
+
+sciences. 2003.
+
+G Wallis and ET Rolls. Invariant Face and Object Recognition in the Visual System. Progress in Neurobiology,
+
+1997.
+
+MC Wu, SV David, and JL Gallant. Complete functional characterization of sensory neurons by system iden-
+
+tiﬁcation. Annual Review of Neuroscience, 2006.
+
+Y Zhang, EM Meyers, NP Bichot, T Serre, T Poggio, and R Desimone. Object decoding with attention in
+
+inferior temporal cortex. PNAS, 2011.
+
+Appendix
+
+Appendix A: High-throughput evaluation of the L3 model class
+
+Using the L3 model class, we performed a high-throughput search of the parameter space by evaluating ap-
+proximately 500 parameter selections at random on training image sets. We ran each L3 model parameter
+instantiation on category-balanced subset of 12,800 randomly chosen images from the 128,000-image training
+set. For each instantiation, we evaluated a kernel analysis protocol similar to that used for the testing set, but
+with the 16 object class labels of the training set as opposed to the 7 present in the testing set. For each model
+instantiation, we also extracted features on the testing set images, and ran the standard kernel analysis protocol.
+To evaluate the transfer between the training set and testing set, we examined how well training set scores
+predict testing set scores by comparing how relative performance rankings on the training set transfer to the
+testing set. Figure 4 shows these results. Performance on the training set is strongly correlated with performance
+on Medium (r = 0.64) and High Variation (r = 0.58) components of testing set, and weakly correlated on
+the Low Variation condition. This might be expected, as the training set contains variation similar to the High
+Variation testing set. The single best model from training achieves a high score on the testing set relative to
+other models in the training set and is in the range of the top machine-learning representations. This data
+indicates that models that are trained using the provided training set can perform favorably on the testing set.
+
+Appendix B: Neural data collection
+
+We have collected neural data from V4 and IT across two adult male rhesus monkeys (Macaca mulatta, 7 and 9
+kg) by using a multi-electrode array recording system (BlackRock Microsystems, Cerebus System). We chron-
+ically implanted three arrays per animal and have recorded the best 128 visually driven neural measurement
+sites (determined by separate pilot images) in one animal (58 IT, 70 V4) and 168 in another (110 IT, 58 V4).
+During stimulus presentation we recorded multi-unit neural responses to our images (see Section 2.1) from the
+V4 and IT sites. Stimuli were presented on an LCD screen (Samsung, SyncMaster 2233RZ at 120Hz) one
+
+13
+
+at a time. Each image was presented for 100ms with a radius of 8◦ at the center of the screen on top of the
+half-gray background and was followed by a 100ms half-gray “blank” period. The animal’s eye movement was
+monitored by a video eye tracking system (SR Research, EyeLink II), and the animal was rewarded upon the
+successful completion of 6–8 image presentations while maintaining good eye ﬁxation (jitter within ±2◦ was
+determined acceptable ﬁxation) at the center of the screen, indicated by a small (0.25◦) red dot. Presentations
+with large eye movements were discarded. In each experimental block, we recorded responses to all images of
+a certain variation level. Within one block each image was repeated three times for Low Variation and once
+for Medium and High Variation. This resulted in the collection of 28, 51, and 47 image repetitions for Low,
+Medium, and High Variation respectively. All surgical and experimental procedures are in accordance with the
+National Institute of Health guidelines and the Massachusetts Institute of Technology Committee on Animal
+Care.
+We convert the raw neural responses to a neural representation through the following normalization process.
+For each image in a block, we compute the vector of raw ﬁring rates across measurement sites by counting
+the number of spikes between 70ms and 170ms after the onset of the image for each site. We then subtracted
+the background ﬁring rate, which is the ﬁring rate during presentation of a half-gray background or “blank”
+image, from the evoked response. In order to minimize the effect of variable external noise, we normalize by
+the standard deviation of each site’s response to a block of images for Medium and High Variation. For the Low
+Variation stimuli, we divide the three repetitions within each block into three separate sets, each containing a
+complete set of images, and normalize by the standard deviation of each site’s response within its set. Finally,
+the neural representation is calculated by taking the mean across the repetitions for each image and for each site,
+producing a scalar valued matrix of neural sites by images. This post-processing procedure is only our current
+best-guess at a neural code, which has been shown to account for human performance [Majaj et al., 2012].
+Therefore, it may be possible to develop a more effective neural decoding, for example inﬂuenced by intrinsic
+cortical variability [Stevenson et al., 2012], or dynamics [Churchland et al., 2012; Canolty et al., 2010].
+
+Appendix C: KA-AUC and subsampling of neural sites
+
+Current experimental techniques only allow us to measure a small portion of the neurons in a cortical area.
+We seek to estimate how our kernel analysis metric would be affected by having a larger neural sample. In
+Figure 5 we estimate the effect of subsampling the neural population in our measurement, showing the KA-
+AUC as a function of the number of neural measurement sites. To estimate the asymptotic convergence of each
+neural representation (V4 and IT) at each variation level, we ﬁt a curve of the form AU C(t) = a + be−ctd,
+where t is the number of neural sites and a, b, c, and d are parameters3. This provides us with an estimate
+of the KA-AUC for the entire neural population. The estimated asymptotic values for the KA-AUC’s for V4
+are 0.89, 0.69, and 0.66, and for IT are 0.93, 0.91, and 0.75, for Low Variation, Medium Variation, and High
+Variation, respectively. Interestingly we ﬁnd that for the number of neural sites we have measured we are
+already approaching the asymptotic value. Therefore, for the given task speciﬁcation, preprocessing procedure,
+and convergence estimate, we believe we are reaching saturation in our estimate of KA-AUC for the neural
+population in V4 and IT.
+
+Errata
+
+An earlier version of this manuscript contained incorrectly computed kernel analysis curves and KA-AUC
+values for V4, IT, and the HT-L3 models. They have been corrected in this version.
+
+3We found that this functional form ﬁt well a similar analysis performed on a computational representation
+in which we subsampled the number of features included in the analysis. This allowed us to estimate the
+behavior of KA-AUC in much larger feature spaces (>4000 features) than in the neural measurements.
+
+14
+
+Figure 4: High-throughput L3 model relationship between training and testing performance. Each
+panel shows a scatter plot between the measured training KA-AUC and the testing KA-AUC for
+each variation level. Red lines indicate best linear ﬁt. Red dots are the best and worst performing
+models on the training set and best performing model on each testing set (standard deviations are
+shown as error bars and are small in the testing axis). Note that there is only one value for the
+training KA-AUC for each model. The linear relationships we observe indicate that the provided
+training set is informative for the testing set.
+
+15
+
+Figure 5: Effect of sampling in neural areas. We estimate the effect of sampling the neural sites on
+the testing set KA-AUC. Each panel shows the effect for each variation level. Best ﬁt curves are
+shown as solid lines with measured samples indicated by ﬁlled circles. Estimated asymptotes are
+indicated by dashed horizontal lines. See text for more details.
+
+16
+
+High VariationMedium VariationLow Variation

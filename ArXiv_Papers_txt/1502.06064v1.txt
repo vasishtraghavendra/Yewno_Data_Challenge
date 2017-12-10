@@ -1,0 +1,689 @@
+5
+1
+0
+2
+
+ 
+
+b
+e
+F
+1
+2
+
+ 
+
+ 
+ 
+]
+L
+M
+
+.
+t
+a
+t
+s
+[
+ 
+ 
+
+1
+v
+4
+6
+0
+6
+0
+
+.
+
+2
+0
+5
+1
+:
+v
+i
+X
+r
+a
+
+MILJS : Brand New JavaScript Libraries for
+Matrix Calculation and Machine Learning
+
+Ken Miura
+Tetsuaki Mano
+Atsushi Kanehira
+Yuichiro Tsuchiya
+Tatsuya Harada
+Machine Intelligence Laboratory, Department of Mechano-Informatics, The University of Tokyo
+
+MIURA@MI.T.U-TOKYO.AC.JP
+MANO@MI.T.U-TOKYO.AC.JP
+KANEHIRA@MI.T.U-TOKYO.AC.JP
+TSUCHIYA@MI.T.U-TOKYO.AC.JP
+HARADA@MI.T.U-TOKYO.AC.JP
+
+Abstract
+
+a
+
+collection of
+
+MILJS is
+state-of-the-art,
+platform-independent, scalable, fast JavaScript
+libraries for matrix calculation and machine
+learning. Our core library offering a matrix
+calculation is called Sushi, which exhibits
+far better performance than any other leading
+machine learning libraries written in JavaScript.
+Especially, our matrix multiplication is 177 times
+faster than the fastest JavaScript benchmark.
+Based on Sushi, a machine learning library
+called Tempura is provided, which supports var-
+ious algorithms widely used in machine learning
+research. We also provide Soba as a visualization
+library. The implementations of our libraries are
+clearly written, properly documented and thus
+can are easy to get started with, as long as there
+is a web browser. These libraries are available
+from http://mil-tokyo.github.io/ under the MIT
+license.
+
+1. Introduction
+
+Web technology has made remarkable progress in recent
+years. A number of sophisticated applications such as
+Google Maps, Gmail, and Microsoft Ofﬁce Online are now
+comparable to traditional native applications in terms of
+speed. These web-based applications have become increas-
+ingly popular due to its signiﬁcant advantage of platform
+independence. Behind this advancement is the fact that
+some high-speed JavaScript execution environments have
+been developed; for instance, Google V8 JavaScript En-
+gine. Scientiﬁc calculation systems, however, rarely use
+
+1
+
+web technology mainly because there are crucial speed lim-
+itations. Since JavaScript is an event-driven programming
+language with one thread, parallelization, which is a key
+to perform computationally-complex problems, is basically
+impossible.
+
+In terms of applications, systems with machine learning
+techniques have gained a great deal of attention. The preva-
+lence of e-commerce, smart phones, and social networks
+accelerated the accumulation of vast amount of informa-
+tion, and evoked demands for analyzing them. Some web-
+based machine learning libraries aiming to utilize the na-
+ture of platform independence have already been devel-
+oped. ConvNetJS (Karpathy) is one such library which im-
+plements Deep Convolutional Neural Network. Although
+it has a cutting-edge machine learning technique, the speed
+makes it impractical for research use.
+
+Sushi tackles the speed limitation and realizes paralleliza-
+tion by using WebCL. We achieve matrix multiplication
+that is 177 times faster than the existing fastest library
+(Coglan) in JavaScript. Consequently, machine learning al-
+gorithms are computed within practicable amount of time.
+
+The contributions of this paper are threefold.
+
+• Development of the fastest JavaScript library for ma-
+
+trix calculation.
+
+• Implementation of a platform-independent and scal-
+
+able machine learning library.
+
+• Provision of a sophisticated data visualization tool.
+
+This paper offers both a brief introduction to MILJS and a
+glimpse of its superior performance.
+
+MILJS : Brand New JavaScript Libraries for Matrix Calculation and Machine Learning
+
+2. Libraries Overview
+
+2.1.2. SUSHI CL.JS
+
+As shown in Figure 1, MILJS is composed of three li-
+braries: Sushi, Tempura, and Soba.
+
+(cid:53)(cid:70)(cid:78)(cid:81)(cid:86)(cid:83)(cid:66)(cid:1)(cid:27)(cid:1)(cid:46)(cid:66)(cid:68)(cid:73)(cid:74)(cid:79)(cid:70)(cid:1)(cid:45)(cid:70)(cid:66)(cid:83)(cid:79)(cid:74)(cid:79)(cid:72)
+
+(cid:52)(cid:80)(cid:67)(cid:66)(cid:1)(cid:27)(cid:1)(cid:55)(cid:74)(cid:84)(cid:86)(cid:66)(cid:77)(cid:74)(cid:91)(cid:66)(cid:85)(cid:74)(cid:80)(cid:79)
+
+Again, what matters in our approach is achieving the fastest
+matrix calculation by using WebCL. sushi cl.js is a
+patch ﬁle which deals with that critical point and overwrites
+functions deﬁned in sushi.js. It automatically detects
+computing platforms and works only when WebCL is avail-
+able. Below is the ﬂow of executing codes with WebCL.
+
+(cid:49)(cid:70)(cid:83)(cid:68)(cid:70)(cid:81)(cid:85)(cid:83)(cid:80)(cid:79)(cid:13)(cid:1)(cid:52)(cid:55)(cid:46)(cid:13)(cid:1)(cid:76)(cid:14)(cid:47)(cid:47)
+(cid:44)(cid:14)(cid:46)(cid:70)(cid:66)(cid:79)(cid:84)(cid:13)(cid:1)(cid:40)(cid:46)(cid:46)(cid:13)(cid:1)(cid:49)(cid:36)(cid:34)(cid:1)(cid:70)(cid:85)(cid:68)(cid:15)
+
+(cid:45)(cid:74)(cid:79)(cid:70)(cid:1)(cid:81)(cid:77)(cid:80)(cid:85)(cid:84)(cid:13)(cid:1)(cid:52)(cid:68)(cid:66)(cid:85)(cid:85)(cid:70)(cid:83)(cid:1)(cid:81)(cid:77)(cid:80)(cid:85)(cid:84)(cid:13)(cid:1)
+
+(cid:36)(cid:80)(cid:79)(cid:85)(cid:80)(cid:86)(cid:83)(cid:1)(cid:81)(cid:77)(cid:80)(cid:85)(cid:84)(cid:1)(cid:70)(cid:85)(cid:68)(cid:15)
+
+(cid:52)(cid:86)(cid:84)(cid:73)(cid:74)(cid:1)(cid:27)(cid:1)(cid:46)(cid:66)(cid:85)(cid:83)(cid:74)(cid:89)(cid:1)(cid:36)(cid:66)(cid:77)(cid:68)(cid:86)(cid:77)(cid:66)(cid:85)(cid:74)(cid:80)(cid:79)
+
+(cid:56)(cid:16)(cid:48)(cid:1)(cid:56)(cid:70)(cid:67)(cid:36)(cid:45)
+
+(cid:56)(cid:16)(cid:1)(cid:56)(cid:70)(cid:67)(cid:36)(cid:45)
+
+(cid:84)(cid:86)(cid:84)(cid:73)(cid:74)(cid:15)(cid:75)(cid:84)
+
+(cid:84)(cid:86)(cid:84)(cid:73)(cid:74)(cid:64)(cid:68)(cid:77)(cid:15)(cid:75)(cid:84)
+
+Figure1. Overview of MILJS
+
+2.1. Sushi
+
+Sushi is a matrix calculation library, which provides par-
+allelized matrix calculation on multicore CPU or GPU. It
+uses a JavaScript binding of OpenCL called WebCL. As
+of January, 2015, there is no major browser which origi-
+nally supports WebCL, and it is necessary to install We-
+bCL extension on Firefox (NRC Tampere) or to use forked
+project from Chromium (AMD Inc.). Sushi thus deals
+with both WebCL-compliant and non-WebCL-compliant
+browsers. sushi.js is implemented without using We-
+bCL and sushi cl.js is with WebCL. By loading in
+order, the latter overwrites some functions to use WebCL if
+it is available.
+
+2.1.1. SUSHI.JS
+
+A constructor of matrix objects and various matrix cal-
+culations using native JavaScript are implemented in
+sushi.js. Elements in a Matrix are stored in the form
+of one-dimensional Float32Array because data on WebCL-
+compliant browsers are transferred between the memories
+of JavaScript runtime and those of OpenCL. When setting
+values to the array, both row-wise way and column-wise
+way are possible. Sushi supervises the direction by a ﬂag,
+which saves the overhead of memory transportation and al-
+lows high-speed transposition.
+
+On the basic structure, useful functions and methods for
+matrix handling are implemented such as four arithmetic
+operations, random initialization, JSON export/import and
+convolution. See also Sushi API reference for details.
+
+2
+
+1. Allocate a WebCL object
+2. Choose platforms
+3. Choose devices
+4. Generate a context
+5. Generate a command queue
+6. Generate kernels
+7. Allocate buffers and transfer data
+8. Execute kernels
+9. Write back data
+
+Step 1 : Sushi allocates a WebCL object. WebCL is built
+around two types of deﬁnition either as an object or a con-
+structor. In order to avoid inconvenience, Sushi speciﬁes
+the execution environment and allocates WebCL object in
+both cases.
+
+Steps 2 and 3 : Sushi chooses platforms and devices. The
+concept of platform is similar to that of device driver. It
+translates OpenCL codes to readable codes for each GPU
+or CPU. If there are several platforms available, Sushi looks
+up a list of priorities and picks up a high-performance plat-
+form. On common-sense grounds, GPU platforms have
+priority over CPU platforms to make best use of their com-
+putational ability. The selected platform sometimes pro-
+vides several available devices. For example, a platform
+may have multiple GPUs or it may have WebCL-compliant
+CPU and onboard GPU. In this case, however, Sushi uses
+the head of these devices because of lacking sufﬁcient in-
+formation to compare their performances.
+
+Steps 4, 5 and 6 : Sushi generates a context, a command
+queue, and kernels. A context controls a queue and kernels
+to be described. Simply stated, a context is comparable to
+a process. After a context is created, a command queue and
+kernels are produced. A command queue is a queue which
+stores instructions; for example, execution of operation, or
+transfer of memory. Instructions are arbitrarily carried out
+in order. Sushi synchronizes the queue only when it reads
+and writes memory, and thus it runs another operation by
+native JavaScript during its free time. A kernel is a program
+executed in parallel as in matrix calculation. With reference
+to a given context, a desired number of kernels are gener-
+ated. At this point, instructions are translated in accordance
+with speciﬁed device. Sushi handles above steps at the mo-
+ment of loading libraries, and kernels are kept by a closure
+with respect to each method.
+
+MILJS : Brand New JavaScript Libraries for Matrix Calculation and Machine Learning
+
+Table1. Overview of main algorithms included in Tempura
+Categories
+
+Algorithms
+
+Linear Models
+
+Neighbors
+Clustering
+Mixture
+
+Dimensionality Reduction
+
+Cross Decomposition
+
+Linear Regression, Lasso Regression
+Ridge Regression, Logistic Regression
+SGDRegressor (Perceptron, SGD-SVM)
+
+Nearest Neighbors
+
+K-means
+
+Gaussian Mixture Model
+
+Principal Component Analysis
+Canonical Correlation Analysis
+
+Step 7, 8 and 9 : Sushi executes kernels. Before execution,
+buffers for arrays of kernel arguments are allocated on the
+memory of GPU, and data are transferred to there. After ex-
+ecution, if the results are required in JavaScript code, data
+are written back to the memory of CPU. Note that trans-
+fers are automatically performed by Sushi. Since the cost
+of data transfer is a burden to fast calculation, Sushi mini-
+mizes it as much as possible. For instance, in image clas-
+siﬁcation task using neural networks, only predicted class
+index is transferred and all other calculations are performed
+on GPU.
+
+it
+
+Although we provide basic matrix calculation in
+sushi cl.js,
+is sometimes the case that devel-
+oping one’s own kernel solves problems more efﬁciently.
+Sushi has a convenient function for making such a kernel
+without being interrupted by memory management.
+In
+addition, some common kernel generators are deﬁned.
+Consider the following example. When implementing an
+activation layer in neural networks, one needs to apply the
+same activation functions to all matrix elements. First,
+one’s own kernel is created by calling mapGenerator
+function as follows.
+
+var sigmoid = Sushi.Matrix.CL.mapGenerator(
+
+’1.0 / ( exp(-a[i]) + 1.0 )’ );
+
+The output function is able to handle Sushi.Matrix object
+directly.
+
+var output = sigmoid( input );
+
+With just a few lines of codes, Sushi realizes very fast ma-
+trix calculation using GPU. See also Sushi API reference
+for details of our WebCL-compliant funcions and methods.
+
+types:
+
+Linear Models, Neighbors,
+
+lowing
+Clustering, Mixture, Dimensionality
+Reduction, Cross Decomposition. Major algo-
+rithms have already been coded, and others are now being
+developed. Some utility classes make it easy to load data.
+All algorithms are available on the API documentation of
+our website 1. An overview of main algorithms is listed in
+Table 1 .
+
+2.3. Soba
+
+Soba is a 2D plotting library integrated with Sushi written
+in JavaScript.
+It is easy to use, works in web browsers,
+and coordinates with other two libraries. Moreover, Soba
+designs stylish ﬁgures, which offers more choices for the
+application of various statistical analysis methods. At this
+point, we give priority to the development of some fre-
+quently used visualizing tools for machine learning such
+as line plots, scatter plots, and contour plots.
+
+3. Experiments
+
+To demonstrate the efﬁciency of matrix calculation imple-
+mented in Sushi, we present a comparison of average run-
+ning times of several tasks with existing libraries listed be-
+low.
+
+• Sushi with WebCL
+• Sushi without WebCL
+• Sylvester (Coglan)
+• math.js (de Jong)
+• Closure Library (Google)
+
+2.2. Tempura
+
+Tempura is a machine learning library written in JavaScript
+and built on Sushi. Tempura provides efﬁcient, simple
+and powerful tools for data analysis.
+It offers not only
+programming-based plain interfaces but also Soba-based
+sophisticated visualization, which is helpful for research
+use. Machine learning algorithms take one of the fol-
+
+Sylvester is the most popular JavaScript matrix calculation
+library since 2007, and it is the fastest among all other ex-
+isting libraries. math.js is an integration solution for math-
+ematics published recently. Closure Library is a set of
+JavaScript libraries developed by Google. Four tasks in
+Table 2 are conducted in total. Task 1, 2 and 3 are simple
+
+1http://mil-tokyo.github.io/tempura/
+
+3
+
+MILJS : Brand New JavaScript Libraries for Matrix Calculation and Machine Learning
+
+Task 1
+Task 2
+Task 3
+Task 4
+
+Table2. Four tasks used in the speed comparison with existing libraries
+
+Addition of two 1000-by-1000 matrices
+
+Multiplication of a 1000-by-100 matrix and a 100-by-10 matrix
+Multiplication of a 1000-by-100 matrix and a 100-by-1000 matrix
+
+A Collection of operations.
+
+A: Multiplication of a 200-by-500 matrix and a 500-by-200 matrix
+
+B: Addition of the result from 4A and a 200-by-1 matrix
+
+C: Multiplication of transpose of a 200-by-500 matrix and a 200-by-50 matrix
+
+Table3. Comparison of average runing times (mm) of four tasks.
+
+Task1 Task2
+8.0
+10.2
+2.6
+3.0
+46.0
+3.6
+731.8
+573.6
+73.2
+46.4
+2.0
+0.6
+28.0
+21.6
+107.2
+17.2
+130.4
+209.2
+148.0
+272.2
+
+Task3
+22.0
+228.8
+623.6
+N/A
+N/A
+16.4
+2530.0
+2910.0
+N/A
+N/A
+
+Task4
+21.2
+23.8
+52.2
+N/A
+N/A
+2.4
+194.4
+166.4
+N/A
+N/A
+
+tions of popular techniques are in hand as well.
+
+References
+AMD Inc. Chromium-WebCL. https://github.
+
+com/amd/Chromium-WebCL.
+
+Coglan, James.
+
+Sylvester.
+
+http://sylvester.
+
+jcoglan.com/.
+
+de Jong, Jos. math.js. http://mathjs.org/.
+
+Google. Closure Library. https://developers.
+
+google.com/closure/library/.
+
+Karpathy, Andrej.
+
+ConvNetJS.
+
+http://
+
+cs.stanford.edu/people/karpathy/
+convnetjs/.
+
+NRC Tampere.
+
+WebCL.
+
+nokiaresearch.com/.
+
+http://webcl.
+
+Environment Libraries
+Firefox
+
+node.js
+
+Sushi with WebCL
+Sushi without WebCL
+Sylvester
+math.js
+Closure Library
+Sushi with WebCL
+Sushi without WebCL
+Sylvester
+math.js
+Closure Library
+
+matrix calculations, and Task 4 replicates the procedure of
+forward-propagation and that of back-propagation in Per-
+ceptron.
+
+Using MacBook Pro containing an Intel Core i5 processor
+clocked at 2.4 GHz and 8 GB of RAM, we conduct these
+tasks ﬁve times in Firefox or in node.js, which is a multi-
+platform runtime environment for server-side and network-
+ing JavaScript applications. The average running times are
+summarized in Table 3 . The value of N/A indicates the
+computation takes too long to measure.
+
+Sushi completes all the tasks much faster than math.js and
+Closure Library regardless of the usage of WebCL. Sushi
+is superior to Sylvester in every task on node.js and shows
+better performance on Firefox except for Task 2.
+It is
+particularly worth noting that Sushi terminates Task 3 on
+node.js 177 times faster than Sylvester. Since the compu-
+tational overhead with WebCL becomes relatively less for
+computationally-intensive tasks, Sushi achieves outstand-
+ing performance in Task 3 and 4.
+
+4. Conclusion and Future Plans
+
+In this paper, we address the problem of speed limitation
+in JavaScript, and introduce Sushi, which achieves an ex-
+ceptional performance in matrix calculation by utilizing
+WebCL. Seeking for more convenience, coding new func-
+tions and promoting algorithm efﬁciency are in progress.
+Based on Sushi, powerful machine learning library with
+well-looking visualizer is provided. Further implementa-
+
+4
+
+MILJS : Brand New JavaScript Libraries for Matrix Calculation and Machine Learning
+
+Appendix. Demos
+
+outcomes
+
+of
+
+several vi-
+With the use of Tempura and Soba,
+learn-
+sualization
+ing techniques
+In these
+codes, $M equals Sushi.Matrix, and $S equals
+Tempura.Utils.Statistics.
+
+are described below.
+
+popular machine
+
+// fit
+var gmm = new Tempura.Mixture.GMM(2,100,0.0000001);
+gmm.fit(X);
+
+// plot
+var x = $M.getCol(X,0);
+var y = $M.getCol(X,1);
+plt.contourDesicionFunction(
+
+$M.min(x)-1, $M.max(x)+1, $M.min(y)-1, $M.max(y)+1,
+
+function(x,y){
+
+var datum = $M.fromArray([[x],[y]]);
+return gmm.score(datum);
+
+}
+
+);
+
+// draw
+plt.scatter(x,y);
+plt.xlabel(’x’); plt.ylabel(’y’);
+plt.colorbar();
+plt.show();
+
+Figure2. Demo: Gaussian Mixture Model
+
+// fit
+var k=3;
+var clf = new Tempura.Neighbors.KNeighborsClassifier(
+
+{n_neighbors:k});
+
+clf.fit(samples,labels);
+
+// plot
+var x = $M.getCol(samples,0);
+var y = $M.getCol(samples,1);
+var color = labels.t(); plt.scatter(x,y,color);
+
+// draw
+plt.contourDesicionFunction(
+
+$M.min(x)-1,$M.max(x)+1,$M.min(y)-1,$M.max(y)+1,
+{levels:[1.5]}, function(x,y){
+
+var datum = $M.fromArray([[x,y]]));
+return clf.predict(datum.get(0,0));
+
+}
+
+);
+plt.xlabel(’x’); plt.ylabel(’y’);
+plt.legend([’Datapoints(2classes)’]);
+plt.show();
+
+Figure3. Demo: k-nearest-neighbors
+
+// fit
+var per = new Tempura.LinearModel.SGDRegressor(
+
+{algorithm:’perceptron’,aver:false,lambda:0.0});
+
+var svm = new Tempura.LinearModel.SGDRegressor(
+
+per.fit(samples,labels); svm.fit(samples,labels);
+
+{algorithm:’sgdsvm’});
+
+// plot
+var x = $M.getCol(X,0); var y = $M.getCol(X,1);
+var color = $M.getCol(labels,0);
+plt.scatter(x,y,color);
+
+// draw
+plt.contourDesicionFunction(-2,4,-2,2,
+
+{levels:[0],colors:’r’,linestyles:[’solid’]},
+function(x,y){
+
+var datum = $M.fromArray([[x,y]]))
+return svm.predict(datum).get(0,0);
+
+}
+
+);
+plt.contourDesicionFunction(-2,4,-2,2,
+
+{levels:[0],colors:’b’,linestyles:[’solid’]},
+function(x,y){
+
+var datum = $M.fromArray([[x,y]]))
+return per.predict(datum).get(0,0);
+
+});
+plt.xlabel(’x’); plt.ylabel(’y’);
+plt.legend([’Datapoints (2 classes)’,
+
+’Decision boundary (SGD SVM)’,
+’Decision boundary (perceptron)’]
+
+);
+plt.show();
+
+Figure4. Demo: SGD-SVM and Perceptron
+
+5
+
+

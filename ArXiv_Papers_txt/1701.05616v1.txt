@@ -1,0 +1,1365 @@
+7
+1
+0
+2
+
+ 
+
+n
+a
+J
+ 
+
+9
+1
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+6
+1
+6
+5
+0
+
+.
+
+1
+0
+7
+1
+:
+v
+i
+X
+r
+a
+
+Holistic Interstitial Lung Disease Detection using Deep
+Convolutional Neural Networks: Multi-label Learning
+
+and Unordered Pooling
+
+Mingchen Gao, Ziyue Xu, Le Lu, Adam P. Harrison,
+
+Ronald M. Summers, Daniel J. Mollura1
+
+Abstract
+
+Accurately predicting and detecting interstitial lung disease (ILD) patterns
+given any computed tomography (CT) slice without any pre-processing pre-
+requisites, such as manually delineated regions of interest (ROIs), is a clinically
+desirable, yet challenging goal. The majority of existing work relies on manually-
+provided ILD ROIs to extract sampled 2D image patches from CT slices and,
+from there, performs patch-based ILD categorization. Acquiring manual ROIs is
+labor intensive and serves as a bottleneck towards fully-automated CT imaging
+ILD screening over large-scale populations. Furthermore, despite the consider-
+able high frequency of more than one ILD pattern on a single CT slice, previous
+works are only designed to detect one ILD pattern per slice or patch.
+
+To tackle these two critical challenges, we present multi-label deep con-
+volutional neural networks (CNNs) for detecting ILDs from holistic CT slices
+(instead of ROIs or sub-images). Conventional single-labeled CNN models can
+be augmented to cope with the possible presence of multiple ILD pattern la-
+bels, via 1) continuous-valued deep regression based robust norm loss functions
+or 2) a categorical objective as the sum of element-wise binary logistic losses.
+Our methods are evaluated and validated using a publicly available database
+of 658 patient CT scans under ﬁve-fold cross-validation, achieving promising
+performance on detecting four major ILD patterns: Ground Glass, Reticular,
+Honeycomb, and Emphysema. We also investigate the eﬀectiveness of a CNN
+activation-based deep-feature encoding scheme using Fisher vector encoding,
+which treats ILD detection as spatially-unordered deep texture classiﬁcation.
+
+Interstitial Lung Disease Detection, Convolutional Neural
+
+Keywords:
+Network, Multi-label Deep Regression, Unordered Pooling, Fisher Vector
+Encoding
+
+1Mingchen Gao, Ziyue Xu, Adam P. Harrison, and Daniel J. Mollura are with Center for
+Infectious Disease Imaging; Le Lu and Ronald M. Summers are with the Imaging Biomarkers
+and Computer-Aided Diagnosis Laboratory and Clinical Image Processing Service. All au-
+thors are with the Radiology and Imaging Sciences Department, National Institutes of Health
+Clinical Center, Bethesda, MD 20892-1182, USA.
+
+1. Introduction
+
+Interstitial lung disease (ILD) refers to a group of more than 150 chronic
+lung diseases characterized by progressive scarring or inﬂammation of lung tis-
+sues and eventual impairment of breathing. The gold standard imaging modality
+for ILD diagnosis is computed tomography (CT) [1, 2]. Figure 1 depicts several
+examples of some most typical ILD-related CT imaging visual patterns. Auto-
+mated detection of ILD patterns from CT images would aid the diagnosis and
+treatment of this morbidity.
+
+The majority of previous work on ILD pattern detection is on 2D image clas-
+siﬁcation at the patch level, which attempts to classify relatively small image
+patches (e.g., 32×32 pixels) into one of the ILD pattern classes. These image
+patches are extracted or sampled from manually annotated polygon-like regions
+of interest (ROIs) on 2D axial slices, following the protocol of [1]. Recent notable
+approaches include restricted Boltzmann machines [3], convolutional neural net-
+works (CNNs) [4, 5, 6], local binary patterns [7, 8] and multiple instance learn-
+ing [9]. One prominent exception to the predominant patch-based approach is
+Gao et al.’s work [4] which assigns a single ILD class label directly upon whole
+axial CT slices, without any pre-processing to obtain ROIs.
+
+When analyzing the Lung Tissue Research Consortium (LTRC) dataset [2],
+which is the most comprehensive lung disease image database with per-pixel
+annotated segmentation masks, a signiﬁcant number of CT slices are observed
+as being associated with two or more ILD labels. Despite the importance of
+predicting multiple possible ILD pattern types given an input CT image, this
+challenge has not been addressed by previous studies [5, 3, 4, 7, 8]. ILD pattern
+detection is usually treated as a single-label classiﬁcation problem from image
+patches [5, 3, 7, 8] or slices [4].
+
+Detecting multiple possible ILD types on holistic CT slices simultaneously
+arguably causes more technical challenges, but it results in a fully automated
+and clinically more realistic ILD classiﬁcation process, especially when consid-
+ering the problem of pre-screening large populations. Without knowing the
+actual ILD locations and regions of spatial extents a priori (even lung segmen-
+tation), the methodological diﬃculties stem from several aspects, including 1)
+the tremendous amount of variation in ILD appearance, location and conﬁg-
+uration; 2) the expense to obtain delicate pixel-level ILD annotations of large
+datasets for training and evaluation; and 3) the common occurrence of multiple
+ILD diseases coexisting on single CT slices.
+In this study, we target solving
+these three challenges at the same time.
+
+One way to tackle the multi-label ILD recognition challenge is by replac-
+ing the softmax-based single-label loss [10] with a multi-label classiﬁcation loss
+layer (Sec. 3.1). Our method works on a holistic CT slice as an input to
+directly provide multiple ILD patterns existing on that slice, which moves for-
+ward an important step to delivering better clinical relevance than previous
+work [11, 12]. Alternatively, partially inspired by the recent natural image
+
+2
+
+classiﬁcation work [13], we explore an alternative method, which models this
+multi-label prediction problem using a continuously valued regression formula-
+tion (Sec. 3.2). Note that multi-label regression has also been used outside of
+ILD contexts to estimate heart chamber volume [14, 15].
+
+We employ the end-to-end deep CNN regression model because of its simplic-
+ity and the fact that deep image features and ﬁnal cost functions can be learned
+simultaneously [10, 16]. End-to-end deep neural network representations have
+shown signiﬁcant performance superiority over the variants of “hand-crafted
+image features followed by a separate classiﬁer”, in recent studies [17, 18].
+
+While CNNs are powerful image recognition models, its deep image feature
+learning and encoding representation is not invariant to the spatial locations
+and layouts of objects or texture patterns within a holistic visual scene (e.g.,
+an input CT slice). As observed in [19, 20], this order-sensitive CNN feature
+encoding, reﬂecting the spatial layout of the local image descriptors, is eﬀec-
+tive in object and scene recognition but may not be beneﬁcial, or can even be
+counter-productive, for texture classiﬁcation. The default order-sensitive spa-
+tial encoding of CNN image descriptors can be removed through the schemes
+of unordered feature encoders, such as bag of visual words (BoVW), Fisher
+vectors (FV) [21], or aggregation of spatial pyramid matching (SPM) [20], etc.
+Previous work on image patch based approaches [5, 3, 7, 8], are equivalent to
+formulating ILD pattern recognition as texture classiﬁcation since the gross im-
+age layout information is discarded. Therefore, given the above considerations,
+we attempt to answer the question whether ILD recognition is indeed a texture
+classiﬁcation problem by performing spatially invariant feature encoding from
+image feature activations from the CNN regression architecture, followed by
+dimension reduction and multivariate linear regression (Sec. 3.3).
+
+Our methods are validated using the publicly available LTRC ILD dataset [2],
+composed of 658 patients which are all the data in LTRC consisting of good ILD
+annotations. Our experiment protocol employs ﬁve-fold cross-validation (CV)
+to detect the most common ILD classes of Ground Glass, Reticular, Honeycomb,
+and Emphysema. Extensive quantitative experimental results show the promise
+of our approach in tackling the challenges of multi-class ILD classiﬁcation given
+any input CT slice, without any manual pre-processing.
+
+2. Related work
+
+Detecting ILD patterns in CT imaging is commonly treated as a texture
+recognition and classiﬁcation problem in many previous studies [22, 8, 23, 24,
+25]. Moreover, texture based visual representation is adopted inside local image
+regions of interest (ROIs) or volumes of interest (VOIs) via extracting rectangu-
+lar image patches, when a 2D and 3D CT imaging modality is used, respectively.
+In the sliding window manner, image classiﬁers can generate an ILD probability
+map within a pre-segmented lung region. Image feature extraction and machine
+learning based classiﬁcation are two separate factors in building previous image
+recognition systems.
+
+3
+
+Figure 1: Examples of ILD patterns. Every voxel in the lung region is labeled as healthy or
+one of the four ILD patterns: Ground Glass, Reticular, Honeycomb, or Emphysema. The ﬁrst
+row is the lung CT images. The second row refers to their corresponding labeling.
+
+An early work on computer-aided ILD recognition is proposed to employ
+neural networks and expert rules to detect ground glass opacity (GGO) on
+CT images [26]. The follow-up work includes GGO detection and segmenta-
+tion [27, 28]. Shyu et al. [29] describe a human-in-the-loop approach where the
+human annotator delineates the region of interest and anatomical landmarks in
+the images, followed by classiﬁcation on image attributes related to variations
+in intensity, texture, shape descriptors and so on. Zheng et al. [30] analyze 3D
+ILD imaging regions that are combined from multiple candidates detected be-
+forehand on 2D slices. Fukushima et al. [31] evaluate the diagnostic performance
+of an artiﬁcial neural network.
+
+There are many types of hand-crafted image features that are adopted
+for ILD classiﬁcation, such as ﬁlter banks[22, 8, 23],
+local binary patterns
+(LBPs) [24, 25], morphological operators followed by geometric measures, his-
+togram of oriented gradients [8], texton based approaches [32], and wavelet and
+contourlet transforms [33, 34]. 2D texture features have also been extended into
+three dimensions [35, 36, 28]. Typical feature encoding scheme and classiﬁers
+include bag of words [37], support vector machines (SVMs) [24, 35, 34], random
+forest [23] and k-nearest neighbors (kNN) [22].
+
+In contrast to separate hand-crafted features and classiﬁer modeling, convo-
+lutional neural networks (CNN) can learn image features and the classiﬁer si-
+multaneously. Restricted Boltzmann machines (RBMs) have been used to learn
+unsupervised classiﬁcation features within lung regions [38], whereas CNNs are
+used in a supervised formulation [39]. In [3], a convolutional classiﬁcation RBM
+is trained combining a generative and a discriminative learning objective.
+[5]
+proposes a specially designed CNN architecture for the classiﬁcation of ILD pat-
+terns. This network consists of ﬁve convolutional layers with 2 × 2 kernels and
+LeakyReLU activations, followed by average pooling and three fully connected
+layers. The size of the kernels in each layer is chosen to be minimal, which leads
+to deep networks, similar to VGG-net [40].
+[6] articulates several important
+
+4
+
+approaches toward employing CNNs in medical imaging applications. The ILD
+pattern classiﬁcation problem was explored and evaluated using diﬀerent CNN
+architectures. In particular, transfer learning was studied using pre-trained Ima-
+geNet CNN models [10] to ﬁne-tune on domain-speciﬁc tasks of medical imaging
+detection and diagnosis.
+
+A preliminary version of this work appears in [11]. In this paper, we propose,
+extend and fully evaluate two diﬀerent multi-label CNN classiﬁcation architec-
+tures to address the phenomenon of multiple ILDs’ co-occurrence on single CT
+images. Robust deep regression loss function under multi-label setting is also
+addressed. The improved algorithms are extensively validated with a more
+complete dataset, using comprehensive evaluation metrics, and by conducting
+comparable experiments against patch based ILD classiﬁcation, which consti-
+tutes the majority of previous work. Superior quantitative performance in both
+detection accuracy and time eﬃciency is demonstrated.
+
+3. Methods
+
+In this section, we propose three variations of multi-label deep convolutional
+neural network classiﬁcation or regression models to address the multi-label
+ILD detection challenge. First, an end-to-end CNN network is trained using
+a multi-label image classiﬁcation loss layer. Second, we outline a CNN net-
+work that uses a continuously-valued regression formulation, estimating either
+the actual pixel numbers occupied per ILD class per CT image or the binary
+[0,1] occurring status. Third, the convolutional image activation feature maps
+at diﬀerent network depths are spatially aggregated and encoded through the
+orderless Fisher vector (FV) encoder [21]. This encoding scheme removes the
+spatial conﬁgurations/layouts of convolutional activations and turns them into
+location-invariant feature representations. This type of CNN is referred to as
+FV-CNN [19]. The formed orderless features are then trained with a multivari-
+ate linear regressor (Mvregress(∗) function in Matlab) to regress the ILD pixel
+numbers or binary labels.
+
+There are several mainstream CNN architectures, such as AlexNet [10], VG-
+GNet [40], GoogLeNet [41], and deep residual networks [42]. Each network has
+its own advantages and is suitable for speciﬁc applications. Here we employ
+a variation of AlexNet, called CNN-F [43], for its good trade-oﬀ between eﬃ-
+ciency and performance. Fully-annotated medical imaging datasets are usually
+of limited availability and can be much smaller than the popular computer vi-
+sion ImageNet database [44]. The classical CNN-F contains ﬁve convolutional
+layers, followed by two fully-connected (FC) layers, and a last softmax layer
+for classiﬁcation. We modify it to accommodate our application of detecting
+multiple ILD patterns in CT images, as shown in Fig. 2. Based on our empir-
+ical test using a much deeper CNN model of VGG-19, deeper models do not
+provide signiﬁcantly noticeable quantitative performance boosts in ILD classiﬁ-
+cation accuracy while at the same time they consume much more training and
+testing time.
+
+5
+
+Our three main deep learning algorithms, namely multi-label CNN classiﬁ-
+cation, robust deep regression, and unordered pooling multivariate regression,
+are described in Sec. 3.1, Sec. 3.2 and Sec. 3.3, respectively. Two additional
+critical technical aspects are then addressed, i.e., balancing the distribution of
+diﬀerent classes to achieve the performance boost (Sec. 3.4), and exploiting dif-
+ferent CT attenuation scaling schemes to better capture the visual appearance
+of abnormal ILD patterns (Sec. 3.5).
+
+Figure 2: Multi-label CNN models: the input CT slices are transformed into three attenuation
+scales from the original CT value range that can highlight diﬀerent anatomical tissues and lung
+disease patterns), before being fed into CNN for processing. Three CNN models are proposed
+to detect possibly multiple ILD diseases per CT image (512 × 512 pixel CT slice instead of
+smaller image ROIs or patches in most previous work). The soft-max layer of single-label
+multi-class CNN is replaced by either a multi-label classiﬁcation CNN loss layer (Sec. 3.1) or
+real-valued regression loss layer (Sec. 3.2).
+
+3.1. Multi-label Classiﬁcation Deep CNN
+
+The multi-label classiﬁcation problem has not been widely studied in ILD
+recognition because in previous image patch based representation, each patch
+belongs to a single ILD class making it unnecessary to add the additional com-
+plexity of multi-labeling.
+In the holistic CT slice based ILD prediction, we
+ﬁrst tackle this task using a multi-label classiﬁcation CNN loss, under a one-
+against-all formulation (Eq. 1), as studied in the recent computer vision lit-
+erature [45, 46, 47]. The typical logistic regression loss in the soft-max CNN
+layer is only capable of predicting a single label for each instance, which is not
+suitable to our application. Our goal is to identify the existence of all occurring
+ILDs simultaneously where the input image may contain multiple ILD patterns.
+Our employed loss function is intuitive and eﬀective in the form of a sum of C
+binary logistic regression losses, one for each of the C classes k ∈ {1 . . . C},
+
+L(y, f (x)) =
+
+log(1 + exp(−ykfk(x))),
+
+(1)
+
+C(cid:88)
+
+k=1
+
+6
+
+Input: Three WindowsMulti-label ClassificationMulti-label RegressionConv1Conv2Conv3Conv4Conv5FCFC0001[[Binary Label1905859212116368[[Pixel NumberConv1Conv2Conv3Conv4Conv5FCFC(A)(B)(C)where yk ∈ {−1, 1} is the label indicating the absence/presence of class k given
+input image x and fk(x) is the output of the network.
+
+In each loss computation per input image, the logistic loss and gradients ac-
+cording to all “positive” labels (on that image) are calculated and added within
+the network loss layer intrinsically, for the stochastic gradient back-propagation
+(BP) of neural network training. There is another possible design choice, which
+is to treat the multi-label classiﬁcation problem as C independent multi-task
+classiﬁcation problems. In contrast to Eq. 1, we need to have C separate binary
+loss layers to cover all ILD classes and the gradient BP process during training
+will be independently computed. Thus this “multi-head” multi-mask CNN can
+not model the intrinsic correlations among multiple ILD labels, which based on
+our empirical ﬁnding, causes the multi-mask network hard to converge.
+
+3.2. Robust Multi-label Regression Deep CNN
+
+Next, we propose and investigate this multi-label problem via deep regression
+losses. Supposing that there are in total N images and C types of ILDs to be
+detected, the label vector for an image I is represented as a C-dimensional label
+vector y = [y1, . . . , yk, . . . , yC] ∈ {0, 1}C, k ∈ {1, . . . , C}, in which each entry
+can be 1 or 0, indicating whether a speciﬁc disease exists in the image. For the
+case of one image containing multiple diseases, there will several corresponding
+1’s in the label vector y. An all-zero y represents a healthy slice/instance, ı.e.,
+no targeted ILD being found. Alternately, the actual number of pixels of each
+ILD pattern per image can be recorded in y, replacing the binary value of 1
+with an integer quantity.This multivariate label vector allows our algorithm to
+naturally preserve the frequent co-occurrence property of ILDs in CT imaging
+through (deep) regression. We summarize the diﬀerent options below.
+
+Loss Functions: Deep CNN regression loss is used to learn the presence
+or the spatial occupancy area (in terms of the pixel number) of ILD classes per
+image. The following loss function (Eq. 2) [13, 48] is adopted instead of the
+more widely used softmax loss for classiﬁcation CNNs [4, 5, 10]. The loss cost
+function to be minimized is deﬁned as
+
+L(y, f (x)) =
+
+Lreg(yk − f (x)),
+
+(2)
+
+C(cid:88)
+
+k=1
+
+(cid:26)
+
+where Lreg could be either L2 = x2 loss or smooth L1 loss. The smooth L1 cost
+function [48] is deﬁned as
+
+smoothL1(x) =
+
+0.5x2
+|x| − 0.5
+
+if |x| < 1,
+otherwise.
+
+(3)
+
+This robust smooth L1 loss is designed to be less numerically sensitive to outliers
+(extremely large targeted label values) than L2 loss. The use of Eq. 3 could
+eliminate the chances of exploding gradients, to which the L2 loss is subject.
+
+Binary or Continuously Valued Regression: There are several options
+to form the regression labels for each image. One straightforward scheme is to
+
+7
+
+count the total number of pixels annotated per ILD disease, which represents its
+severity (Fig. 3 Left). The step function to represent the presence (1) or absence
+(0) of the disease (Fig. 3 M iddle) is also possible. The binarizing threshold T
+may be deﬁned using clinical knowledge: if the pixel number is ≥ T , the label
+is set to be 1; otherwise as 0. A more sophisticated label transfer model is a
+piecewise linear function of the pixel counts with T1, T2, mapping pixel counts
+to the a range of [0, 1] (Fig. 3 Right). Diseases with the number of total pixels
+≥ T1 but ≤ T2 are linearly interpolated to between 0 and 1.
+
+Figure 3: Three mapping functions transfer the pixel counts (per ILD class) to their label
+values for training the CNN regression losses.
+
+3.3. Unordered Pooling via Fisher Vector Encoding for Multivariate Linear Re-
+
+gression
+
+Both classiﬁcation and regression CNN models (Sec. 3.1 and 3.2) can be seen
+as performing the spatially order-sensitive feature pooling through their use of
+fully-connected CNN layers. In this section, we investigate whether the spatial
+information captured inside CNN activation maps is beneﬁcial for a task-speciﬁc
+image recognition problem. The typical representation of deep hierarchical CNN
+features inherits the gross image-activation spatial layouts. We are motivated
+by the observation that ILD patterns could happen anywhere inside the lung
+region, implying that the spatial layout may not be a strongly-correlated factor
+to ILD recognition. CNNs are designed to learn special feature layouts from
+the limited annotated ILD imaging data, which may be subject to over-ﬁtting
+more easily. In our implementation, CNN activations are extracted from the
+convolutional layers at various depths of the CNN network and compiled using
+the Fisher vector (FV) feature encoding scheme [21, 19], allowing us to achieve
+a location-invariant deep texture description.
+ILD class labels can then be
+predicted via the simple multivariate linear regression.
+The output of each k-th convolutional layer is a 3D descriptor or matrix
+Xk ∈ RWk×Hk×Dk , where Wk and Hk are the width and height of the spatial
+In this sense, the
+reception ﬁeld and Dk is the number of feature channels.
+speciﬁc deep feature activation map is represented by Wk × Hk feature vectors
+and each feature vector is Dk dimension. We invoke the FV encoding to re-
+move the spatial conﬁgurations of total Wk × Hk vectors (denoted as the set
+
+8
+
+Figure 4: The overall architecture of the CNN model and unordered polling using FV encoding
+and multivariate linear regression.
+
+Xk) for each activation map. Following [21], each feature descriptor xi ∈ Xk is
+soft-quantized using a Gaussian mixture model. The ﬁrst- and second-order dif-
+ferences (uT
+i,m) between any descriptor xi and each of the Gaussian cluster
+mean vectors {µm}, m = 1, 2, ..., M are accumulated into a 2M Dk-dimensional
+image representation:
+
+i,m, vT
+
+f F V
+i = [uT
+
+i,1, vT
+
+i,1, ..., uT
+
+i,M , vT
+
+i,M ].
+
+(4)
+
+FV feature encoding produces a very high dimensionality of 2M Dk from the
+deep feature activations of Xk for each image (e.g., M = 32 and Dk = 256). For
+computational and memory eﬃciency, we adopt principal component analysis
+(PCA) to project the f F V
+vectors to a lower-dimensional parameter subspace.
+Using their ground-truth ILD label vectors yi, the multivariate linear regression
+Mvregress(∗) function in Matlab is called to predict the presence or non-presence
+of ILDs from the low-dimensional projected image feature vectors P CA(f F V
+).
+
+i
+
+i
+
+3.4. Class Balancing
+
+Most computer-aided detection datasets have very biased distributions for
+instances of diﬀerent classes. In our setting, some ILD types may appear more
+often than others. We utilize a simple and eﬀective strategy to automatically
+balance the loss among diﬀerent classes [49]. A class-balancing weight βk for
+each class k is added into the classiﬁcation CNN loss.
+
+L(y, f (x)) =
+
+βklog(1 + exp(−ykfk(x))),
+
+(5)
+
+C(cid:88)
+
+k=1
+
+9
+
+Similarly, the weighted multi-label regression loss is
+
+L(y, f (x)) =
+
+βkLreg(yk − f (x)),
+
+(6)
+
+C(cid:88)
+
+k=1
+
+where βk = 1−|Yk|/|Y |
+
+according to the ground truth labels, and |Y | =(cid:80)C
+
+C
+
+, |Yk| denotes the cardinality of the dataset of class k
+
+k=1 |Yk|.
+
+3.5. CT Attenuation Rescaling
+
+To better capture the abnormal ILD patterns in CT images, we select three
+CT attenuation ranges or windows and rescale them to [0, 255] for CNN input.
+This is inspired by the fact that radiologists adjust the CT contrast window to
+optimize the visualization eﬀects for certain tissues or pathologies on CT scans.
+For example, “Lung” window visualizes details in lung tissue that are not ap-
+parent on the “Bone” window, whereas much of the information in bone and
+soft tissue will be lost on the “Lung” window. In this work, we use three CT at-
+tenuation scales to highlight diﬀerent lung disease patterns. As demonstrated in
+Fig. 2(A), this process is designated to preserve the attenuation values between
+HU low and HU high via a linear transformation. The intensity values outside
+the speciﬁc attenuation window are set as 0 or 255. In details, the low attenu-
+ation range (Fig. 2(B)) is used to capture ILD patterns with lower intensities,
+such as emphysema; the normal range (Fig. 2(C)) to represent normal appear-
+ance of lung regions; and high attenuation range for highlighting patterns with
+higher intensities, for example, consolidation and nodules. In our experiments,
+the low attenuation window is set as HU low= −1400 and HU high= −950; for
+normal range, HU low= −1400 and HU high= 200; for high attenuation scale,
+HU low= −160 and HU high= 240.
+
+4. Experiments and Discussion
+
+4.1. Data
+
+There are two main publicly available datasets for CT imaging based ILD
+classiﬁcation [1, 2]. The LTRC [2] dataset provides complete ILD labeling at
+the per-voxel or per-pixel level.
+In contrast, missing labels are common in
+[1]. Additionally, not all ILD regions of interest per-slice are delineated by
+annotators and often only one prominent disease region is annotated on a slice,
+as studied in [12, 1]. As a result, we use the LTRC dataset for our method
+validation and performance evaluation. Every voxel inside the CT lung region
+is labeled as healthy or one of the four ILD types: Ground Glass, Reticular,
+Honeycomb or Emphysema. Our goal is, given any input axial CT slice, to
+predict ILD labels where multiple diseases could co-occur. The number of classes
+C is set as 4 to represent the four ILD types.
+
+For ease of comparison, 2D axial CT slices or images are evaluated indepen-
+dently, without taking successive slices into consideration. Many CT scans of
+ILD study can have large inter-slice distances, for example, 10mm in [1] between
+
+10
+
+successive axial slices, making direct 3D volumetric analysis implausible. Uti-
+lizing only 2D axial image information makes the algorithm more generalizable
+to low-dose CT imaging based ILD screening protocols.
+
+In total, there are 658 patients in the LTRC dataset for ILD classiﬁcation
+and detection. Some ILD patients, which cannot ﬁnd matched annotations
+with CT images, are eliminated. The original resolution of the 2D axial slices
+is 512 × 512 pixels. All images are resized to the uniform size of 224 × 224
+pixels. Five-fold cross-validation (split at patient level) is conducted for the
+quantitative experimental evaluation.There are ∼240k CT slices in total from
+the 658 patients for cross-validation (CV). CNN training is performed in Matlab
+using MatConvNet [16] and run on a PC with 3.1GHz CPU, 32 GB memory,
+and an Nvidia Tesla K40 GPU.
+
+4.2. Multi-label Classiﬁcation Evaluation
+
+Single label ILD classiﬁcation can be quantitatively evaluated using recall,
+precision, and F-score metrics, respectively for each disease. Multi-label classi-
+ﬁcation needs diﬀerent performance metrics than those used in the single-label
+scenario [50]. Let T denote the ground truth set of labels; and S be the pre-
+dicted set. Accuracy is measured by the Hamming score which is symmetrical
+measurement of how close T is to S, as illustrated in Eq. 7. Similar formula-
+tions are applied to calculate precision and recall under multi-label classiﬁcation
+evaluation (Eq. 8 and 9). F-score, which is the harmonic mean of precision and
+recall, keeps the same for both single and multi-label classiﬁcation evaluations
+(Eq. 10). In our experiments, we evaluate the overall multi-label ILD prediction
+performance and report the results for each individual ILD as well.
+
+1
+n
+
+i=1
+
+n(cid:88)
+n(cid:88)
+n(cid:88)
+
+i=1
+
+1
+n
+
+|Ti ∩ Si|
+|Ti ∪ Si| ,
+|Ti ∩ Si|
+
+,
+
+|Si|
+|Ti ∩ Si|
+
+(7)
+
+(8)
+
+(9)
+
+(10)
+
+Accuracy(T, S) =
+
+Precision(T, S) =
+
+1
+n
+
+Recall(T, S) =
+
+|Ti|
+F1 = 2 × P recision × Recall
+
+i=1
+
+P recision + Recall
+
+,
+
+,
+
+4.3. Results on Multi-label Classiﬁcation CNN
+
+To conduct holistic CT slice based ILD classiﬁcation, we ﬁrst convert the
+pixel-wise annotated masks in LTRC [2] into slice-level labels. Without loss
+of generality, we set the pathology threshold T = 6000 or T = 4000 pixels to
+diﬀerentiate the presence (if ≥ T ) or absence (if ≤ T ) of ILDs. The number of
+slices containing each ILD pattern is outlined in Table 1 when the pathology
+presence threshold is set as T = 6000. There are many CT slices or instances
+with multiple ILDs co-existing on the same slice, as shown in Table 2 .
+
+11
+
+Table 1: Statistics on the 658 patients and 240k CT slices from LTRC [2]. Without loss of
+generality, threshold T = 6000 pixels is used to diﬀerentiate the presence or absence of ILD
+patterns.
+
+.
+
+ILD pattern Positive Negative
+
+Healthy
+
+Ground Glass
+
+Reticular
+
+Honeycomb
+Emphysema
+
+226675
+41194
+20560
+17392
+36328
+
+15362
+200843
+221477
+224645
+205709
+
+Table 2: The number of slices with multiple ILD patterns coexisting on the same slice. Pathol-
+ogy presence threshold T = 6000 pixels is used.
+
+Healthy One Disease Two Diseases Three Diseases Four Diseases
+149950
+
+70339
+
+20127
+
+1603
+
+18
+
+The classiﬁcation results are shown using the ROC curves in Fig. 5, and F-
+scores are presented in Table 3 and Table 4 while setting the pathology presence
+thresholds to be T = 6000 and T = 4000, respectively. The overall F-score is
+calculated based on the multi-label classiﬁcation evaluation mentioned in Sec.
+4.2. We obtain good results using the setting of T = 4000 but the quantitative
+results by setting T = 6000 are further improved, indicating that our algorithm
+may be robust to detect smaller ILD patterns and can tolerate some pixel-
+level annotation errors in LTRC. In our setting, pixel-level ILD annotations are
+not essentially required. Therefore the medical experts can simply provide the
+holistic CT slice-level labels on any lung CT image to indicate if there are ILD
+presences worth reporting, without annotating particular ILD image ROIs. It
+would considerably save the labeling time for experts to annotate the training
+dataset.
+
+4.4. Results on Multi-label Regression CNN
+
+We can treat the continuously-valued output vector, either in the form of
+pixel number counts or binary presence status, as the “classiﬁcation conﬁdence
+scores” after the multi-label regression CNN processes an input CT image.
+These regressed conﬁdence scores can be compared against the ground truth
+binary ILD labels obtained by thresholding on T as in Sec. 4.3. In this manner,
+
+Table 3: F scores of multi-label classiﬁcation and regression CNNs, with the setting T = 6000
+pixels.
+
+F-score
+
+Disease
+
+classiﬁcation
+
+regression L2 loss
+
+regression smooth L1 loss
+
+Ground Glass Reticular Honeycomb Emphysema Overall
+0.7959
+0.6882
+0.8028
+
+0.9468
+0.8042
+0.8991
+
+0.4602
+0.2314
+0.3385
+
+0.7686
+0.4764
+0.7095
+
+0.8642
+0.8343
+0.9102
+
+12
+
+(a)
+
+(b)
+
+(c)
+
+(d)
+
+Figure 5:
+threshold to 6000 pixels in (a)(c) and 4000 pixels in (b)(d).
+
+ILD classiﬁcation results shown in ROC and Precision-Recall curves using the
+
+ILD classiﬁcation receiver operating characteristic (ROC) curves are generated.
+Our experiments are conducted via the three label converting functions or plots
+in Fig. 3. Two variations of CNN regression outputs to match the ILD occupied
+pixel numbers per-slice, or the binary ILD presence labels produce similar quan-
+titative ILD classiﬁcation results. The piecewise linear transformation (Fig. 3
+Right) yields slightly inferior results.
+
+Table 3 and Table 4 show the multi-label regression CNN results where the
+
+13
+
+Table 4: F scores of multi-label classiﬁcation and regression CNNs, with the setting T = 4000
+pixels.
+
+F-score
+
+Disease
+
+classiﬁcation
+
+regression L2 loss
+
+regression smooth L1 loss
+
+Ground Glass Reticular Honeycomb Emphysema Overall
+0.7656
+0.6487
+0.7774
+
+0.9361
+0.8008
+0.9152
+
+0.8825
+0.8385
+0.9079
+
+0.5068
+0.3102
+0.4092
+
+0.7667
+0.5868
+0.7190
+
+Table 5: AUC values among diﬀerent CNN layers by FV encoding and linear regression. Both
+CNN and multi-variant linear regression regress to ILD pixel numbers.
+
+AUC
+
+Disease
+
+Ground Glass
+
+Reticular
+
+Honeycomb
+Emphysema
+
+conv1 conv2 conv3 conv4 conv5
+0.979
+0.984
+0.950
+0.951
+0.753
+0.765
+0.985
+0.988
+
+0.984
+0.955
+0.780
+0.987
+
+0.978
+0.953
+0.770
+0.990
+
+0.985
+0.957
+0.744
+0.989
+
+fc6 CNN
+0.970 0.990
+0.900 0.964
+0.743 0.809
+0.985 0.995
+
+trained model regresses to the number of diseased pixels in each image. The use
+of a smooth L1 cost function greatly improves the performance and constantly
+outperforms the L2 cost function in all experiments by noticeably large margins.
+Fig. 6 illustrates some visual examples of successful or misclassiﬁed results. The
+ﬁrst four examples are successfully detected cases, with multiple ILD patterns
+coexisting on the same slice. The last two are failure cases. Note that the
+ﬁrst misclassiﬁed case is marked with two detected labels of “emphysema” and
+“ground glass”. Both emphysema and ground glass co-occur on this image
+but the pixel count of ground glass occupied spatial region does not meet the
+pathology threshold of ≥ T = 6000. These qualitative results visually conﬁrm
+the high performance demonstrated by our quantitative evaluation.
+
+The overall performance of multi-label regression CNN when the smooth
+L1 loss is employed is generally comparable with the multi-label classiﬁcation
+CNN (Sec. 4.3). From Table 4 and 3, the smooth L1 regression CNN performs
+slightly better overall and particularly for the ground glass class, but the multi-
+label classiﬁcation CNN outperforms in the categories of reticular, honeycomb,
+and emphysema with moderate margins.
+
+4.5. Unordered Pooling via Fisher Vector Encoding
+
+i
+
+When constructing the FV-encoded features, f F V
+
+, the local convolutional
+image descriptors are pooled into 32 Gaussian components, producing a dimen-
+sionality as high as 16K [21]. We further reduce the FV features to 512 dimen-
+sions using PCA. The performance is empirically found to be insensitive to the
+number of Gaussian kernels and the dimensions after PCA. We compare the
+ILD classiﬁcation performance with FV encoding, on the features pooled from
+diﬀerent CNN layers, using area-under-the-curve (AUC) values (in Table 5) and
+F-scores (in Table 6), respectively.
+
+14
+
+Table 6: F-scores between diﬀerent layers. Both CNN and multi-variant linear regression
+regress to ILD pixel numbers.
+
+F-score
+
+Disease
+
+Ground Glass
+
+Reticular
+
+Honeycomb
+Emphysema
+
+Overall
+
+conv1 conv2 conv3 conv4 conv5
+0.871
+0.889
+0.698
+0.699
+0.384
+0.349
+0.893
+0.879
+0.713
+0.754
+
+0.883
+0.709
+0.386
+0.887
+0.750
+
+0.885
+0.714
+0.356
+0.897
+0.735
+
+0.875
+0.711
+0.384
+0.895
+0.750
+
+fc6 CNN
+0.868 0.908
+0.629 0.719
+0.344 0.409
+0.877 0.915
+0.716 0.777
+
+Table 7: Comparing the AUC values between diﬀerent layers using a smaller dataset of 18k
+slices. Both CNN and multi-variant linear regression regress to ILD pixel numbers
+
+AUC
+
+Disease
+
+Reticular
+
+Ground Glass 0.984
+0.976
+0.898
+0.988
+
+Honeycomb
+Emphysema
+
+conv1 conv2 conv3 conv4 conv5
+0.948
+0.950
+0.806
+0.967
+
+0.955
+0.958
+0.826
+0.975
+
+0.953
+0.954
+0.828
+0.967
+
+0.948
+0.951
+0.823
+0.966
+
+fc6 CNN
+0.943
+0.930
+0.917
+0.939
+0.773
+0.698
+0.988
+0.985
+
+When evaluated using a smaller ILD dataset, the same as the one used
+in [11, 1] of 18k CT slices, FV order-less encoding is eﬀective as demonstrated in
+Table 7. The unordered pooling operating on the ﬁrst CNN convolutional layer
+conv1 produces the overall best quantitative results, especially for honeycomb.
+Despite residing in the ﬁrst layer, the ﬁlters and activations on conv1 are still
+the integrated parts of a deep network since they are learned through back-
+propagation from deeper layers. From Table 7, FV encoding with deeply-
+learned conv1 ﬁlter activations produces the best ILD classiﬁcation against FV
+encoding on other layers and without FV. Nevertheless, for the much larger
+dataset of 240k CT images under 5-fold CV, the computational complexity of FV
+encoding becomes the performance bottleneck. It could take an undesirably long
+time and huge memory requirement to calculate the FV Gaussian components
+and perform the feature encoding. In our experiments, we randomly select a
+smaller subset of deep activation features (∼1/3) to calculate FV encoding,
+which may limit the FV encoding performance. In this setting of suﬃciently
+large amount of data, CNN models without FV encoding perform better.
+
+4.6. Class Balancing
+
+Even though data is not highly unbalanced, as shown in Table 1, using the
+strategy to balance the classes helps promote the performance considerably.
+With all the other settings ﬁxed, the integration of the class balancing factors β
+into the CNN loss function (Eq. 5) improves the ILD classiﬁcation performances
+on every disease class. The overall F-score also increases by ∼ 5%, as shown in
+Table 8. We observe similar a performance boost when Eq. 6 is employed.
+
+15
+
+Table 8: F-scores of multi-label classiﬁcation, T = 4000 pixels, comparing the results with
+and without class balancing.
+
+F-score
+
+Disease
+
+w/o balancing
+w balancing
+
+Ground Glass Reticular Honeycomb Emphysema Overall
+0.7146
+0.7656
+
+0.8895
+0.9361
+
+0.8507
+0.8825
+
+0.7397
+0.7667
+
+0.4308
+0.5068
+
+Table 9: Running time (seconds) comparison for the image patch-based classiﬁcation methods
+and our proposed holistic approach.
+
+Patch-based Min Patch-based Max Patch-based Mean Holistic Detection
+
+Time
+
+4.11
+
+32.15
+
+22.64
+
+0.01
+
+4.7. Patch-based Classiﬁcation Baseline and Processing Time
+
+The image patch-based classiﬁcation was the state-of-the-art ILD recogni-
+tion paradigm. To set up a baseline, we have implemented a standard patch-
+based algorithm for comparison. The patch-based ILD detection is evaluated
+on user-deﬁned 32 × 32 pixel image patches and predicts a single ILD label
+for each patch. The image patch-based ILD classiﬁcation is an easier problem
+compared to holistic slice-based recognition [4]. However, it is not suitable to
+eﬃciently predict multiple ILD patterns simultaneously that co-occur on a sin-
+gle CT image. As shown in Table 9, the running time is the heaviest burden of
+the patch-based methods. We adopt the most commonly used sliding window
+method to detect all the ILDs within an image. Labels are predicted for image
+patches sampled at a spatial interval of 10 pixels. The running time for each
+slice ranges from 4.11 to 32.15 seconds, with a mean of 22.64 seconds, depending
+on the actual area of lung region on that slice. On the other hand, our proposed
+holistic method takes less than 0.01 seconds to process a CT slice. It ﬁnishes
+evaluating 50k test slices in < 8 minutes.
+
+Furthermore, most patch-based methods require the pixel-level lung seg-
+mentation as preprocessing. Although the healthy lung segmentation problem
+is relatively easy to solve, pathological lung segmentation remains an obstacle.
+The beneﬁt of patch-based classiﬁcation is that it can explicitly present the loca-
+tion of the ILDs on CT slices. However it is possible to adapt the slice-level CNN
+models to localize of the underlying diseased regions under a weakly-supervised
+learning fashion [51], which provides a way to overcome this drawback with high
+computational eﬃciency. We leave this as future work.
+
+5. Conclusion
+
+In this paper, we present three multi-label deep CNN classiﬁcation and re-
+gression models to accurately recognize potential multiple ILD co-occurrence on
+an input lung CT slice, in a holistic manner. In contrast to previous image patch
+based approaches where manual ILD ROIs are given as prerequisites [7, 5, 3],
+
+16
+
+Figure 6: Examples of successfully detected and misclassiﬁed ILD slices. The left four are the
+correctly labeled cases, and the right two are failed cases.
+
+our method performs the task of multi-label, multi-class ILD detection simulta-
+neously, with no image preprocessing on CT slices. Moreover, we also investigate
+the eﬀectiveness of exploiting the unordered reformation or pooling from deep
+CNN convolutional activation features via a FV encoding scheme. The pro-
+posed algorithms are validated on a publicly available dataset of 658 patients
+under ﬁve-fold cross-validation, achieving high AUC values and F-scores for de-
+tecting four main types of ILDs. Our method can be readily adapted to other
+CAD problems that face similar large spatial and appearance variations. Fu-
+ture work includes performing cross-dataset transfer learning and incorporating
+weakly-supervised deep CNN approaches to provide ILD localization informa-
+tion on the slices. Last but not least, the ﬂexible holistic CT slice based deep
+ILD recognition protocol represents a signiﬁcant step toward clinically useful
+automated image analyses.
+
+Acknowledgments
+
+This research is supported by the NIH Intramural Research Program, the
+Center for Infectious Disease Imaging, the Imaging Biomarkers and Computer-
+Aided Diagnosis Laboratory, the National Institute of Allergy and Infectious
+Diseases and the NIH Clinical Center. We also thank Nvidia for the donation
+of a Tesla K40 GPU.
+
+References
+
+References
+
+[1] A. Depeursinge, A. Vargas, A. Platon, A. Geissbuhler, P.-A. Poletti,
+H. M¨uller, Building a reference multimedia database for interstitial lung
+diseases, Computerized medical imaging and graphics 36 (3) (2012) 227–
+238.
+
+17
+
+EmphysemaGround GlassGround GlassEmphysemaHoneycombGround Glass Reticular HoneycombGround Glass Reticular HoneycombHealthyGround Glass Reticular EmphysemaEmphysemaGround Glass Reticular HealthyGround GlassReticularHoneycombEmphysemaHealthyLabelsDetectedAnnotationsCT slices[2] B. Bartholmai, R. Karwoski, V. Zavaletta, R. Robb, D. Holmes, The lung
+tissue research consortium: An extensive open database containing histo-
+logical, clinical, and radiological data to study chronic lung disease.
+
+[3] G. van Tulder, M. de Bruijne, Combining generative and discriminative
+representation learning for lung CT analysis with convolutional restricted
+boltzmann machines, IEEE Trans. on medical imaging 35 (5) (2016) 1262–
+1272.
+
+[4] M. Gao, U. Bagci, L. Lu, A. Wu, M. Buty, H.-C. Shin, H. Roth, G. Z. Pa-
+padakis, A. Depeursinge, R. M. Summers, et al., Holistic classiﬁcation of
+CT attenuation patterns for interstitial lung diseases via deep convolutional
+neural networks, Computer Methods in Biomechanics and Biomedical En-
+gineering: Imaging & Visualization (2016) 1–6.
+
+[5] M. Anthimopoulos,
+
+S. Christodoulidis,
+
+L. Ebner, A. Christe,
+S. Mougiakakou, Lung pattern classiﬁcation for interstitial
+lung dis-
+eases using a deep convolutional neural network, IEEE Trans. on medical
+imaging 35 (5) (2016) 1207–1216.
+
+[6] H.-C. Shin, H. R. Roth, M. Gao, L. Lu, Z. Xu, I. Nogues, J. Yao, D. Mollura,
+R. M. Summers, Deep convolutional neural networks for computer-aided
+detection: Cnn architectures, dataset characteristics and transfer learning,
+IEEE Trans. on medical imaging 35 (5) (2016) 1285–1298.
+
+[7] Y. Song, W. Cai, H. Huang, Y. Zhou, D. D. Feng, Y. Wang, M. J. Fulham,
+M. Chen, Large margin local estimate with applications to medical image
+classiﬁcation, IEEE Trans. on medical imaging 34 (6) (2015) 1362–1377.
+
+[8] Y. Song, W. Cai, Y. Zhou, D. D. Feng, Feature-based image patch ap-
+proximation for lung tissue classiﬁcation, IEEE Trans. on medical imaging
+32 (4) (2013) 797–808.
+
+[9] J. Hofmanninger, G. Langs, Mapping visual features to semantic proﬁles for
+retrieval in medical imaging, in: IEEE Conf. on CVPR, 2015, pp. 457–465.
+
+[10] A. Krizhevsky, I. Sutskever, G. E. Hinton, Imagenet classiﬁcation with deep
+
+convolutional neural networks, in: NIPS, 2012, pp. 1097–1105.
+
+[11] M. Gao, Z. Xu, L. Lu, A. P. Harrison, R. M. Summers, D. J. Mollura,
+Multi-label deep regression and unordered pooling for holistic interstitial
+lung disease pattern detection, in: Machine Learning in Medical Imaging,
+Springer, 2016, pp. 147–155.
+
+[12] M. Gao, Z. Xu, L. Lu, A. Wu, I. Nogues, R. M. Summers, D. J. Mollura,
+Segmentation label propagation using deep convolutional neural networks
+and dense conditional random ﬁeld, in: IEEE ISBI, 2016, pp. 1265–1268.
+
+[13] Y. Wei, W. Xia, J. Huang, B. Ni, J. Dong, Y. Zhao, S. Yan, CNN: Single-
+
+label to multi-label, arXiv preprint arXiv:1406.5726.
+
+18
+
+[14] X. Zhen, A. Islam, M. Bhaduri, I. Chan, S. Li, Direct and simultaneous
+four-chamber volume estimation by multi-output regression, in: MICCAI,
+Springer, 2015, pp. 669–676.
+
+[15] X. Zhen, Z. Wang, A. Islam, M. Bhaduri, I. Chan, S. Li, Direct estima-
+tion of cardiac bi-ventricular volumes with regression forests, in: MICCAI,
+Springer, 2014, pp. 586–593.
+
+[16] A. Vedaldi, K. Lenc, Matconvnet: Convolutional neural networks for mat-
+
+lab, in: ACM Conf. on Multimedia Conference, 2015, pp. 689–692.
+
+[17] Y. Bar, I. Diamant, L. Wolf, S. Lieberman, E. Konen, H. Greenspan, Chest
+pathology detection using deep learning with non-medical training, IEEE
+ISBI (2015) 294–297.
+
+[18] B. van Ginneken, A. Setio, C. Jacobs, F. Ciompi, Oﬀ-the-shelf convolu-
+tional neural network features for pulmonary nodule detection in computed
+tomography scans, IEEE ISBI (2015) 286–289.
+
+[19] M. Cimpoi, S. Maji, I. Kokkinos, A. Vedaldi, Deep ﬁlter banks for tex-
+ture recognition, description, and segmentation, Int. J. of Computer Vision
+118 (1) (2016) 65–94.
+
+[20] Y. Gong, L. Wang, R. Guo, S. Lazebnik, Multi-scale orderless pooling of
+deep convolutional activation features, in: European Conference on Com-
+puter Vision, Springer, 2014, pp. 392–407.
+
+[21] F. Perronnin, J. S´anchez, T. Mensink, Improving the ﬁsher kernel for large-
+scale image classiﬁcation, in: European conference on computer vision,
+Springer, 2010, pp. 143–156.
+
+[22] I. C. Sluimer, P. F. van Waes, M. A. Viergever, B. van Ginneken, Computer-
+aided diagnosis in high resolution CT of the lungs, Medical physics 30 (12)
+(2003) 3081–3090.
+
+[23] M. Anthimopoulos, S. Christodoulidis, A. Christe, S. Mougiakakou, Clas-
+siﬁcation of interstitial lung disease patterns using local dct features and
+random forest, in: IEEE EMBS, 2014, pp. 6040–6043.
+
+[24] L. D. Bagesteiro, L. F. Oliveira, D. Weingaertner, Blockwise classiﬁca-
+tion of lung patterns in unsegmented ct images, in: IEEE Symposium on
+Computer-Based Medical Systems, 2015, pp. 177–182.
+
+[25] L. Sorensen, S. B. Shaker, M. De Bruijne, Quantitative analysis of pul-
+monary emphysema using local binary patterns, IEEE Trans. on medical
+imaging 29 (2) (2010) 559–569.
+
+[26] K. Heitmann, H.-U. Kauczor, P. Mildenberger, T. Uthmann, J. Perl,
+M. Thelen, Automatic detection of ground glass opacities on lung HRCT
+using multiple neural networks, European radiology 7 (9) (1997) 1463–1472.
+
+19
+
+[27] J. Zhou, S. Chang, D. N. Metaxas, B. Zhao, L. H. Schwartz, M. S. Ginsberg,
+Automatic detection and segmentation of ground glass opacity nodules, in:
+MICCAI, Springer, 2006, pp. 784–791.
+
+[28] Y. Tao, L. Lu, M. Dewan, et al., Multi-level ground glass nodule detection
+and segmentation in ct lung images, in: MICCAI, 2009, pp. (1): 715–723.
+
+[29] C.-R. Shyu, C. E. Brodley, A. C. Kak, A. Kosaka, A. M. Aisen, L. S.
+Broderick, Assert: a physician-in-the-loop content-based retrieval system
+for HRCT image databases, Computer Vision and Image Understanding
+75 (1) (1999) 111–132.
+
+[30] B. Zheng, J. K. Leader, C. R. Fuhrman, F. C. Sciurba, D. Gur, Automated
+detection and classiﬁcation of interstitial lung diseases from low-dose CT
+images, in: SPIE Medical Imaging, 2004, pp. 849–856.
+
+[31] A. Fukushima, K. Ashizawa, T. Yamaguchi, N. Matsuyama, H. Hayashi,
+I. Kida, Y. Imafuku, A. Egawa, S. Kimura, K. Nagaoki, et al., Application
+of an artiﬁcial neural network to high-resolution CT: usefulness in diﬀeren-
+tial diagnosis of diﬀuse lung disease, American Journal of Roentgenology
+183 (2) (2004) 297–305.
+
+[32] M. J. Gangeh, L. Sørensen, S. B. Shaker, M. S. Kamel, M. De Bruijne,
+M. Loog, A texton-based approach for the classiﬁcation of lung parenchyma
+in CT images, in: MICCAI, Springer, 2010, pp. 595–602.
+
+[33] K. T. Vo, A. Sowmya, Multiple kernel learning for classiﬁcation of diﬀuse
+lung disease using HRCT lung images, in: IEEE Engineering in Medicine
+and Biology, 2010, pp. 3085–3088.
+
+[34] A. Depeursinge, D. Van de Ville, A. Platon, A. Geissbuhler, P.-A. Poletti,
+H. Muller, Near-aﬃne-invariant texture learning for lung tissue analysis
+using isotropic wavelet frames, IEEE Trans. on Information Technology in
+Biomedicine 16 (4) (2012) 665–675.
+
+[35] Y. Xu, E. J. van Beek, Y. Hwanjo, J. Guo, G. McLennan, E. A. Hoﬀman,
+Computer-aided classiﬁcation of interstitial lung diseases via MDCT: 3D
+adaptive multiple feature method (3D AMFM), Academic radiology 13 (8)
+(2006) 969–978.
+
+[36] A. Depeursinge, P. Pad, A. S. Chin, A. N. Leung, D. L. Rubin, H. M¨uller,
+M. Unser, Optimized steerable wavelets for texture analysis of lung tissue
+in 3-D CT: Classiﬁcation of usual interstitial pneumonia, in: IEEE ISBI,
+2015, pp. 403–406.
+
+[37] R. Xu, Y. Hirano, R. Tachibana, S. Kido, Classiﬁcation of diﬀuse lung
+disease patterns on high-resolution computed tomography by a bag of words
+approach, in: MICCAI, Springer, 2011, pp. 183–190.
+
+20
+
+[38] Q. Li, W. Cai, D. D. Feng, Lung image patch classiﬁcation with automatic
+
+feature learning, in: IEEE EMBC, 2013, pp. 6079–6082.
+
+[39] Q. Li, W. Cai, X. Wang, Y. Zhou, D. D. Feng, M. Chen, Medical image
+classiﬁcation with convolutional neural network, in: IEEE ICARCV, 2014,
+pp. 844–848.
+
+[40] K. Simonyan, A. Zisserman, Very deep convolutional networks for large-
+
+scale image recognition, arXiv:1409.1556.
+
+[41] C. Szegedy, W. Liu, Y. Jia, P. Sermanet, S. Reed, D. Anguelov, D. Erhan,
+V. Vanhoucke, A. Rabinovich, Going deeper with convolutions, in: IEEE
+Conf. on CVPR, 2015, pp. 1–9.
+
+[42] K. He, X. Zhang, S. Ren, J. Sun, Deep residual learning for image recogni-
+
+tion, arXiv:1512.03385.
+
+[43] K. Chatﬁeld, K. Simonyan, A. Vedaldi, A. Zisserman, Return of the devil
+
+in the details: Delving deep into convolutional nets, arXiv:1405.3531.
+
+[44] O. Russakovsky, J. Deng, H. Su, J. Krause, S. Satheesh, S. Ma, Z. Huang,
+A. Karpathy, A. Khosla, M. Bernstein, et al., Imagenet large scale visual
+recognition challenge, Int. J. of Computer Vision 115 (3) (2015) 211–252.
+
+[45] M. Oquab, L. Bottou, I. Laptev, J. Sivic, Is object localization for free?-
+weakly-supervised learning with convolutional neural networks, in: IEEE
+Conf. on CVPR, 2015, pp. 685–694.
+
+[46] T. Durand, N. Thome, M. Cord, Weldon: Weakly supervised learning of
+
+deep convolutional neural networks, in: IEEE Conf. on CVPR, 2016.
+
+[47] D. Li, J.-B. Huang, Y. Li, S. Wang, M.-H. Yang, Weakly supervised object
+localization with progressive domain adaptation, in: IEEE Conf. on CVPR,
+2016.
+
+[48] R. Girshick, Fast R-CNN, in: IEEE ICCV, 2015, pp. 1440–1448.
+
+[49] S. Xie, Z. Tu, Holistically-nested edge detection, in: IEEE ICCV, 2015, pp.
+
+1395–1403.
+
+[50] G. Tsoumakas, I. Katakis, Multi-label classiﬁcation: An overview, Int. J.
+
+Data Warehousing and Mining 2007 (2007) 1–13.
+
+[51] B. Zhou, A. Khosla, A. Lapedriza, A. Oliva, A. Torralba, Learning deep
+features for discriminative localization, in: IEEE Conf. on CVPR, 2016,
+pp. 2921–2929.
+
+21
+
+

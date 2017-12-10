@@ -1,0 +1,1321 @@
+Agreement-based Joint Training for
+
+Bidirectional Attention-based Neural Machine Translation
+
+Yong Cheng#, Shiqi Shen†, Zhongjun He+, Wei He+, Hua Wu+, Maosong Sun†, Yang Liu† ∗
+
+#Institute for Interdisciplinary Information Sciences, Tsinghua University, Beijing, China
+
+†State Key Laboratory of Intelligent Technology and Systems
+
+Tsinghua National Laboratory for Information Science and Technology
+
+Department of Computer Science and Technology, Tsinghua University, Beijing, China
+
++Baidu Inc., Beijing, China
+
+6
+1
+0
+2
+
+ 
+r
+p
+A
+2
+2
+
+ 
+
+ 
+ 
+]
+L
+C
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+0
+5
+6
+4
+0
+
+.
+
+2
+1
+5
+1
+:
+v
+i
+X
+r
+a
+
+Abstract
+
+The attentional mechanism has proven to be ef-
+fective in improving end-to-end neural machine
+translation. However, due to the intricate struc-
+tural divergence between natural languages, unidi-
+rectional attention-based models might only cap-
+ture partial aspects of attentional regularities. We
+propose agreement-based joint training for bidirec-
+tional attention-based end-to-end neural machine
+translation. Instead of training source-to-target and
+target-to-source translation models independently,
+our approach encourages the two complementary
+models to agree on word alignment matrices on
+the same training data. Experiments on Chinese-
+English and English-French translation tasks show
+that agreement-based joint
+training signiﬁcantly
+improves both alignment and translation quality
+over independent training.
+
+1 Introduction
+End-to-end neural machine translation (NMT) is a newly pro-
+posed paradigm for machine translation [Kalchbrenner and
+Blunsom, 2013; Cho et al., 2014; Sutskever et al., 2014;
+Bahdanau et al., 2015]. Without explicitly modeling latent
+structures that are vital for conventional statistical machine
+translation (SMT) [Brown et al., 1993; Koehn et al., 2003;
+Chiang, 2005], NMT builds on an encoder-decoder frame-
+work:
+the encoder transforms a source-language sentence
+into a continuous-space representation, from which the de-
+coder generates a target-language sentence.
+
+While early NMT models encode a source sentence as a
+[2015] advocate the
+ﬁxed-length vector, Bahadanau et al.
+use of attention in NMT. They indicate that only parts of
+the source sentence have an effect on the target word be-
+ing generated.
+In addition, the relevant parts often vary
+with different target words. Such an attentional mechanism
+has proven to be an effective technique in text generation
+tasks such as machine translation [Bahdanau et al., 2015;
+Luong et al., 2015b] and image caption generation [Xu et al.,
+2015].
+
+∗Yang Liu is the corresponding author: liuyang2011@ tsinghua.
+
+edu.cn.
+
+However, due to the structural divergence between natural
+languages, modeling the correspondence between words in
+two languages still remains a major challenge for NMT, espe-
+cially for distantly-related languages. For example, Luong et
+al. [2015b] report that attention-based NMT lags behind the
+Berkeley aligner [Liang et al., 2006] in terms of alignment
+error rate (AER) on the English-German data. One possible
+reason is that unidirectional attention-based NMT can only
+capture partial aspects of attentional regularities due to the
+non-isomorphism of natural languages.
+
+In this work, we propose to introduce agreement-based
+learning [Liang et al., 2006; Liang et al., 2007] into attention-
+based neural machine translation. The basic idea is to encour-
+age source-to-target and target-to-source translation models
+to agree on word alignment on the same training data. This
+can be done by deﬁning a new training objective that com-
+bines likelihoods in two directions as well as an agreement
+term that measures the consensus between word alignment
+matrices in two directions. Experiments on Chinese-English
+and English-French datasets show that our approach is capa-
+ble of better accounting for attentional regularities and signif-
+icantly improves alignment and translation quality over inde-
+pendent training.
+2 Background
+Given a source-language sentence x = x1, . . . , xm, . . . , xM
+that contains M words and a target-language sentence y =
+y1, . . . , yn, . . . , yN that contains N words, end-to-end neu-
+ral machine translation directly models the translation proba-
+bility as a single, large neural network:
+
+P (y|x; θ) =
+
+P (yn|x, y<n; θ)
+
+(1)
+
+n=1
+
+where θ is a set of model parameters and y<n =
+y1, . . . , yn−1 is a partial translation.
+
+The encoder-decoder framework [Kalchbrenner and Blun-
+som, 2013; Cho et al., 2014; Sutskever et al., 2014; Bahdanau
+et al., 2015] usually uses a recurrent neural network (RNN)
+to encode the source sentence into a sequence of hidden states
+h = h1, . . . , hm, . . . , hM :
+
+hm = f (xm, hm−1, θ)
+
+(2)
+where hm is the hidden state of the m-th source word and
+f (·) is a non-linear function. Note that there are many ways
+
+N(cid:89)
+
+Although the introduction of attention has advanced the
+state-of-the-art of NMT, it is still challenging for attention-
+based NMT to capture the intricate structural divergence be-
+tween natural languages. Figure 2(a) shows the Chinese-
+to-English (upper) and English-to-Chinese (bottom) align-
+ment matrices for the same sentence pair. Both the two
+independently trained models fail to correctly capture the
+gold-standard correspondence: while the Chinese-to-English
+alignment assigns wrong probabilities to “us” and “bush”, the
+English-to-Chinese alignment makes incorrect predictions on
+“condemns” and “bombing”.
+
+Fortunately, although each model only captures partial as-
+pects of the mapping between words in natural languages,
+the two models seem to be complementary: the Chinese-to-
+English alignment does well on “condemns” and the English-
+to-Chinese alignment assigns correct probabilities to “us” and
+“bush”. Therefore, combining the two models can hopefully
+improve alignment and translation quality in both directions.
+3 Agreement-based Joint Training
+In this work, we propose to introduce agreement-based learn-
+ing [Liang et al., 2006; Liang et al., 2007] into attention-
+based neural machine translation. The central idea is to en-
+courage the source-to-target and target-to-source models to
+agree on alignment matrices on the same training data. As
+shown in Figure 2(b), agreement-based joint training is ca-
+pable of removing unlikely attention and resulting in more
+concentrated and accurate alignment matrices in both direc-
+tions.
+More formally, we train both the source-to-target attention-
+−→
+based neural translation model P (y|x;
+θ ) and the target-
+←−
+to-source model P (x|y;
+θ ) on a set of training examples
+←−
+−→
+{(cid:104)x(s), y(s)(cid:105)}S
+θ are model parameters in
+θ and
+s=1, where
+two directions, respectively. The new training objective is
+given by
+←−
+θ ) =
+
+log P (y(s)|x(s);
+
+−→
+θ )
+
+−→
+θ ,
+
+J(
+
+s=1
+
+S(cid:88)
+S(cid:88)
+S(cid:88)
+
+s=1
+
++
+
+−λ
+
+s=1
+
+(cid:16)
+
+log P (x(s)|y(s);
+
+←−
+θ )
+
+x(s), y(s),
+
+−→
+A
+
+(s)
+
+−→
+θ ),
+(
+
+←−
+A
+
+(s)
+
+(
+
+∆
+
+(cid:17)
+
+←−
+θ )
+
+(8)
+
+(s)
+
+(s)
+
+←−
+A
+
+−→
+A
+
+−→
+θ ) is the source-to-target alignment matrix for
+where
+(
+←−
+the s-th sentence pair,
+θ ) is the target-to-source align-
+(
+ment matrix for the same sentence pair, ∆(·) is a loss function
+that measures the disagreement between two matrices, and
+λ is a hyper-parameter that balances the preference between
+likelihood and agreement.
+
+sentence pair and simply write the loss
+
+simplicity, we omit
+−→
+θ ),
+(
+
+θ )(cid:1). While there are many alterna-
+
+the dependency on the
+function as
+
+∆(cid:0)−→
+
+←−
+(
+
+tives for quantifying disagreement, we use the following
+three types of loss functions in our experiments:
+
+←−
+A
+
+For
+
+(s)
+
+A
+
+(s)
+
+M(cid:88)
+
+m=1
+
+Figure 1: The illustration of attention-based NMT. The de-
+coder generates a target hidden state sn and its corresponding
+target word yn given a source sentence x. A bidirectional
+RNN is used to concatenate the forward and backward states
+as the hidden states of source words.
+
+to obtain the hidden states. For example, Bahdanau et al.
+[2015] use a bidirectional RNN and concatenate the forward
+and backward states as the hidden state of a source word to
+capture both forward and backward contexts (see Figure 1).
+Bahdanau et al. [2015] deﬁne the conditional probability
+
+in Eq. (1) as
+
+P (yn|x, y<n; θ) = g(yn−1, sn, cn, θ)
+
+(3)
+where g(·) is a non-linear function, sn is the hidden state cor-
+responding to the n-th target word computed by
+
+(4)
+and cn is a context vector for generating the n-th target word:
+
+sn = f (sn−1, yn−1, cn, θ)
+
+cn =
+
+A(θ)n,mhm
+
+(5)
+
+We refer to A(θ) ∈ RN×M as alignment matrix, in which
+an element A(θ)n,m reﬂects the contribution of the m-th
+source word xm to generating the n-th target word yn: 1
+
+(cid:80)M
+
+A(θ)n,m =
+
+exp(a(sn−1, hm, θ))
+
+m(cid:48)=1 exp(a(sn−1, hm(cid:48), θ))
+
+(6)
+
+where a(sn−1, hm, θ) measures how well xm and yn are
+aligned. Note that word alignment is treated as a function
+parameterized by θ instead of a latent variable in attention-
+based NMT.
+
+Given a set of training examples {(cid:104)x(s), y(s)(cid:105)}S
+
+s=1, the
+training algorithm aims to ﬁnd the model parameters that
+maximize the likelihood of the training data:
+
+θ∗ = argmax
+
+log P (y(s)|x(s); θ)
+
+(7)
+
+θ
+
+s=1
+
+1We denote the alignment matrix as A(θ) instead of α in [Bah-
+danau et al., 2015] to emphasize that it is a function parameterized
+by θ and differentiable. Although sn and cn also depend on θ, we
+omit the dependencies for simplicity.
+
+(cid:40) S(cid:88)
+
+(cid:41)
+
+h!1h!1x1h!2h!2x2h!3h!3x3h!Mh!MxMsn−1sn⊕A(θ)n,1A(θ)n,2A(θ)n,3A(θ)n,M……………yn−1yn(a) independent training
+
+(b) joint training
+
+Figure 2: Example alignments of (a) independent training and (b) joint training on a Chinese-English sentence pair. The ﬁrst
+row shows Chinese-to-English alignments and the second row shows English-to-Chinese alignments. We ﬁnd that the two
+unidirectional models are complementary and encouraging agreement leads to improved alignment accuracy.
+
+1. Square of addition (SOA): the square of the element-
+
+wise addition of corresponding matrix cells
+
+(cid:0)−→
+M(cid:88)
+
+A
+
+(s)
+
+−→
+θ ),
+(
+
+(cid:16)−→
+
+A
+
+(s)
+
+θ )(cid:1)
+
+(
+
+(s)
+
+←−
+
+←−
+A
+−→
+θ )n,m +
+(
+
+∆SOA
+
+= − N(cid:88)
+
+(cid:17)2
+
+(9)
+
+←−
+A
+
+(s)
+
+←−
+θ )m,n
+(
+
+n=1
+
+m=1
+
+Intuitively, this loss function encourages to increase the
+sum of the alignment probabilities in two corresponding
+matrix cells.
+
+2. Square of subtraction (SOS): the square of the element-
+
+wise subtraction of corresponding matrix cells
+
+(cid:0)−→
+
+A
+
+(s)
+
+−→
+θ ),
+(
+
+←−
+A
+
+(s)
+
+∆SOS
+
+θ )(cid:1)
+
+←−
+(
+
+N(cid:88)
+
+M(cid:88)
+
+(cid:16)−→
+
+A
+
+=
+
+(s)
+
+−→
+θ )n,m − ←−
+(
+
+A
+
+(s)
+
+←−
+θ )m,n
+
+(
+
+(10)
+
+(cid:17)2
+
+n=1
+
+m=1
+
+Derived from the symmetry constraint proposed by
+Ganchev et al. [2010], this loss function encourages that
+an aligned pair of words share close or even equal align-
+ment probabilities in both directions.
+
+3. Multiplication (MUL): the element-wise multiplication
+
+of corresponding matrix cells
+(s)
+
+(s)
+
+(cid:0)−→
+N(cid:88)
+M(cid:88)
+
+A
+
+←−
+
+θ )(cid:1)
+←−
+A
+−→
+θ )n,m × ←−
+(
+
+A
+
+(
+
+−→
+θ ),
+(
+−→
+A
+
+(s)
+
+∆MUL
+= − log
+
+(s)
+
+←−
+θ )m,n
+(
+
+(11)
+
+n=1
+
+m=1
+
+This loss function is inspired by the agreement term
+
+uspresidentbushcondemnstelavivsuicidebombingattackuspresidentbushcondemnstelavivsuicidebombingattackuspresidentbushcondemnstelavivsuicidebombingattackuspresidentbushcondemnstelavivsuicidebombingattacks=1
+
+(cid:40) S(cid:88)
+S(cid:88)
+(cid:40) S(cid:88)
+S(cid:88)
+
+s=1
+
+s=1
+
+λ
+
+λ
+
+∆(cid:0)−→
+
+A
+
+∆(cid:0)−→
+
+A
+
+(s)
+
+−→
+θ ),
+(
+
+←−
+A
+
+(s)
+
+←−
+(
+
+log P (x(s)|y(s);
+
+←−
+θ ) −
+
+(s)
+
+−→
+θ ),
+(
+
+←−
+A
+
+(s)
+
+←−
+(
+
+θ )(cid:1)(cid:41)
+θ )(cid:1)(cid:41)
+
+(12)
+
+(13)
+
+[Liang et al., 2006] and model invertibility regulariza-
+tion [Levinboim et al., 2015].
+
+The decision rules for the two directions are given by
+−→
+θ
+
+log P (y(s)|x(s);
+
+−→
+θ ) −
+
+∗
+
+= argmax−→
+
+θ
+
+∗
+
+←−
+θ
+
+= argmax←−
+
+θ
+
+s=1
+
+Note that all the loss functions are differentiable with re-
+spect to model parameters. It is easy to extend the original
+training algorithm for attention-based NMT [Bahdanau et al.,
+2015] to implement agreement-based joint training since the
+two translation models in two directions share the same train-
+ing data.
+
+4 Experiments
+4.1 Setup
+We evaluated our approach on Chinese-English and English-
+French machine translation tasks.
+
+For Chinese-English, the training corpus from LDC con-
+sists of 2.56M sentence pairs with 67.53M Chinese words and
+74.81M English words. We used the NIST 2006 dataset as the
+validation set for hyper-parameter optimization and model se-
+lection. The NIST 2002, 2003, 2004, 2005, and 2008 datasets
+were used as test sets. In the NIST Chinese-English datasets,
+each Chinese sentence has four reference English transla-
+tions. To build English-Chinese validation and test sets, we
+simply “reverse” the Chinese-English datasets: the ﬁrst En-
+glish sentence in the four references as the source sentence
+and the Chinese sentence as the single reference translation.
+For English-French, the training corpus from WMT 2014
+consists of 12.07M sentence pairs with 303.88M English
+words and 348.24M French words. The concatenation of
+news-test-2012 and news-test-2013 was used as the valida-
+tion set and news-test-2014 as the test set. Each English sen-
+tence has a single reference French translation. The French-
+English evaluation sets can be easily obtained by reversing
+the English-French datasets.
+
+We compared our approach with two state-of-the-art SMT
+
+and NMT systems:
+
+1. MOSES [Koehn and Hoang, 2007]: a phrase-based SMT
+
+system;
+
+2. RNNSEARCH [Bahdanau et al., 2015]: an attention-
+
+based NMT system.
+
+For MOSES, we used the parallel corpus to train the phrase-
+based translation model and the target-side part of the parallel
+corpus to train a 4-gram language model using the SRILM
+
+Loss
+∆SOA: square of addition
+∆SOS: square of subtraction
+∆MUL: multiplication
+
+BLEU
+31.26
+31.65
+32.65
+
+Table 1: Comparison of loss functions in terms of case-
+insensitive BLEU scores on the validation set for Chinese-
+to-English translation.
+
+[Stolcke, 2002]. We used the default system setting for both
+training and decoding.
+
+For RNNSEARCH, we used the parallel corpus to train the
+attention-based NMT models. The vocabulary size is set to
+30K for all languages. We follow Jean et al. [2015] to ad-
+dress the unknown word problem based on alignment matri-
+ces. Given an alignment matrix, it is possible to calculate
+the position of the source word to which is most likely to be
+aligned for each target word. After a source sentence is trans-
+lated, each unknown word is translated from its correspond-
+ing source word. While Jean et al. [2015] use a bilingual dic-
+tionary generated by an off-the-shelf word aligner to translate
+unknown words, we use unigram phrases instead.
+
+Our system simply extends RNNSEARCH by replacing in-
+dependent training with agreement-based joint training. The
+encoder-decoder framework and the attentional mechanism
+remain unchanged. The hyper-parameter λ that balances
+the preference between likelihood and agreement is set to
+1.0 for Chinese-English and 2.0 for English-French. The
+training time of joint training is about 1.2 times longer than
+that of independent training for two directional models. We
+used the same unknown word post-processing technique as
+RNNSEARCH for our system.
+4.2 Comparison of Loss Functions
+We ﬁrst compared the three loss functions as described in
+Section 3 on the validation set for Chinese-to-English trans-
+lation. The evaluation metric is case-insensitive BLEU.
+
+As shown in Table 1, the square of addition loss function
+(i.e., ∆SOA) achieves the lowest BLEU among the three loss
+functions. This can be possibly attributed to the fact that a
+larger sum does not necessarily lead to increased agreement.
+For example, while 0.9 + 0.1 hardly agree, 0.2 + 0.2 perfectly
+does. Therefore, ∆SOA seems to be an inaccurate measure of
+agreement.
+
+The square of subtraction loss function (i.e, ∆SOS) is ca-
+pable of addressing the above problem by encouraging the
+training algorithm to minimize the difference between two
+probabilities: (0.2 - 0.2)2 = 0. However, the loss function
+fails to distinguish between (0.9 - 0.9)2 and (0.2 - 0.2)2. Ap-
+parently, the former should be preferred because both models
+have high conﬁdence in the matrix cell. It is unfavorable for
+two models agree on a matrix cell but both have very low con-
+ﬁdence. Therefore, ∆SOS is perfect for measuring agreement
+but ignores conﬁdence.
+As the multiplication loss function (i.e., ∆MUL) is able to
+take both agreement and conﬁdence into account (e.g., 0.9 ×
+0.9 > 0.2 × 0.2), it achieves signiﬁcant improvements over
+∆SOA and ∆SOS. As a result, we use ∆MUL in the following
+experiments.
+
+System
+
+MOSES
+
+RNNSEARCH
+
+indep.
+
+indep.
+
+joint
+
+Training Direction NIST06
+
+C→E
+E→C
+C→E
+E→C
+C→E
+E→C
+
+32.48
+14.27
+30.74
+15.71
+32.65++
+16.25∗++
+
+NIST02
+32.69
+18.28
+35.16
+20.76
+35.68∗∗+
+21.70∗∗++
+
+NIST03
+32.39
+15.36
+33.75
+16.56
+34.79∗∗++
+17.45∗∗++
+
+NIST04
+33.62
+13.96
+34.63
+16.85
+35.72∗∗++
+16.98∗∗
+
+NIST05
+30.23
+14.11
+31.74
+15.14
+32.98∗∗++
+15.70∗∗+
+
+NIST08
+25.17
+10.84
+23.63
+12.70
+25.62∗++
+13.80∗∗++
+
+Table 2: Results on the Chinese-English translation task. MOSES is a phrase-based statistical machine translation system.
+RNNSEARCH is an attention-based neural machine translation system. We introduce agreement-based joint training for bidirec-
+tional attention-based NMT. NIST06 is the validation set and NIST02-05, 08 are test sets. The BLEU scores are case-insensitive.
+“*”: signiﬁcantly better than MOSES (p < 0.05); “**”: signiﬁcantly better than MOSES (p < 0.01); “+”: signiﬁcantly bet-
+ter than RNNSEARCH with independent training (p < 0.05); “++”: signiﬁcantly better than RNNSEARCH with independent
+training (p < 0.01). We use the statistical signiﬁcance test with paired bootstrap resampling [Koehn, 2004].
+
+Training C → E
+54.64
+indep.
+47.49∗∗
+joint
+
+E → C
+52.49
+46.70∗∗
+
+Table 3: Results on the Chinese-English word alignment task.
+The evaluation metric is alignment error rate. “**”: signif-
+icantly better than RNNSEARCH with independent training
+(p < 0.01).
+
+4.3 Results on Chinese-English Translation
+Table 2 shows the results on the Chinese-to-English (C → E)
+and English-to-Chinese (E → C) translation tasks. 2 We ﬁnd
+that RNNSEARCH generally outperforms MOSES except for
+the C → E direction on the NIST08 test set, which conﬁrms
+the effectiveness of attention-based NMT on distantly-related
+language pairs such as Chinese and English.
+
+Agreement-based joint training further systematically im-
+proves the translation quality in both directions over indepen-
+dently training except for the E → C direction on the NIST04
+test set.
+4.4 Results on Chinese-English Alignment
+Table 3 shows the results on the Chinese-English word align-
+ment task. We used the TSINGHUAALIGNER evaluation
+dataset [Liu and Sun, 2015] in which both the validation
+and test sets contain 450 manually-aligned Chinese-English
+sentence pairs. We follow Luong et al. [2015b] to “force-
+decode” our jointly trained models to produce translations
+that match the references. Then, we extract only one-to-
+one alignments by selecting the source word with the highest
+alignment weight for each target word.
+
+We ﬁnd that agreement-based joint training signiﬁcantly
+reduces alignment errors for both directions as compared with
+independent training. This suggests that introducing agree-
+ment does enable NMT to capture attention more accurately
+and thus lead to better translations. Figure 2(b) shows exam-
+ple alignment matrices resulted from agreement-based joint
+training.
+
+However, the error rates in Table 3 are still higher than con-
+ventional aligners that can achieve an AER around 30 on the
+2The scores for E → C is much lower than C → E because BLEU
+
+is calculated at the word level rather than character level.
+
+Word
+
+to
+and
+the
+
+yesterday
+actively
+festival
+inspects
+rebellious
+noticing
+
+Type
+
+preposition
+conjunction
+deﬁnite article
+
+noun
+adverb
+noun
+verb
+
+adjective
+
+verb
+
+Freq.
+high
+high
+high
+
+medium
+medium
+medium
+
+low
+low
+low
+
+Indep.
+2.21
+2.21
+1.96
+2.04
+1.90
+1.55
+0.29
+0.29
+0.19
+
+Joint
+1.80
+1.60
+1.56
+1.55
+1.32
+0.85
+0.02
+0.02
+0.01
+
+Table 4: Comparison of independent and joint training in
+terms of average attention entropy (see Eq. (15)) on Chinese-
+to-English translation.
+
+same dataset. There is still room for improvement in attention
+accuracy.
+
+4.5 Analysis of Alignment Matrices
+We observe that a target word is prone to connect to too many
+source words in the alignment matrices produced by indepen-
+dent training. For example, in the lower alignment matrix of
+Figure 2(a), the third Chinese word “buxi” is aligned to three
+English words: “president”, “bush”, and “condemns”. In ad-
+dition, all the three alignment probabilities are relatively low.
+Similarly, four English words contribute to generating the last
+Chinese word “gongji”: “condemns”, “suicide”, “boming”,
+and “attack”.
+
+In contrast, agreement-based joint training leads to more
+concentrated alignment distributions. For example, in the
+lower alignment matrix of Figure 2(b), the third Chinese word
+“buxi” is most likely to be aligned to “bush”. Likewise, the
+attention to the last Chinese word “gongji” now mainly fo-
+cuses on “attack”.
+
+To measure the degree of concentration of attention, we
+deﬁne the attention entropy of a target word in a sentence
+pair as follows:
+
+A(θ)n,m log A(θ)n,m
+
+(14)
+
+m=1
+
+Given a parallel corpus D = {(cid:104)x(s), y(s)(cid:105)}S
+
+s=1, the aver-
+
+Hyn = − M(cid:88)
+
+System
+
+MOSES
+
+RNNSEARCH
+
+Indep.
+
+Training Direction Dev.
+28.38
+28.52
+29.06
+28.32
+29.86∗∗++
+29.01∗∗++
+
+E→F
+F→E
+E→F
+F→E
+E→F
+F→E
+
+Indep.
+
+Joint
+
+Test
+32.31
+30.93
+32.69
+29.99
+33.45∗∗++
+31.51∗∗++
+
+Table 5: Results on the English-French translation task. The BLEU scores are case-insensitive. “**”: signiﬁcantly better than
+MOSES (p < 0.01); “++”: signiﬁcantly better than RNNSEARCH with independent training (p < 0.01).
+
+age attention entropy is deﬁned as
+
+˜Hy =
+
+1
+
+c(y, D)
+
+δ(y(s)
+
+n , y)Hy(s)
+
+n
+
+(15)
+
+S(cid:88)
+
+N(cid:88)
+
+s=1
+
+n=1
+
+S(cid:88)
+
+N(cid:88)
+
+where c(y, D) is the occurrence of a target word y on the
+training corpus D:
+
+c(y, D) =
+
+δ(y(s)
+
+n , y)
+
+(16)
+
+s=1
+
+n=1
+
+Table 4 gives the average attention entropy of example
+words on the Chinese-to-English translation task. We ﬁnd
+that the entropy generally goes downs with the decrease of
+word frequencies, which suggests that frequent target words
+tend to gain attention from multiple source words. Appar-
+ently, joint training leads to more concentrated attention than
+independent training. The gap seems to increase with the de-
+crease of word frequencies.
+4.6 Results on English-to-French Translation
+Table 5 gives the results on the English-French transla-
+tion task. While RNNSEARCH with independent train-
+ing achieves translation performance on par with MOSES,
+agreement-based joint learning leads to signiﬁcant improve-
+ments over both baselines. This suggests that our approach is
+general and can be applied to more language pairs.
+
+5 Related Work
+Our work is inspired by two lines of research: (1) attention-
+based NMT and (2) agreement-based learning.
+5.1 Attention-based Neural Machine Translation
+Bahdanau et al. [2015] ﬁrst introduce the attentional mechan-
+ism into neural machine translation to enable the decoder to
+focus on relevant parts of the source sentence during decod-
+ing. The attention mechanism allows a neural model to cope
+better with long sentences because it does not need to encode
+all the information of a source sentence into a ﬁxed-length
+vector regardless of its length.
+In addition, the attentional
+mechanism allows us to look into the “black box” to gain in-
+sights on how NMT works from a linguistic perspective.
+
+Luong et al.
+
+[2015a] propose two simple and effec-
+tive attentional mechanisms for neural machine translation
+and compare various alignment functions. They show that
+attention-based NMT are superior to non-attentional models
+in translating names and long sentences.
+
+After analyzing the alignment matrices generated by
+RNNSEARCH [Bahdanau et al., 2015], we ﬁnd that model-
+ing the structural divergence of natural languages is so chal-
+lenging that unidirectional models can only capture part of
+alignment regularities. This ﬁnding inspires us to improve
+attention-based NMT by combining two unidirectional mod-
+els. In this work, we only apply agreement-based joint learn-
+ing to RNNSEARCH. As our approach does not assume spe-
+ciﬁc network architectures, it is possible to apply it to the
+models proposed by Luong et al. [2015a].
+
+5.2 Agreement-based Learning
+Liang et al. [2006] ﬁrst introduce agreement-based learning
+into word alignment: encouraging asymmetric IBM mod-
+els to agree on word alignment, which is a latent struc-
+ture in word-based translation models [Brown et al., 1993].
+This strategy signiﬁcantly improves alignment quality across
+many languages. They extend this idea to deal with more
+latent-variable models in grammar induction and predicting
+missing nucleotides in DNA sequences [Liang et al., 2007].
+Liu et al. [2015] propose generalized agreement for word
+alignment. The new general framework allows for arbitrary
+loss functions that measure the disagreement between asym-
+metric alignments. The loss functions can not only be deﬁned
+between asymmetric alignments but also between alignments
+and other latent structures such as phrase segmentations.
+
+In attention-based NMT, word alignment is treated as a
+parametrized function instead of a latent variable. This makes
+word alignment differentiable, which is important for training
+attention-based NMT models. Although alignment matrices
+in attention-based NMT are in principle “symmetric” as they
+allow for many-to-many soft alignments, we ﬁnd that unidi-
+rectional modeling can only capture partial aspects of struc-
+ture mapping. Our contribution is to adapt agreement-based
+learning into attentional NMT, which signiﬁcantly improves
+both alignment and translation.
+
+6 Conclusion
+We have presented agreement-based joint training for bidirec-
+tional attention-based neural machine translation. By encour-
+aging bidirectional models to agree on parametrized align-
+ment matrices, joint learning achieves signiﬁcant improve-
+ments in terms of alignment and translation quality over in-
+dependent training. In the future, we plan to further validate
+the effectiveness of our approach on more language pairs.
+
+[Liang et al., 2007] Percy Liang, Dan Klein, and Michael I.
+In Proceedings of
+
+Jordan. Agreement-based learning.
+NIPS, 2007.
+
+[Liu and Sun, 2015] Yang Liu and Maosong Sun. Con-
+trastive unsupervised word alignment with non-local fea-
+tures. In Proceedings of AAAI, 2015.
+
+[Liu et al., 2015] Chunyang Liu, Yang Liu, Huanbo Luan,
+Maosong Sun, and Heng Yu. Generalized agreement for
+bidirectional word alignment. In Proceedings of EMNLP,
+2015.
+
+[Luong et al., 2015a] Minh-Thang Luong, Hieu Pham, and
+Effective approaches to
+In Proceed-
+
+Christopher D. Manning.
+attention-based neural machine translation.
+ings of EMNLP, 2015.
+
+[Luong et al., 2015b] Minh-Thang Luong, Ilya Sutskever,
+Quoc V. Le, Oriol Vinyals, and Wojciech Zaremba. Ad-
+dressing the rare word problem in neural machine transla-
+tion. In Proceedings of ACL, 2015.
+
+[Stolcke, 2002] Andreas Stolcke. Srilm - an extensible lan-
+guage modeling toolkit. In Proceedings of ICSLP, 2002.
+[Sutskever et al., 2014] Ilya Sutskever, Oriol Vinyals, and
+Quoc V. Le. Sequence to sequence learning with neural
+networks. In Proceedings of NIPS, 2014.
+
+[Xu et al., 2015] Kelvin Xu, Jimmy Lei Ba, Ryan Kiros,
+KyungHyun Cho, Aaron Courville, Ruslan Salakhutdinov,
+Richard S. Zemel, and Yoshua Bengio. Show, attend and
+tell: Neural image caption generation with visual attention.
+In Proceedings of ICML, 2015.
+
+Acknowledgements
+This work was done while Yong Cheng and Shiqi Shen were
+visiting Baidu. This research is supported by the 973 Pro-
+gram (2014CB340501, 2014CB340505), the National Natu-
+ral Science Foundation of China (No. 61522204, 61331013,
+61361136003), 1000 Talent Plan grant, Tsinghua Initiative
+Research Program grants 20151080475 and a Google Faculty
+Research Award.
+
+References
+[Bahdanau et al., 2015] Dzmitry Bahdanau, KyungHyun
+Cho, and Yoshua Bengio. Neural machine translation by
+jointly learning to align and translate. In Proceedings of
+ICLR, 2015.
+
+F.
+
+[Brown et al., 1993] Peter
+
+Stephen A.
+Della Pietra, Vincent J. Della Pietra, and Robert L.
+Mercer. The mathematics of statistical machine transla-
+tion: Parameter estimation. Computational Linguisitics,
+1993.
+
+Brown,
+
+[Chiang, 2005] David Chiang. A hierarchical phrase-based
+model for statistical machine translation. In Proceedings
+of ACL, 2005.
+
+[Cho et al., 2014] Kyunghyun Cho, Bart van Merrienboer,
+Caglar Gulcehre, Dzmitry Bahdanau, Fethi Bougares,
+Holger Schwenk, and Yoshua Bengio. Learning phrase
+representations using rnn encoder-decoder for statistical
+machine translation. In Proceedings of EMNLP, 2014.
+
+[Ganchev et al., 2010] Kuzman Ganchev, Joao Grac¸a, Jen-
+nifer Gillenwater, and Ben Taskar. Posterior regulariza-
+tion for structured latent variable models. The Journal of
+Machine Learning Research, 11:2001–2049, 2010.
+
+[Jean et al., 2015] Sebastien Jean, Kyunghyun Cho, Roland
+Memisevic, and Yoshua Bengio. On using very large target
+vocabulary for neural machine translation. In Proceedings
+of ACL, 2015.
+
+[Kalchbrenner and Blunsom, 2013] Nal Kalchbrenner and
+Phil Blunsom. Recurrent continuous translation models.
+In Proceedings of EMNLP, 2013.
+
+[Koehn and Hoang, 2007] Philipp Koehn and Hieu Hoang.
+Factored translation models. In Proceedings of EMNLP,
+2007.
+
+[Koehn et al., 2003] Philipp Koehn, Franz J. Och, and
+Daniel Marcu. Statistical phrase-based translation. In Pro-
+ceedings of HLT-NAACL, 2003.
+
+[Koehn, 2004] Philipp Koehn. Statistical signiﬁcance tests
+In Proceedings of
+
+for machine translation evaluation.
+EMNLP, 2004.
+
+[Levinboim et al., 2015] Tomer
+
+Vaswani,
+regularization:
+parallel data. In Proceedings of NAACL, 2015.
+
+Ashish
+invertibility
+Sequence alignment with or without
+
+Levinboim,
+Model
+
+and David Chiang.
+
+[Liang et al., 2006] Percy Liang, Ben Taskar, and Dan Klein.
+Alignment by agreement. In Proceedings of NAACL, 2006.
+
+

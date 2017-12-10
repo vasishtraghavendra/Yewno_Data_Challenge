@@ -1,0 +1,919 @@
+Relay Backpropagation for Eﬀective Learning of
+
+Deep Convolutional Neural Networks
+
+Li Shen1, Zhouchen Lin2, Qingming Huang1
+
+2 Key Lab. of Machine Perception (MOE), School of EECS, Peking University
+
+1 University of Chinese Academy of Sciences
+
+Abstract. Learning deeper convolutional neural networks becomes a
+tendency in recent years. However, many empirical evidences suggest that
+performance improvement cannot be gained by simply stacking more lay-
+ers. In this paper, we consider the issue from an information theoretical
+perspective, and propose a novel method Relay Backpropagation, that
+encourages the propagation of eﬀective information through the network
+in training stage. By virtue of the method, we achieved the ﬁrst place in
+ILSVRC 2015 Scene Classiﬁcation Challenge. Extensive experiments on
+two challenging large scale datasets demonstrate the eﬀectiveness of our
+method is not restricted to a speciﬁc dataset or network architecture.
+Our models will be available to the research community later.
+
+Keywords: Relay Backpropagation, Convolutional Neural Networks,
+Large scale image classiﬁcation.
+
+1 Introduction
+
+6
+1
+0
+2
+
+ 
+r
+p
+A
+3
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+0
+3
+8
+5
+0
+
+.
+
+2
+1
+5
+1
+:
+v
+i
+X
+r
+a
+
+Convolutional neural networks (CNNs) are capable of inducing rich features
+from data, and have been successfully applied in a variety of computer vision
+tasks. Many breakthroughs obtained in recent years beneﬁt from the advances
+of convolutional neural networks [1,2,3,4], spurring the research of pursuing a
+high performing network. The importance of network depth is revealed in these
+successes. For example, compared with AlexNet [1], the utilization of VGGNet [5]
+brings about substantial gains of accuracy on 1000-class ImageNet 2012 dataset
+by virtue of deeper architectures.
+
+Increasing the depth of network becomes a promising way to enhance per-
+formance. On the downside, such solution is accompanied by the growth of pa-
+rameter size and model complexity, that poses great challenges for optimization.
+The training of deeper networks typically encounters the risk of divergence or
+slower convergence, and prone to overﬁtting. Besides, many empirical evidences
+[5,6,7] (e.g., the results reported by [5] on ImageNet dataset shown in Table 1
+(Left)) suggest that the improvement on accuracy cannot be trivially gained by
+simply adding more layers. It is in accordance with the results in our preliminary
+experiments on Places2 challenge dataset [8], that deeper networks even suﬀer
+from a decline on performance (in Table 1 (Right)).
+
+2
+
+Model
+
+VGGNet-13
+VGGNet-16
+VGGNet-19
+
+ImageNet 2012
+
+top-1 err.
+
+top-5 err.
+
+28.2
+26.6
+26.9
+
+9.6
+8.6
+8.7
+
+Model
+
+VGGNet-19
+VGGNet-22
+VGGNet-25
+
+Places2 challenge
+
+top-1 err.
+
+top-5 err.
+
+48.5
+48.7
+48.9
+
+17.1
+17.2
+17.4
+
+Table 1. Error rates (%) on ImageNet 2012 classiﬁcation and Places2 challenge valida-
+tion set. The training and testing procedures for all models are the same. VGGNet-22
+and VGGNet-25 are obtained by simply adding 3 and 6 layers on VGGNet-19, respec-
+tively.
+
+To interpret the phenomenon, we should be concerned with the possibility
+of vanishing and exploding gradient which are the crucial reasons that hamper
+the training of very deep networks with backpropagation [9] (BP) algorithm, as
+gradients might be prone to either very small or very large after backpropagation
+with many layers. To investigate whether vanishing and exploding problems ap-
+pear, we analyze the scale of the gradients at diﬀerent convolutional layers during
+training. Take the 22-layer CNN model (in Table 1) as an example, shown in
+Fig. 1. The average magnitude of gradients and their relative values with re-
+spect to weights are displayed, respectively. We can observe that the gradient
+magnitude of lower layers does not tend to vanish or explode, but approxi-
+mately remain stable when performing the optimization. In practice, the issues
+of vanishing and exploding gradient have been largely coped with by aid of some
+techniques, e.g., rectiﬁer neuron [10,11], reﬁned initialization scheme [12,7], and
+Batch Normalization [13].
+
+However, from an information theoretical perspective [14,15,16], the amount
+of information about target outputs diminishes during propagation, although
+the gradient does not vanish. Such degradation will amplify as network goes
+deeper. In order to eﬀectively update network parameters, the error information
+should not go back too many layers. However, the problem is inevitable when
+optimizing a very deep network with standard backpropagation algorithm.
+
+To address the problem, in this paper we propose a novel method, Relay
+Backpropagation (Relay BP), which encourages the propagation of eﬀective in-
+formation through the network in training stage. To accomplish the aim, the
+whole network is ﬁrst divided into several segments. We introduce one or mul-
+tiple interim output modules (including loss layer) after intermediate segments,
+and aim to minimize the ensemble of losses. More importantly, the gradients
+from diﬀerent losses are propagated to the lowest layers of respective segments,
+namely, the gradient with respect to certain loss will propagate at most N con-
+secutive layers, where N is smaller than realistic network depth. An example
+framework is depicted in Fig. 2 with two auxiliary output modules. In a word,
+we provide an elegant way to eﬀectively preserve relevant information by short-
+ening the path from outputs to lower layers, and meanwhile restrain the adverse
+eﬀect of less relevant information which propagated through too many layers.
+
+3
+
+Fig. 1. Magnitude of the gradient at each convolutional layer of the 22-layer CNN
+model (i.e., 19 convolutional layers and 3 fully connected layers) in Table 1. A color
+line plot the gradient magnitude of diﬀerent layers at a certain number of iterations.
+(Left) Average magnitude of gradients. (Right) Relative magnitude of gradients, i.e.,
+average magnitude of gradients divided by average magnitude of weights.
+
+By virtue of Relay BP, we achieve the ﬁrst place in ILSVRC 2015 Scene
+Classiﬁcation Challenge, which provides a new large scale dataset involving 401
+classes and more than 8 million training images. The beneﬁts of the method are
+also veriﬁed on ImageNet 2012 classiﬁcation dataset with another two famous
+network architectures, which demonstrates our method is not constrained to a
+speciﬁc architecture or dataset. We will make our models available to the research
+community.
+
+2 Related Work
+
+Convolutional neural networks have attracted much attention over the last few
+years. For image classiﬁcation tasks with large scale data [17,18,19], there is a
+tendency of increasing the network complexity (e.g., the depth [5] and the width
+[20]), which brings about the diﬃculties of training the network. A range of
+techniques are exploited to address the problem by taking various angles. For
+example, Simonyan and Zisserman [5] propose to reduce the risk of divergence
+by initializing a deeper network with the aid of pre-training shallower ones.
+Reﬁned initialization schemes are adopted to train very deep networks directly
+by drawing the weights from properly scaled distributions [12,7]. Moreover, the
+beneﬁts of new activation functions [10,7,21] for training deep networks have
+been shown in extensive experiments. Besides, some studies are developed in
+the direction of ﬁnding better optimizers, such as stochastic gradient descent
+with momentum [22] and RMSProp [23], which is widely used and works well in
+practice.
+
+It is particularly worthy of comparing our method with the work in [24,25],
+where temporary branches including classiﬁers are attached to intermediate lay-
+ers, and helps to propagate the supervision information to lower layers with
+
+1471013161900.0020.0040.0060.0080.01layer indexmean abs. gradient  iter = 1e5iter = 2e5iter = 3e5147101316190.250.350.450.55layer indexmean abs. gradient / mean abs. weight  iter = 1e5iter = 2e5iter = 3e54
+
+Fig. 2. (Left) VGGNet-19 network [5] with standard backpropagation algorithm. (Mid-
+dle & Right) VGGNet-19 extended network with Relay backpropagation algorithm.
+This is an example with two auxiliary output modules, adding two branches on tra-
+ditional VGGNet-19 architecture. The black arrows denote the forward propagation
+of information through the network, and the color arrows indicate the information
+(gradient) ﬂows at backward propagation. This ﬁgure is best viewed on the screen.
+
+conv 3x3, 64 conv 3x3, 64 maxpool 2x2, 2 image conv 3x3, 128 conv 3x3, 128 maxpool 2x2, 2 conv 3x3, 256 conv 3x3, 256 maxpool 2x2, 2 conv 3x3, 256 conv 3x3, 256 conv 3x3, 512 conv 3x3, 512 maxpool 2x2, 2 conv 3x3, 512 conv 3x3, 512 conv 3x3, 512 conv 3x3, 512 maxpool 2x2, 2 conv 3x3, 512 conv 3x3, 512 fc 4096 loss fc 4096 fc 1000 conv 3x3, 64 conv 3x3, 64 maxpool 2x2, 2 image conv 3x3, 128 conv 3x3, 128 maxpool 2x2, 2 conv 3x3, 256 conv 3x3, 256 maxpool 2x2, 2 conv 3x3, 256 conv 3x3, 256 conv 3x3, 512 conv 3x3, 512 maxpool 2x2, 2 conv 3x3, 512 conv 3x3, 512 conv 3x3, 512 conv 3x3, 512 maxpool 2x2, 2 conv 3x3, 512 conv 3x3, 512 fc 4096 loss fc 4096 fc 1000 conv 3x3, 128 maxpool 4x4, 4 auxiliary loss1 fc 1024 fc 1024 conv 3x3, 128 maxpool 2x2, 2 auxiliary loss2 fc 1024 fc 1000 conv 3x3, 64 conv 3x3, 64 maxpool 2x2, 2 image conv 3x3, 128 conv 3x3, 128 maxpool 2x2, 2 conv 3x3, 256 conv 3x3, 256 maxpool 2x2, 2 conv 3x3, 256 conv 3x3, 256 conv 3x3, 512 conv 3x3, 512 maxpool 2x2, 2 conv 3x3, 512 conv 3x3, 512 conv 3x3, 512 conv 3x3, 512 maxpool 2x2, 2 conv 3x3, 512 conv 3x3, 512 fc 4096 loss fc 4096 fc 1000 conv 3x3, 128 maxpool 4x4, 4 auxiliary loss1 fc 1024 fc 1000 conv 3x3, 128 maxpool 2x2, 2 auxiliary loss2 fc 1024 fc 1000 Standard BP Relay BP seg1 seg3 seg2 seg4 seg5 5
+
+shortcuts. However, such multi-loss mechanism neglects information reduction
+due to long-term propagation, and the adverse eﬀect of less relevant information
+for lower layers. Diﬀerent from it, our method can eﬀectively preserve relevant in-
+formation and meanwhile restrain the adverse eﬀect of less relevant information,
+thus obtain a model with better performance. In [26,27], powerful networks are
+obtained by adopting new structures, i.e., Inception module and Residual block,
+which are concurrent with our work, and also attend the ILSVRC 2015 Chal-
+lenge. The two structures implement shortcut connections in diﬀerent ways, how-
+ever long-term propagation still exists when training a deeper network. There-
+fore, our contribution is orthogonal to these work, and network performance can
+be further improved beneﬁtting from our method.
+
+3 Standard BP and Information Reduction
+
+When training a network (e.g., VGGNet-19) with standard BP algorithm, op-
+timization at each iteration is comprised of forward propagation and backward
+propagation (as shown in Fig. 2 (Left)). The process of forward propagation is
+to feed the images into input layer, forward propagate through the network, and
+ﬁnally produce predicted variable in output layer. Then error is generated ac-
+cording to the diﬀerence with true (desired) values, and gradients with respect
+to loss are propagated backward through the network until the lowest layer (i.e.,
+the ﬁrst convolutional layer), which is backward propagation. The weights are
+updated according to respective gradients accordingly. The procedure suggests
+that error information received by lower layers has ﬂowed through many inter-
+mediate layers, whose number arises along with the growth of network depth.
+
+From an information theoretical point of view, a network deﬁnes the direction
+of information ﬂow, which forms a Markov chain. Let y denote the starting
+gradient (i.e., the gradient of loss with respect to the weight parameters of last
+full connected layer), which preciously represents the supervision signal, and x, u
+respectively denote the gradients transmitted to the layers in turn, i.e., y → x →
+u. According to Data Processing Inequality [15] I(y; x) ≥ I(y; u), the information
+contained in a signal is unable to increase during processing. In practice, the
+amount of information about the loss (i.e., supervised information) through the
+network is prone to reduction due to a series of complicated transformations,
+which means less relevant information obtained from loss is received by lower
+layers. Such eﬀect will amplify when information propagates deeper, ultimately
+hamper the performance of the whole network. In order to eﬀectively update
+network parameters, the information should not go back too many layers.
+
+4 Relay BackPropagation
+
+The motivation of our method is to propagate eﬀective information through the
+network in backward propagation. We accomplish the target by using auxiliary
+output modules appropriately. Take VGGNet-19 network architecture for exam-
+ple, as shown in Fig. 2 (right). The whole network is ﬁrst divided into several
+
+6
+
+segments separated with max-pooling layers. For example, from the ﬁrst convo-
+lutional layer to the ﬁrst max-pooling layer is considered as a segment, and the
+next segment starts from the third convolutional layer and ends to the second
+max-pooling layer. Thus, there are totally ﬁve segments, numbered 1 to 5 from
+lower to higher layers.
+
+We attach one or multiple auxiliary output modules to intermediate seg-
+ments. Fig. 2 is an example with two output modules (i.e., auxiliary loss 1 and
+loss 2), which are added after segment 3 and 4, respectively. In order to preserve
+the relevant information about loss, the propagation of each loss is through at
+most N consecutive layers, where N is the upper limit of the numbers of lay-
+ers that we deem that can carry enough relevant information. Namely, diﬀerent
+losses are responsible for diﬀerent parts of weight layers in the network. The
+information ﬂows from diﬀerent losses are represented with diﬀerent colors in
+Fig. 2. Auxiliary loss 1 (colored with red) would be propagated until the lowest
+one in segment 1, and auxiliary loss 2 (colored with green) would be propagated
+until the lowest one in segment 3, and the primary loss (colored with blue) would
+be propagated until the lowest layer in segment 4, respectively.
+
+More importantly, there is overlapping between information ﬂows at inter-
+mediate segments, such as segment 4 receives the information from primary loss
+and auxiliary loss 2. As our optimization objective is to minimize the sum of
+the three losses, the updating on segment 4 would fuse the information passed
+through from the two losses. Consequently, segment 4 plays the role of the tran-
+sition between the two information ﬂows of primary loss and auxiliary loss 2, not
+only the transition between lower and higher layers trivially, that is why we call
+the method as Relay Backpropagation. Such mechanism is capable of alleviating
+the optimization diﬃculty at lower layers and favoring better discrimination at
+higher layers, and achieving the aim of coordinating the information propagation
+in a very deep network ultimately.
+
+In summary, there are two distinct characters in our method: (1) diﬀerent
+losses are responsible for diﬀerent parts of weight layers in the network, rather
+than the all layers below. This is diﬀerent from traditional multi-loss with stan-
+dard BP algorithm [24,25]. Such mechanism is helpful to reduce the degradation
+of relevant information about loss and restrain the adverse eﬀect of less relevant
+information due to long-term propagation. (2) information ﬂows from diﬀerent
+losses exist overlapping at intermediate segments, that guarantees coordinate
+information propagation in the network.
+
+In forward propagation step, information transmission follows the manner
+from input to output layers, where the activations generated at one layer are
+fed into its adjacent layer in turn. The black arrows in Fig. 2 (middle) indicate
+the directions of information ﬂows through the network. It is consistent with
+standard BP for the network with auxiliary branches.
+
+When testing an image, a prediction is made without considering auxiliary
+branches, as auxiliary supervision is introduced only to enhance the training of
+network. Consequently, there is no extra cost (parameter size and time expense)
+brought in testing stage, ensuring the test eﬃciency of model.
+
+7
+
+One might be concerned with: Where to add auxiliary output module? And
+which segments (or convolutional layers) should belong to the scope of certain
+loss? We apply the heuristic scheme based on empirical evidences in this work.
+Nevertheless, some intuitive rules can be considered for guidance. One insight
+is that it is inadvisable to add auxiliary output modules at too lower layers,
+since the patterns captured at these layers lack of suﬃcient discrimination for
+recognizing a high-level concept (e.g., object or scene). Moreover, the depth of
+a network is an important factor to be considered. Adding an auxiliary branch
+might be enough if the network is not too deep. In general, the design can be
+adjusted ﬂexibly according to speciﬁc requirements and practical experience.
+
+5 Experiments
+
+In this section, we evaluate Relay BP on Places2 challenge [8] and ImageNet 2012
+classiﬁcation dataset [19], and also investigate it on four diﬀerent network ar-
+chitectures. We show Relay BP outperforms baselines signiﬁcantly. The baseline
+methods are brieﬂy introduced below:
+
+– Standard BP: Given the network, information forward and backward
+propagation follow the rule of traditional backpropagation algorithm (e.g.,
+in Fig. 2(Left)).
+
+– Multi-loss + standard BP: One auxiliary output module (branch) is
+
+attached to parts of intermediate layers.
+
+For a fair comparison, the network architecture in training stage (i.e., the ar-
+chitecture with temporary branches) is identical for our method and the baseline
+of multi-loss with standard BP. The diﬀerence lies in the scheme of information
+backward propagation. In the experiments, we only add one auxiliary branch
+for all networks, as they are not too deep to tackle. Moreover, the increment
+of branch also brings about training computation cost. Therefore, the principle
+is adding the branches as few as possible. We intend to train extremely deeper
+networks by aid of multiple branches in future work.
+
+5.1 Places2 Challenge
+
+We evaluate our method on the Places2 challenge dataset [8], which is used
+in ILSVRC 2015 Scene Classiﬁcation Challenge. This dataset includes images
+belonging to 401 scene categories, with 8.1M images for training, 20K images
+for validation and 381K images for testing. To mimic the real-world frequencies
+of scene occurrence, there is a non-uniform distribution of images per category
+for training, ranging from 4,000 to 30,000. The classiﬁcation performance of
+the challenge is evaluated using the top-5 error, which allows an algorithm to
+identify multiple scene categories for an image, because many environments can
+be described using diﬀerent words.
+
+8
+
+input size
+224×224
+
+112×112
+
+56×56
+
+28×28
+
+-
+
+14×14
+
+-
+-
+-
+
+gradient
+
+2(cid:13)
+2(cid:13)
+2(cid:13)
+1(cid:13) 2(cid:13)
+
+-
+1(cid:13)
+1(cid:13)
+1(cid:13)
+1(cid:13)
+
+model A
+
+[ conv 3×3, 64 ] × 2
+
+maxpool 2×2, 2
+
+[ conv 3×3, 128 ] × 2
+
+maxpool 2×2, 2
+
+[ conv 3×3, 256 ] × 5
+
+maxpool 2×2, 2
+
+[ conv 3×3, 512 ] × 5
+
+maxpool 2×2, 2
+
+model B
+
+[ conv 7×7, 128, stride 2 ] × 1
+
+maxpool 2×2, 2
+
+[ modiﬁed inception, k 64 ] × 4
+
+maxpool 2×2, 2
+
+[ modiﬁed inception, k 128 ] × 4
+
+maxpool 2×2, 2
+
+auxiliary classiﬁer 2(cid:13)
+
+[ conv 3×3, 256 ] × 5
+
+spp, {7, 3, 2, 1}
+
+[ modiﬁed inception, k 128 ] × 4
+
+spp, {7, 3, 2, 1}
+
+fc 4096
+fc 4096
+
+fc 401, classiﬁer 1(cid:13)
+
+Table 2. Architectures of the networks used for ILSVRC 2015 Scene Classiﬁcation.
+The convolutional layer is denoted as “conv <receptive ﬁeld>, <ﬁlters>”. The max-
+pooling layer is denoted as “maxpool <region size>, <stride>”. Our modiﬁed inception
+module concatenates the outputs of a 1×1 convolution with k ﬁlters, a 3×3 convolution
+with k ﬁlters and two 3×3 convolution with 2k ﬁlters. 1(cid:13) and 2(cid:13) indicate which layers
+the gradients propagate to.
+
+Network Architectures. Relay BP is independent on the network architec-
+tures used. We investigate two types of deep convolutional neural network ar-
+chitectures on the Places2 challenge dataset, as shown in Table 2. The model A
+is based on VGGNet-19 [5], and simply adds 3 convolutional layers on the three
+smaller feature maps (56, 28, 14). The model B uses a 7× 7 convolutional layers
+and a modiﬁed inception module as building block. We also incorporate spatial
+pyramid pooling (spp) [28] into the models, where the pyramid conﬁguration is
+7 × 7, 3 × 3, 2 × 2 and 1 × 1. Dropout regularization is applied to the ﬁrst two
+fully-connected (fc) layers, with the dropout ratio 0.5. We use Rectiﬁed Linear
+Unit (ReLU) as nonlinearity and do not use Batch Normalization [13] in the
+two networks. The experiments involving Batch Normalization will be seen in
+Section 5.2. The auxiliary classiﬁer 2(cid:13) is used in multi-loss standard BP and
+Relay BP, rather than standard BP. The loss weight of the auxiliary classiﬁer is
+set to 0.3. The “gradient” in Table 2 shows the details of backward propagation
+in Relay BP.
+
+Class-aware Sampling. The Places2 challenge dataset has more than 8M
+training images in total. The numbers of images in diﬀerent classes are imbal-
+anced, ranging from 4,000 to 30,000 per class. The large scale data and non-
+uniform class distribution pose great challenges for model learning.
+
+9
+
+Method
+
+model A
+
+model B
+
+top-1 err.
+
+top-5 err.
+
+top-1 err.
+
+top-5 err.
+
+standard BP
+multi-loss + standard BP
+Relay BP
+
+50.91
+
+50.72(0.19)
+49.75(1.16)
+
+19.00
+
+18.84(0.18)
+17.83(1.17)
+
+50.62
+
+50.59(0.03)
+49.77(0.85)
+
+18.69
+
+18.68(0.01)
+17.86(0.83)
+
+Table 3. Single crop error rates (%) on Places2 challenge validation set. In the
+brackets are the improvements over “standard BP” baseline.
+
+Method
+
+model A
+
+model B
+
+top-1 err.
+
+top-5 err.
+
+top-1 err.
+
+top-5 err.
+
+standard BP
+multi-loss + standard BP
+Relay BP
+
+48.67
+
+48.55(0.12)
+47.86(0.81)
+
+17.19
+
+17.05(0.14)
+16.33(0.86)
+
+48.29
+
+48.27(0.02)
+47.72(0.57)
+
+16.89
+
+16.89(0.00)
+16.36(0.53)
+
+Table 4. Single model error rates (%) on Places2 challenge validation set. In the
+brackets are the improvements over “standard BP” baseline.
+
+To address this issue, we apply a sampling strategy, named “class-aware
+sampling”, during training. We aim to ﬁll a mini-batch as uniform as possible
+with respect to classes, and prevent the same example and class from always
+appearing in a permanent order. In practice, we use two types of lists, one is
+class list, and the other is per-class image list. Taking Places2 challenge dataset
+for example, we have one class list, and 401 per-class image lists. When getting a
+training mini-batch in an iteration, we ﬁrst sample a class X in the class list, then
+sample an image in the per-class image list of class X. When reaching the end
+of the per-class image list of class X, a shuﬄe operation is performed to reorder
+the images of class X. When reaching the end of class list, a shuﬄe operation
+is performed to reorder the classes. We leverage such a class-aware sampling
+strategy to eﬀectively tackle the non-uniform class distribution, and the gain of
+accuracy on the validation set is about 0.6%.
+
+Training and Testing. Our implementation is based on the publicly available
+code of Caﬀe [29]. We train models on the provided Places2 challenge training
+set, do not use any additional training data. The image is resized isotropically
+so that its shorter side is 256. To augment the training set, a 224×224 crop is
+randomly sampled from a training image, with the per-pixel mean subtracted.
+The random horizontal ﬂipping and standard color shift in [1] are used. We
+initialize the weights using [7] and train all networks from scratch. We train the
+networks by applying stochastic gradient descent (SGD) with mini-batch size of
+256 and a ﬁxed momentum of 0.9. The learning rate is initialized to 0.01, and is
+annealed by a factor of 10 when the error plateaus. The training is regularized
+by weight decay (set to 0.0002). We train all models up to 80 × 104 iterations.
+In testing, we take the standard “single crop (center crop)” protocol in [25].
+
+10
+
+Team name
+Ntu rose
+Trimps-Soushen
+Qualcomm Research
+SIAT MMLAB
+WM (model A)
+WM (model B)
+WM (model ensemble)
+
+top-5 err.
+
+19.33
+17.98
+17.59
+17.36
+17.35
+17.28
+16.87
+
+Table 5. The competition results of ILSVRC 2015 Scene Classiﬁcation. The top-5
+error rates (%) is on Places2 challenge test set and reported by the test server. Our
+submissions are denoted as “WM”.
+
+Furthermore, we use the fully-convolutional testing [5] to report the performance
+of single model. The image is resized isotropically so that its shorter side is in
+{224, 256, 320, 384, 448}, and the scores are averaged at multiple scales.
+
+Comparisons of Results. Table 3 lists the results of the three methods with
+“single crop” testing strategy. Compared with standard BP, the baseline “Multi-
+loss + standard BP” shows better performance by introducing auxiliary supervi-
+sion on intermediate layers, however the superiority is marginal, even negligible
+with regard to model B. In contrast, our method achieves signiﬁcant improve-
+ment over standard BP, as well as consistently outperforms “Multi-loss + stan-
+dard BP” (approximately 1.0% on model A and 0.8% on model B based on
+top-5 measure). It is notable that the improvement on model B is less than
+the one on model A. The shortcut connections in modiﬁed Inception modules
+make it possible to propagate information with shortcuts, somewhat alleviates
+the information reduction. This is also the reason of ineﬀectiveness of “Multi-loss
++ standard BP” on model B. Nevertheless, our method is capable of improving
+the performance on model B. It conﬁrms our insight that restraining the adverse
+eﬀect of less relevant information is helpful for training deep neural networks.
+
+For a comprehensive comparison, we also report the model performance with
+“single model” testing strategy in Table 4. Clear advantage can be observed
+in our method compared to the baselines. It is worthy of mentioning that the
+improvement of single model over center crop is less, about 1.5% top-5 error
+diminished from 17.83% (single crop) to 16.33%, while empirical results on Ima-
+geNet 2012 classiﬁcation dataset suggest the performance gain is approximately
+3.0% [7,13].
+
+ILSVRC 2015 Scene Classiﬁcation Challenge. By virtue of Relay BP, our
+“WM” team won the 1st place in ILSVRC 2015 Scene Classiﬁcation task. Table
+5 shows the results of this challenge. Our ﬁve entries won the top ﬁve places, and
+the results of our single model A and B outperform all ensemble results from
+other teams. We combine ﬁve models of diﬀerent architectures and input scales,
+
+11
+
+Fig. 3. Example images successfully classiﬁed by our method on Places2 challenge
+validation set. For each image, the ground-truth label and our top-5 predictions are
+listed.
+
+Fig. 4. Example images incorrectly classiﬁed by our method on Places2 challenge vali-
+dation set. For each image, the ground-truth label and our top-5 predictions are listed.
+
+and achieve 15.74% top-5 error on validation set. Our top-5 error is 16.87%
+on the testing set, which is roughly 1.1% worse than the validation result. We
+conjecture that there might be a distribution gap between validation and testing
+data, because similar degradation has also been observed by other teams [8]. The
+improvement of model ensemble over single model B is 0.4%. From single crop
+to single model, and further to model ensemble, the improvement is consistently
+lower than expected. We conjecture that training with large scale data enhances
+the capability of single view, leading to the diﬃculties of further improvement
+with model ensemble.
+
+Fig. 3 shows some example images of Places2 challenge validation set, which
+are successfully classiﬁed by our method. The predicted labels are in descending
+order of conﬁdence. Even though many high-level scene concepts exist large intra-
+class appearance variance, our method can still recognize them easily. On the
+other hand, we also show some incorrectly classiﬁed examples in Fig. 4. These
+predictions seem to be reasonable, although they fail in context of evaluation
+measure. A scene image might be typically described by multi-labels. Moreover,
+the composing of a scene is mostly complicated, such as a place is comprised of
+multiple objects and the same object might appear in diﬀerent places. The loose
+
+GT: art studio 1. art studio 2. art gallery 3. artists loft 4. art school 5. museum  GT: oilrig 1. oilrig 2. islet 3. ocean 4. coast 5. beach  GT: amusement park 1. amusement park 2. carrousel 3. amusement arcade 4. water park 5. temple  GT: sushi bar 1. sushi bar 2. restaurant kitchen 3. delicatessen 4. bakery shop 5. pantry  GT: pub indoor 1. hotel room 2. bedroom 3. bedchamber 4. television room 5. balcony interior GT: skyscraper 1. lift bridge 2. tower 3. bridge 4. viaduct 5. river  GT: waterfall block 1. aqueduct 2. viaduct 3. bridge 4. arch 5. hot spring  GT: entrance hall 1. corridor 2. hallway 3. elevator lobby 4. lobby 5. reception  12
+
+Method
+
+dataset
+
+ResNet-50
+
+Inception-v3
+
+top-1 err. top-5 err. top-1 err. top-5 err.
+
+standard BP [27,26]
+standard BP (re-implement)
+Relay BP
+Relay BP
+
+val
+
+val
+
+test
+
+20.74
+21.17
+20.26
+
+-
+
+5.25
+5.37
+4.93
+4.95
+
+18.77
+19.18
+18.52
+
+-
+
+4.20
+4.43
+3.97
+4.03
+
+Table 6. Single model error rates (%) on ImageNet 2012 classiﬁcation dataset.
+
+connections between scene and object concepts increase the diﬃculties of scene
+recognition.
+
+5.2
+
+ImageNet 2012 Classiﬁcation
+
+We evaluate our method on the ImageNet 2012 classiﬁcation dataset [19], which
+has become one of the benchmarks to assess the progress of image classiﬁcation.
+This dataset includes images belonging to 1000 classes, with 1.2M images for
+training, 50K images for validation and 100K images for testing. The classiﬁ-
+cation performance is measured by the top-1 and top-5 error rates. We use the
+provided data for training models, do not use any additional data.
+
+Conﬁgurations. Recently, residual networks [27] introduce shortcut connec-
+tions, and has achieved state-of-the-art performance on ImageNet 2012 classi-
+ﬁcation dataset. Moreover, [26] utilizes the ”Inception-v3” architectures, and
+yielded comparable classiﬁcation accuracy. We use the 50-layer residual network
+(ResNet-50) [27] and the Inception-v3 architectures [26] to evaluate Relay BP.
+For both architectures, we do not use scale jitter augmentation [5] during train-
+ing. Standard SGD is applied to train the networks. Other conﬁgurations (in-
+cluding data augmentation, network architectures, and training/testing method-
+ology) remain unchanged as [27,26]. More details about the conﬁgurations can
+be found in [27,26]. For Relay BP, we add one auxiliary branch with the loss
+weight set to 0.3. The gradient overlapping segments of primary and auxiliary
+loss range from “conv4 1” to “conv4 4” (ResNet-50), and “inception4a” to “in-
+ception4d” (Inception-v3), respectively. As the scheme of multi-loss has been
+included in Inception-v3, we omit the baseline “Multi-loss + standard BP” in
+Table 6.
+
+Results Analysis and Discussion. Table 6 lists the classiﬁcation errors
+achieved in single model. The results in the ﬁrst row are the ones reported
+in [27] and [26], respectively. And the second row displays the results by our re-
+implementation. There is slight diﬀerence between the two rows, mainly because
+of the diversity of details in implementation, which has been described in the
+section of ”Conﬁgurations”.
+
+13
+
+The models trained with Relay BP achieve better classiﬁcation performance
+compared to the ones trained with standard BP. The accuracy improvement
+is 0.44% on top-5 measure, and 0.91% on top-1 measure based on ResNet-50
+network. Besides, there are 0.46% and 0.66% improvement on top-5 and top-1
+measure based on Inception-v3 architecture. The common characteristic of the
+two architectures is the utilization of shortcut connections, although the im-
+plementations are diﬀerent. As we have mentioned in above sections, shortcuts
+make the gradient of ﬁnal outputs easily reach lower layers, thus are able to
+prevent the information reduction due to long-term propagation. This is also
+the evidence of only adding one auxiliary branch in Relay BP. Nevertheless,
+the network performance can be enhanced by aid of our method, which further
+demonstrates the promise of our insight that restraining the adverse eﬀect of
+less relevance information is eﬀective for improving network performance. Be-
+cause of the high baselines, the improvement is so diﬃcult, which highlights the
+eﬀectiveness of our method. Moreover, we also report the results on test dataset
+(submitted to test server) to verify that the obtained results are not overﬁtting
+to the dataset. We only submitted the two results in the last half year, and the
+result 4.03% outperforms the best result of single model reported in ILSVRC
+2015 ImageNet Classiﬁcation task.
+
+6 Conclusion
+
+In this paper, we proposed the method Relay Backpropagation, which encour-
+ages the transmission of eﬀective information in backward propagation of train-
+ing deep convolutional neural networks. Relevant information can be eﬀectively
+preserved, and the adverse eﬀect of less relevant information can be restrained.
+The experiments with four diﬀerent network architectures on two challenging
+large scale datasets demonstrate the eﬀectiveness of our method is not restricted
+to certain network architecture or speciﬁc dataset. As a future direction, we are
+interested in theoretical and mathematical support for the method.
+
+References
+
+1. Krizhevsky, A., Sutskever, I., Hinton, G.E.:
+
+ImageNet classiﬁcation with deep
+
+convolutional neural networks. In: NIPS. (2012)
+
+2. Girshick, R., Donahue, J., Darrell, T., Malik, J.: Rich feature hierarchies for accu-
+
+rate object detection and semantic segmentation. In: CVPR. (2014)
+
+3. Taigman, Y., Yang, M., Ranzato, M., Wolf, L.: Deepface: Closing the gap to
+
+human-level performance in face veriﬁcation. In: CVPR. (2014)
+
+4. Karpathy, A., Toderici, G., Shetty, S., Leung, T., Sukthankar, R., Fei-Fei, L.: Large-
+
+scale video classiﬁcation with convolutional neural networks. In: CVPR. (2014)
+
+5. Simonyan, K., Zisserman, A.: Very deep convolutional networks for large-scale
+
+image recognition. In: ICLR. (2015)
+
+6. Srivastava, R.K., Greﬀ, K., Schmidhuber, J.: Highway networks. In: ICML Deep
+
+Learning Workshop. (2015)
+
+14
+
+7. He, K., Zhang, X., Ren, S., Sun, J.: Delving deep into rectiﬁers: Surpassing human-
+
+level performance on imagenet classiﬁcation. In: ICCV. (2015)
+
+8. Zhou, B., Khosla, A., Lapedriza, A., Torralba, A., Oliva, A.: Places2: A large-scale
+
+database for scene understanding. http://places2.csail.mit.edu/ (2015)
+
+9. LeCun, Y., Bottou, L., Orr, G., Muller, K.: Eﬃcient backprop. Neural Networks:
+
+Tricks of the trade (1998)
+
+10. Nair, V., Hinton, G.: Rectiﬁed linear units improve restricted boltzmann machines.
+
+In: ICML. (2010)
+
+11. Maas, A.L., Hannun, A.Y., Ng, A.Y.: Rectiﬁed nonlinearities improve neural net-
+
+work acstic models. In: ICML. (2013)
+
+12. Glorot, X., Bengio, Y.: Understanding the diﬃculty of training deep feedforward
+
+neural networks. In: ICAIS. (2010)
+
+13. Ioﬀe, S., Szegedy, C.: Batch normalization: Accelerating deep network training by
+
+reducing internal covariate shift. arXiv:1502.03167 (2015)
+
+14. Kamimura, R.:
+
+Information Theoretic Neural Computation. World Scientiﬁc
+
+(2002)
+
+15. Cover, T.M., Thomas, J.A.: Elements of Information Theory. Wiley-Interscience
+
+(2006)
+
+16. Tishby, N., Zaslavsky, N.: Deep learning and the information bottleneck principle.
+
+In: IEEE Information Theory Workshop. (2015)
+
+17. Zhou, B., Lapedriza, A., Xiao, J., Torralba, A., Oliva, A.: Learning deep features
+
+for scene recognition using places database. In: NIPS. (2014)
+
+18. Xiao, J., Ehinger, K., Hays, J., Torralba, A., Oliva, A.: Sun database: Exploring
+
+a large collection of scene categories. IJCV (2014)
+
+19. Russakovsky, O., Deng, J., Su, H., Krause, J., Satheesh, S., Ma, S., Huang, Z.,
+Karpathy, A., Khosla, A., Bernstein, M., Berg, A.C., Fei-Fei, L.: Imagenet large
+scale visual recognition challenge. IJCV (2015)
+
+20. Zeiler, M.D., Fergus, R.: Visualizing and understanding convolutional neural net-
+
+works. In: ECCV. (2014)
+
+21. Goodfellow, I.J., Warde-Farley, D., Mirza, M., Courville, A., Bengio, Y.: Maxout
+
+networks. arXiv:1302.4389 (2013)
+
+22. Sutskever, I., Martens, J., Dahl, G.E., Hinton, G.E.: On the importance of initial-
+
+ization and momentum in deep learning. In: ICML. (2013)
+
+23. Tieleman, T., Hinton, G.: Divide the gradient by a running average of its recent
+
+magnitude. COURSERA: Neural Networks for Machine Learning (2012)
+
+24. Lee, C.Y., Xie, S., Gallagher, P., Zhang, Z., Tu, Z.: Deeply-supervised nets. In:
+
+AISTATS. (2015)
+
+25. Szegedy, C., Liu, W., Jia, Y., Sermanet, P., Reed, S., Anguelov, D., Erhan, D.,
+Vanhoucke, V., Rabinovich, A.: Going deeper with convolutions. In: CVPR. (2015)
+26. Szegedy, C., Vanhoucke, V., Ioﬀe, S., Shlens, J., Wojna, Z.: Rethinking the incep-
+
+tion architecture for computer vision. arXiv:1512.00567 (2015)
+
+27. He, K., Zhang, X., Ren, S., Sun, J.: Deep residual learning for image recognition.
+
+In: CVPR. (2016)
+
+28. He, K., Zhang, X., Ren, S., Sun, J.: Spatial pyramid pooling in deep convolutional
+
+networks for visual recognition. In: ECCV. (2014)
+
+29. Jia, Y., Shelhamer, E., Donahue, J., Karayev, S., Long, J., Girshick, R., Guadar-
+rama, S., Darrell, T.: Caﬀe: Convolutional architecture for fast feature embedding.
+arXiv:1408.5093 (2014)
+
+

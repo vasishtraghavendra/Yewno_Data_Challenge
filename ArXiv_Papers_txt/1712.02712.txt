@@ -1,0 +1,3431 @@
+7
+1
+0
+2
+
+ 
+c
+e
+D
+7
+
+ 
+
+ 
+ 
+]
+T
+G
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+2
+1
+7
+2
+0
+
+.
+
+2
+1
+7
+1
+:
+v
+i
+X
+r
+a
+
+Group Activity Selection on Social Networks
+
+Group Activity Selection on Social Networks
+
+Ayumi Igarashi
+Robert Bredereck
+Dominik Peters
+Edith Elkind
+University of Oxford
+Wolfson Building, Parks Road, Oxford OX1 3QD
+
+ayumi.igarashi@cs.ox.ac.uk
+robert.bredereck@tu-berlin.de
+dominik.peters@cs.ox.ac.uk
+elkind@cs.ox.ac.uk
+
+Abstract
+
+We propose a new variant of the group activity selection problem (GASP), where the
+agents are placed on a social network and activities can only be assigned to connected
+subgroups (gGASP). We show that if multiple groups can simultaneously engage in the
+same activity, ﬁnding a stable outcome is easy as long as the network is acyclic. In contrast,
+if each activity can be assigned to a single group only, ﬁnding stable outcomes becomes
+computationally intractable, even if the underlying network is very simple: the problem of
+determining whether a given instance of a gGASP admits a Nash stable outcome turns out
+to be NP-hard when the social network is a path or a star, or if the size of each connected
+component is bounded by a constant. We then study the parameterized complexity of
+ﬁnding outcomes of gGASP that are Nash stable, individually stable or core stable. For
+the parameter ‘number of activities’, we propose an FPT algorithm for Nash stability for
+the case where the social network is acyclic and obtain a W[1]-hardness result for cliques
+(i.e., for standard GASP); similar results hold for individual stability. In contrast, ﬁnding a
+core stable outcome is hard even if the number of activities is bounded by a small constant,
+both for standard GASP and when the social network is a star. For the parameter ‘number
+of players’, all problems we consider are in XP for arbitrary social networks; on the other
+hand, we prove W[1]-hardness results with respect to the parameter ‘number of players’ for
+the case where the social network is a clique. 1
+
+1. Introduction
+
+Companies assign their employees to diﬀerent departments, large decision-making bodies
+split their members into expert committees, and university faculty form research groups:
+division of labor, and thus group formation, is everywhere. For a given assignment of agents
+to activities (such as management, product development, or marketing) to be successful,
+two considerations are particularly important: the agents need to be capable to work on
+their activity, and they should be willing to cooperate with other members of their group.
+Many relevant aspects of this setting are captured by the group activity selection problem
+(GASP), introduced by Darmann et al. (2012). In GASP, players have preferences over pairs
+of the form (activity, group size). The intuition behind this formulation is that certain tasks
+are best performed in small or large groups, and agents may diﬀer in their preferences over
+
+1. Preliminary versions of this article appeared in Proceedings of the 31st AAAI Conference on Artiﬁcial
+Intelligence (Igarashi et al., 2017), and Proceedings of the 16th International Joint Conference on
+Autonomous Agents and Multi Agent Systems (Igarashi et al., 2017). In this longer version, we provide
+all proofs that were omitted from the conference version and improve some of the results.
+
+1
+
+Igarashi, Bredereck, Peters, & Elkind
+
+group sizes; however, they are indiﬀerent about other group members’ identities. In the
+analysis of GASP, desirable outcomes correspond to stable and/or optimal assignments of
+players to activities, i.e., assignments that are resistant to player deviations and/or that
+maximize the total welfare.
+
+The basic model of GASP ignores the relationships among the agents: Do they know each
+other? Are their working styles and personalities compatible? Typically, we cannot aﬀord
+to ask each agent about her preferences over all pairs of the form (coalition, activity), as the
+number of possible coalitions grows quickly with the number of agents. A more practical
+alternative is to adopt the ideas of Myerson (1977) and assume that the relationships among
+the agents are encoded by a social network, i.e., an undirected graph where nodes correspond
+to players and edges represent communication links between them; one can then require that
+each group is connected with respect to this graph.
+
+In this paper we extend the basic model of GASP to take into account the agents’ social
+network (gGASP). We formulate several notions of stability for this setting, including Nash
+stability and core stability, and study the complexity of computing stable outcomes in our
+model. These notions of stability are inspired by the hedonic games literature (Banerjee
+et al., 2001; Bogomolnaia & Jackson, 2002), and were applied in the GASP setting by
+Darmann et al. (2012) and Darmann (2015).
+
+Hedonic games on social networks were recently considered by Igarashi and Elkind (2016),
+who showed that if the underlying network is acyclic, stable outcomes are guaranteed to
+exist and some of the problems known to be computationally hard for the unrestricted
+setting become polynomial-time solvable. We obtain a similar result for GASP, but only if
+several groups of agents can simultaneously engage in the same activity, i.e., if the activities
+are copyable. In contrast, we show that if each activity can be assigned to at most one
+coalition, a stable outcome may fail to exist, and moreover ﬁnding them is computationally
+hard even if the underlying network is very simple. Speciﬁcally, checking the existence of
+Nash stable, individually stable, or core stable outcomes turns out to be NP-hard even
+for very restricted classes of graphs, including paths, stars, and graphs with constant-size
+connected components. This result stands in sharp contrast to the known computational
+results in the literature; indeed, in the context of of cooperative games, such restricted
+networks usually enable one to design eﬃcient algorithms for computing stable solutions
+(see, e.g., Chalkiadakis et al. (2016); Elkind (2014); Igarashi and Elkind (2016)).
+
+Given these hardness results, we switch to the ﬁxed parameter tractability paradigm.
+A problem is said to be ﬁxed parameter tractable (FPT) with respect to a parameter k if
+each instance I of this problem can be solved in time f (k)poly(|I|), and to be slice-wise
+polynomial (XP) with respect to a parameter k if each instance I of this problem can be
+solved in time |I|f (k), respectively; here f is a computable function that depends only on
+k. In the context of GASP, a particularly relevant parameter is the number of activities:
+generally speaking, we expect the number of available activities to be small in many practical
+applications. For instance, companies can only assign a limited number of projects to their
+employers; a workshop can usually organise a couple of social events; and schools can oﬀer
+few facilities to their students. We show that the problem of deciding the existence of Nash
+stable outcomes for gGASPs on acyclic graphs is in FPT with respect to the number of
+activities. For general graphs, we obtain a W[1]-hardness result, implying that this problem
+is unlikely to admit an FPT algorithm. This hardness result holds even for gGASPs on
+
+2
+
+Group Activity Selection on Social Networks
+
+general case
+
+few activities (p)
+
+few players (n)
+
+copyable activities
+
+Nash stability and individual stability
+
+NP-c.
+
+cliques
+NP-c. (Th. 10, 13)
+acyclic
+NP-c. (Th. 10, 13)
+paths
+stars
+NP-c. (Th. 11, 13)
+small comp. NP-c. (Th. 12, 13)
+
+W[1]-h. (Th. 23, 25)
+
+W[1]-h. (Th. 31)
+
+FPT (Th. 16,18)
+FPT (Th. 16,18)
+FPT (Th. 16,18)
+
+FPT (Th. 14)
+
+XP (Obs. 29)
+XP (Obs. 29)
+XP (Obs. 29)
+
+XP
+
+NP-c.
+
+P (Th. 9, 8)
+P (Th. 9, 8)
+P (Th. 9, 8)
+P (Th. 9, 8)
+
+core stability
+
+cliques
+acyclic
+paths
+stars
+small comp.
+
+NP-c.
+
+NP-c. (Th. 13)
+NP-c. (Th. 13)
+NP-c. (Th. 13)
+NP-c. (Th. 13)
+
+NP-c. for p = 4 (Th. 28) W[1]-h. (Th. 30)
+NP-c. for p = 2 (Th. 19)
+
+XP (Prop. 21)
+
+NP-c. for p = 2 (Th. 19)
+
+FPT (Th. 15)
+
+XP (Obs. 29)
+XP (Obs. 29)
+XP (Obs. 29)
+XP (Obs. 29)
+
+NP-c.
+
+P
+P
+P
+P
+
+Table 1: Overview of our complexity results. All W[1]-hardness results are accompanied by XP-
+membership proofs. For all ‘XP’-entries, the question whether the problem is ﬁxed-parameter
+tractable remains open. Grey entries are results that have appeared in the literature before.
+
+cliques; thus, it is also W[1]-hard to decide the existence of a Nash stable outcome in a
+standard GASP.
+
+While we ﬁnd that from an algorithmic point of view, individual stability is very similar
+to Nash stability, unfortunately, our FPT results do not extend to core stability: we prove
+that checking the existence of core stable assignments is NP-complete even for gGASPs on
+stars with two activities; for standard GASP, we can prove that this problem is hard if there
+are at least four activities. On the other hand, if there is only one activity, a core stable
+assignment always exists and can be constructed eﬃciently, for any network structure.
+
+Another parameter we consider is the number of players. This restriction applies to many
+practical scenarios. For example, in research teams with limited human resources, there are
+a limited number of researchers who are able to conduct the projects. Somewhat surprisingly,
+we show that the parameterization by the number of players does not give rise to an FPT
+algorithm for gGASPs on general networks. Speciﬁcally, for all stability notions we consider,
+it is W[1]-hard to decide the existence of a stable outcome even when the underlying graph
+is a clique. Again, our hardness result particularly implies the W[1]-hardness of computing
+stable outcomes in a standard GASP. We summarize our complexity results in Table 1.
+
+1.1 Related work
+
+Darmann et al. (2012) initiate the study of GASP. In the work of Darmann et al. (2012),
+players are assumed to have approval preferences, and a particular focus is placed on
+individually rational assignments with the maximum number of participants and Nash stable
+assignments. They obtained a number of complexity results of computing these outcomes
+while concerning special cases where players have increasing/degreasing preferences on the
+size of a group. Subsequently, Darmann (2015) investigated a model where players submit
+ranked ballots. In this work, stability concepts such as core stability and individual stability
+have been adapted from the hedonic games literature. Further, Lee and Shoham (2015)
+studied stable invitation problems, which is a subclass of GASP where only one activity is
+
+3
+
+Igarashi, Bredereck, Peters, & Elkind
+
+assigned to players. This problem was inspired by settings in which an organizer of an event
+chooses a stable set of guests who have preferences over the number of participants of the
+event. We refer the reader to the recent survey by Darmann and Lang (2017) for the relation
+between these models.
+
+Recently, the parameterized aspects of GASP have been considered by several authors.
+Lee and Williams (2017) studied the complexity of standard GASP, with parameter being
+the number of groups. They showed that computing a maximum individually rational
+assignment is in FPT with respect to that parameter; however, they proved that this does
+not extend to other solution concepts, such as Nash stability and envy-freeness, by obtaining
+a number of W[1]-hardness results. More recently, Gupta et al. (2017) investigated the
+parameterized complexity of ﬁnding Nash stable outcomes in the context of gGASP. In
+their work, computation of a Nash stable outcome was shown to be in FPT with respect
+to the combined parameters: the maximum size of a group and the maximum degree in
+the underlying social network. They also presented an FPT algorithm with respect to the
+number of activities when the underlying network has a bounded tree-width. This generalizes
+our FPT result for trees and improves the bound on the running time.
+
+GASP are closely related to hedonic games (Banerjee et al., 2001; Bogomolnaia & Jackson,
+2002). Much work has been devoted to the complexity study of hedonic games when there is
+no restriction on coalition formation (see e.g. Woeginger (2013) and Aziz and Savani (2016)).
+In particular, the copyable setting of GASP includes a class of anonymous hedonic games
+where players’ preferences are only determined by the size of the coalition to which they
+belong. Ballester (2004) showed that computing Nash, core, and individually stable outcomes
+of the game is NP-hard for anonymous games; this translates into the NP-hardness of these
+solutions for copyable instances of gGASP when the social network is a clique. Nevertheless,
+our positive results for copyable activities imply that in anonymous hedonic games, one can
+compute a stable outcome in polynomial time if the underlying social network is acyclic.
+
+It is worth mentioning that models with graph connectivity constraints have been studied
+in diﬀerent settings from ours (Talmon, 2017; Bouveret et al., 2017; Suksompong, 2017).
+Talmon (2017) considered the multiwinner problem when each winner has to represent a
+connected voting district. In the work of Talmon (2017), a similar hardness result concerning
+optimal committees for paths was obtained; further, computing an optimal committee on
+graphs with bounded tree-width was shown to be polynomial-time solvable for non-unique
+variants of the problem where several connected districts can be represented by the same
+winner. This restriction corresponds to our copyalbe cases of gGASP. In the fair division
+literature, Bouveret et al. (2017) investigated a fair allocation of indivisible goods under
+graph connectivity constraints: the graph represents the dependency among the items, and
+each player’s bundle must be connected in this graph. Similarly, computing envy-free and
+proportional allocations was proven to be NP-hard even when the graph among the items
+is a path; however, they showed that computing maximin fair allocations can be done in
+polynomial time when the graph is acyclic.
+
+4
+
+Group Activity Selection on Social Networks
+
+2. Preliminaries
+
+2.1 Group Activity Selection Problems
+For s ∈ N, let [s] = {1, 2, . . . , s}. For s, t ∈ Z where s ≤ t, let [s, t] = {s, s + 1, s + 2, . . . , t}.
+An instance of the Group Activity Selection Problem (GASP) is given by a ﬁnite set of players
+N = [n], a ﬁnite set of activities A = A∗ ∪ {a∅}, where A∗ = {a1, a2, . . . , ap} and a∅ is the
+void activity, and a proﬁle ((cid:23)i)i∈N of complete and transitive preference relations over the
+set of alternatives (A∗ × [n]) ∪ {(a∅, 1)}. Intuitively, a∅ corresponds to staying alone and
+doing nothing; multiple agents can make that choice independently from each other.
+
+Throughout the paper, we assume that we can determine in unit time whether each
+player i prefers (a, k) to (b, (cid:96)), prefers (b, (cid:96)) to (a, k), or is indiﬀerent between them. We will
+write x (cid:31)i y or i : x (cid:31) y to indicate that player i strictly prefers alternative x to alternative
+y; similarly, we will write x ∼i y or i : x ∼ y if i is indiﬀerent between x and y. Also,
+given two sets of alternatives X, Y and a player i, we write X (cid:31)i Y to indicate that i is
+indiﬀerent among all alternatives in X as well as among all alternatives in Y , and prefers
+each alternative in X to each alternative in Y .
+We refer to subsets S ⊆ N of players as coalitions. We say that two non-void activities a
+and b are equivalent if for every player i ∈ N and every (cid:96) ∈ [n] it holds that (a, (cid:96)) ∼i (b, (cid:96)).
+A non-void activity a ∈ A∗ is called copyable if A∗ contains at least n activities that are
+equivalent to a (including a itself). We say that player i ∈ N approves an alternative (a, k)
+if (a, k) (cid:31)i (a∅, 1).
+An outcome of a GASP is an assignment of activities A to players N , i.e., a mapping
+π : N → A. Given an assignment π : N → A and a non-void activity a ∈ A∗, we denote by
+πa = { i ∈ N | π(i) = a} the set of players assigned to a. Also, if π(i) (cid:54)= a∅, we denote by
+πi = {i} ∪ { j ∈ N | π(j) = π(i)} the set of players assigned to the same activity as player
+i ∈ N ; we set πi = {i} if π(i) = a∅. An assignment π : N → A for a GASP is individually
+rational (IR) if for every player i ∈ N with π(i) (cid:54)= a∅ we have (π(i),|πi|) (cid:23)i (a∅, 1). A
+coalition S ⊆ N and an activity a ∈ A∗ strongly block an assignment π : N → A if πa ⊆ S
+and (a,|S|) (cid:31)i (π(i),|πi|) for all i ∈ S. An assignment π : N → A for a GASP is called core
+stable (CR) if it is individually rational, and there is no coalition S ⊆ N and activity a ∈ A∗
+such that S and a strongly block π. Given an assignment π : N → A of a gGASP, a player
+i ∈ N is said to have
+
+• an NS-deviation to activity a ∈ A∗ if i strictly prefers to join the group πa, i.e.,
+(a,|πa| + 1) (cid:31)i (π(i),|πi|).
+• an IS-deviation if it is an NS-deviation, and all players in πa accept it, i.e., (a,|πa|+1) (cid:23)j
+(a,|πa|) for all j ∈ πa.
+
+2.2 Graphs and digraphs
+
+An undirected graph, or simply a graph, is a pair (N, L), where N is a ﬁnite set of nodes and
+L ⊆ {{i, j} | i, j ∈ N, i (cid:54)= j } is a collection of edges between nodes. Given a set of nodes S,
+the subgraph of (N, L) induced by S is the graph (S, L|S), where L|S = {{i, j} ∈ L | i, j ∈ S}.
+For a graph (N, L), a sequence of distinct nodes (i1, i2, . . . , ik), k ≥ 2, is called a path in
+L if {ih, ih+1} ∈ L for h ∈ [k − 1]. A path (i1, i2, . . . , ik), k ≥ 3, is said to be a cycle in L
+
+5
+
+Igarashi, Bredereck, Peters, & Elkind
+
+if {ik, i1} ∈ L. A graph (N, L) is said to be a forest if it contains no cycles. An edge e is
+incident to a node i if i ∈ e. A pair of distinct nodes i, j are adjacent if {i, j} ∈ L. A subset
+S ⊆ N is said to be connected in (N, L) if for every pair of distinct nodes i, j ∈ S there is a
+path between i and j in L|S. A forest (N, L) is said to be a tree if N is connected in (N, L).
+A tree (N, L) is called a star if there exists a central node c ∈ N that is adjacent to every
+other node. A subset S ⊆ N of a graph (N, L) is said to be a clique if for every pair of
+distinct nodes i, j ∈ S, i and j are adjacent.
+A directed graph, or a digraph, is a pair (N, T ) where N is a ﬁnite set of nodes and
+T ⊆ N × N is a collection of arcs between nodes. A sequence of distinct nodes (i1, i2, . . . , ik),
+k ≥ 2, is called a directed path in T if (ih, ih+1) ∈ T for h = 1, 2, . . . , k − 1. Given a digraph
+(N, T ), let L(T ) = {{i, j} | (i, j) ∈ T }: the graph (N, L(T )) is the undirected version of
+(N, T ). A digraph (N, T ) is said to be a rooted tree if (N, L(T )) is a tree and each node has
+at most one arc entering it. A rooted tree has exactly one node that no arc enters, called
+the root, and there exists a unique directed path from the root to every node of N . Let
+(N, T ) be a rooted tree. A node i ∈ N is said to be a child of j in T if (j, i) ∈ T , and to
+be the parent of j in T if (i, j) ∈ T . A node i ∈ N is called a descendant of j in T if there
+exists a directed path from j to i in T ; here, j is called a predecessor of i.
+
+3. Our Model
+
+We now deﬁne a group activity selection problem where communication links between the
+players are represented by an undirected graph.
+
+Deﬁnition 1. An instance of the Group Activity Selection Problem with graph structure
+(gGASP) is given by an instance (N, ((cid:23)i)i∈N , A) of a GASP and a set of communication links
+between players L ⊆ {{i, j} | i, j ∈ N ∧ i (cid:54)= j }.
+
+A coalition S ⊆ N is said to be feasible if S is connected in the graph (N, L). An outcome
+of a gGASP is a feasible assignment π : N → A such that πi is a feasible coalition for every
+i ∈ N . We adapt the deﬁnitions of stability concepts to our setting as follows. We say
+that a deviation by a group of players is feasible if the deviating coalition itself is feasible;
+a deviation by an individual player where player i joins activity a is feasible if πa ∪ {i} is
+feasible. We modify the deﬁnitions in the previous section by only requiring stability against
+feasible deviations. Note that an ordinary GASP (without graph structure) is equivalent to
+a gGASP where the underlying graph (N, L) is complete.
+
+A key feature of gGASP as well as GASP is that players’ preferences are anonymous,
+i.e., players do not care about the identities of the group members. We can thus show
+that checking whether a given feasible assignment is core stable is easy, irrespective of the
+structure of the social network. The proposition below generalizes Theorem 11 of Darmann
+(2015). Note that in many other contexts, deciding whether a given assignment is core stable
+is coNP-hard, for example in additively separable hedonic games (Sung & Dimitrov, 2007).
+Proposition 2. Given an instance (N, ((cid:23)i))i∈N , A, L) of gGASP and a feasible assignment
+π for that instance, we can decide in O(pn3) time whether π is core stable.
+Proof. Let A = A∗ ∪ {a∅} and let n = |N|. By scanning the assignment π and the players’
+preferences, we can check whether π is individually rational. Now, suppose that this is
+
+6
+
+Group Activity Selection on Social Networks
+
+the case. Then, for each a ∈ A∗ and each s ∈ [n] we can check if there is a deviation by
+a connected coalition of size s that engages in a. To this end, we consider the set Sa,s of
+all players who strictly prefer (a, s) to their assignment under π and verify whether Sa,s
+has a connected component of size at least s that contains πa; if this is the case, πa (which
+is itself connected or empty) could be extended to a connected coalition of size exactly s
+that strongly blocks π. If no such deviation exists, π is core stable. The existence of a
+connected component of a given size can be checked in O(n2) time by using depth ﬁrst
+search algorithm.
+
+In this paper, we will be especially interested in gGASPs where (N, L) is acyclic. This
+restriction guarantees the existence of stable outcomes in many other cooperative game
+settings (Demange, 2004). However, this is not the case for gGASP: here, all stable outcomes
+under consideration may fail to exist, even if (N, L) is a path or a star.
+Example 3 (Stalker game). Consider a gGASP with N = {1, 2}, A∗ = {a}, L = {{1, 2}},
+where preferences ((cid:23)i)i∈N are given as follows:
+
+1 : (a, 1) (cid:31) (a∅, 1)
+2 : (a, 2) (cid:31) (a∅, 1)
+
+Thus, player 1 wishes to participate in activity a alone, while player 2 (the “stalker”) wants
+to participate in activity a together with player 1.
+
+This instance admits no Nash stable outcomes: If all players engage in the void activity,
+player 1 wants to start doing activity a. If player 1 does activity a, then player 2 wants to
+join her coalition, causing player 1 to deviate to the void activity.
+
+Similarly, a core stable outcome is not guaranteed to exist even for gGASPs on paths
+
+and stars, as the following example shows.
+Example 4. Consider a gGASP with N = {1, 2, 3}, A∗ = {a, b}, L = {{1, 2},{2, 3}}, where
+preferences ((cid:23)i)i∈N are given as follows:
+
+1 : (b, 2) (cid:31) (a, 3) (cid:31) (a∅, 1)
+2 : (a, 2) (cid:31) (b, 2) (cid:31) (a, 3) (cid:31) (a∅, 1)
+3 : (a, 3) (cid:31) (b, 1) (cid:31) (a, 2) (cid:31) (a∅, 1)
+
+We will argue that each individually rational feasible assignment π admits a strongly blocking
+feasible coalition and activity. If all players do nothing, then player 3 and activity b strongly
+block π. Now, there are only four individually rational feasible assignments where some
+player is engaged in a non-void activity; each of them is strongly blocked by some coalition
+and activity as follows (we write S → x to indicate that coalition S strongly blocks π
+together with activity x):
+(1) π(1) = b, π(2) = b, π(3) = a∅: {2, 3} → a;
+(2) π(1) = a∅, π(2) = a, π(3) = a: {3} → b;
+(3) π(1) = a∅, π(2) = a∅, π(3) = b: {1, 2, 3} → a;
+
+7
+
+Igarashi, Bredereck, Peters, & Elkind
+
+(4) π(1) = a, π(2) = a, π(3) = a: {1, 2} → b;
+
+Igarashi and Elkind (2016) showed that in the context of hedonic games, acyclicity is
+suﬃcient for individually stable outcomes to exist: an individually stable partition of players
+always exists and can be computed in polynomial time. In contrast, it turns out that for
+gGASPs this is not the case: an individually stable outcome may fail to exist even if the
+underlying social network is a path; moreover, this may happen even if there are only three
+players and their preferences are strict.
+Example 5. Consider a gGASP with N = {1, 2, 3}, A∗ = {a, b, c}, L = {{1, 2},{2, 3}},
+where players’ preferences are as follows:
+
+1 : (b, 2) (cid:31) (a, 1) (cid:31) (c, 3) (cid:31) (c, 2) (cid:31) (c, 1) (cid:31) (a∅, 1)
+2 : (c, 3) (cid:31) (c, 2) (cid:31) (a, 2) (cid:31) (b, 2) (cid:31) (b, 1) (cid:31) (a∅, 1)
+3 : (c, 3) (cid:31) (a, 2) (cid:31) (a, 1) (cid:31) (a∅, 1)
+
+We will argue that each individually rational feasible assignment π admits an IS-deviation.
+Indeed, if π(1) = a∅ then no player is engaged in c and hence player 1 can deviate to c.
+Similarly, if π(2) = a∅ then no player is engaged in b and hence player 2 can deviate to b.
+There are 9 individually rational feasible assignments where π(1) (cid:54)= a∅, π(2) (cid:54)= a∅; for each
+of them we can ﬁnd an IS deviation as follows (we write i → x to indicate that player i has
+an IS-deviation to activity x):
+(1) π(1) = a, π(2) = b, π(3) = a∅: 1 → b;
+(2) π(1) = b, π(2) = b, π(3) = a∅: 3 → a;
+(3) π(1) = b, π(2) = b, π(3) = a: 2 → a;
+(4) π(1) = c, π(2) = a, π(3) = a: 2 → c;
+(5) π(1) = c, π(2) = b, π(3) = a∅: 3 → a;
+(6) π(1) = c, π(2) = b, π(3) = a: 2 → a;
+(7) π(1) = c, π(2) = c, π(3) = a∅: 3 → a;
+(8) π(1) = c, π(2) = c, π(3) = a: 3 → c;
+(9) π(1) = c, π(2) = c, π(3) = c: 1 → a.
+
+Notice that the instance does not admit a core stable outcome either: if such an outcome
+existed, the assignment would satisfy individual stability due to the fact that all the
+preferences are strict, a contradiction to what we have seen above.
+
+8
+
+Group Activity Selection on Social Networks
+
+3.1 Copyable cases
+
+If all activities are copyable, we can eﬀectively treat gGASP as a non-transferable utility
+game on a graph. In particular, we can invoke a famous result of Demange (2004) concerning
+the stability of non-transferable utility games on trees. Thus, requiring all activities to be
+copyable allows us to circumvent the non-existence result for the core (Example 4). The
+argument is constructive.
+
+Theorem 6 (implicit in the work of Demange (2004)). For every gGASP where each activity
+a ∈ A∗ is copyable and (N, L) is acyclic, a core stable feasible assignment exists and can be
+found in time polynomial in p and n.
+
+Proof. If the input graph (N, L) is a forest, we can process each of its connected components
+separately, so we assume that (N, L) is a tree. Prior to giving a formal description of
+the algorithm (Algorithm 1), we outline the basic idea. We choose an arbitrary node r
+as the root and construct a rooted tree (N, T ) by orienting the edges in L towards the
+leaves. We denote by ch(i) the set of children of i and by desc(i) the set of descendants
+of i (including i) in the rooted tree. For each i ∈ N , we deﬁne height(i) = 0 if ch(i) = ∅,
+and height(i) = 1 + max{ height(j) | j ∈ ch(i)} otherwise. We denote by (N, T|S) the
+subdigraph induced by S ⊆ N , i.e., T|S = { (i, j) ∈ T | i, j ∈ S }. We deﬁne C(i) to be the
+set of connected subsets of desc(i) for each i ∈ N .
+
+The algorithm has two diﬀerent phases: the bottom-up and the top-down phase.
+• Bottom-up phase: In the bottom-up phase, we will determine a guaranteed activity
+a(i) and coalition S(i) for every subroot i. To this end, we choose a connected subset
+S(i) of desc(i) that maximizes i’s utility under the constraint that every descendant j
+of i in the coalition can agree, i.e., for any descendant j ∈ S(i) of i, (a(i),|S(i)|) is
+at least as preferred as (a(j),|S(j)|). The utility level of (a(i),|S(i)|) determined for
+each player i ∈ N can be interpreted as i’s guaranteed utility in the ﬁnal outcome.
+
+• Top-down phase: In the top-down phase, the algorithm builds a feasible assignment
+π, by iteratively choosing a root r(cid:48) of the remaining rooted trees and reassigning the
+activity a(r(cid:48)) to its coalition S(r(cid:48)). Since each activity is copyable, we can always ﬁnd
+an activity that is equivalent to a(r(cid:48)) and has not been used by their predecessors.
+
+This procedure is formalized in Algorithm 1.
+We will now argue that Algorithm 1 correctly ﬁnds a core stable feasible assignment.
+Observe that the following lemma holds due to the if statement in line 7 of the algorithm.
+Lemma 7. For all i ∈ N , the following statements hold:
+
+(i) i has no incentive to deviate to an alternative of size 1, i.e., (a(i),|S(i)|) (cid:23)i (b, 1) for
+
+all b ∈ A,
+
+(ii) all players in S(i) weakly prefer (a(i),|S(i)|) to their guaranteed alternative (a(j),|S(j)|).
+
+Now, by (ii) in Lemma 7, it can be easily veriﬁed that
+
+(π(i),|πi|) (cid:23)i (a(i),|S(i)|) for all i ∈ N.
+
+(1)
+
+9
+
+Igarashi, Bredereck, Peters, & Elkind
+
+Algorithm 1: Finding core stable partitions
+input : tree (N, L), activity set A = A∗ ∪ {a∅}, r ∈ N , preference (cid:23)i, i ∈ N
+output : π : N → A
+
+1 // Bottom-up phase: assign activities to players in a bottom-up
+
+manner;
+
+2 make a rooted tree (N, T ) with root r by orienting all the edges in L;
+3 initialize S(i) ← {i} and a(i) ← a∅ for each i ∈ N ;
+4 foreach t = 0, . . . , height(r) do
+5
+
+foreach i ∈ N with height(i) = t do
+
+6
+
+7
+
+8
+
+// Find i’s favourite alternative where all members of i’s
+coalition can agree to join. foreach (a, k) ∈ (A∗ × [n]) ∪ {(a∅, 1)} do
+if there exists S ∈ C(i) such that |S| = k, (a, k) (cid:23)j (a(j),|S(j)|) for all
+j ∈ S, and (a, k) (cid:31) (a(i),|S(i)|) then
+
+set S(i) ← S and a(i) ← a;
+
+activities;
+
+9 // Top-down phase: relabel players with their predecessor’s
+10 set N(cid:48) ← N and A(cid:48) ← A∗;
+11 while N(cid:48) (cid:54)= ∅ do
+
+12
+
+13
+
+14
+
+choose a root r(cid:48) of some connected component of the digraph (N(cid:48), T|N(cid:48)) and ﬁnd
+an activity b ∈ A(cid:48) ∪ {a∅} that is equivalent to a(r(cid:48));
+set π(i) ← b for all i ∈ S(r(cid:48));
+set N(cid:48) ← N(cid:48) \ S(r(cid:48)) and A(cid:48) ← A(cid:48) \ {b};
+
+10
+
+Group Activity Selection on Social Networks
+
+Combining this with (i), we know that at the assignment π, all players weakly prefer their
+alternatives to engaging alone in unused activities or the void activity. It thus remains to
+show that no connected coalition together with a non-void activity strongly blocks π.
+Take any connected subset S ⊆ N and activity a ∈ A∗. Let i be the subroot of the
+coalition S so that S ∈ C(i). First, consider the case when (a(i),|S(i)|) (cid:23)i (a,|S|). By (1),
+it is clear that the coalition S and the activity a do not strongly block π. Second, consider
+the case when (a,|S|) (cid:31)i (a(i),|S(i)|). By line 7 of the algorithm, this means that there is a
+player j ∈ S such that (a(j),|S(j)|) (cid:31)j (a,|S|). Thus, S and a do not strongly block π. We
+conclude that π is core stable.
+It remains to analyze the running time of Algorithm 1. Consider the execution of the
+algorithm for a ﬁxed player i. Let d = |desc(i)|. Line 7 checks whether there is a connected
+coalition of size k that can engage in a. Similarly to the proof of Proposition 2, we do
+this by computing the set S of all descendants in desc(i) \ {i} who weakly prefer (a, k) to
+their guaranteed coalition and verify whether the set S ∪ {i} has a connected component
+of size at least k. This procedure requires at most d queries: no descendant of i is queried
+more than once. Summing over all players, we conclude that the number of queries for the
+bottom-up phase is bounded by O(n3p). It is immediate that the top-down phase can be
+done in polynomial time. This completes the proof of the theorem.
+
+Similarly, an individually stable outcome is guaranteed to exist in copyable cases if the
+underlying graph is acyclic. Moreover, we can adapt the result of Igarashi and Elkind (2016)
+for hedonic games and obtain an eﬃcient algorithm for computing an individually stable
+outcome. The proof can be found in the appendix.
+Theorem 8. Each instance of gGASP where each activity a ∈ A∗ is copyable and (N, L) is
+acyclic admits an individually stable feasible assignment; moreover, such an assignment can
+be found in time polynomial in p and n.
+
+The stalker game in Example 3 does not admit a Nash stable outcome even if we make
+all activities copyable. Thus, in contrast to core and individual stability, there is no existence
+guarantee for Nash stability even if activities are copyable. However, with copyable activities,
+we can still check for the existence of a Nash stable outcome in polynomial time if the social
+network is acyclic.
+Theorem 9. Given an instance (N, A, ((cid:23)i)i∈N , L) of gGASP where each activity a ∈ A∗ is
+copyable and the graph (N, L) is acyclic, one can decide whether it admits a Nash stable
+outcome in time polynomial in p and n.
+
+Proof. Again, we assume that (N, L) is a tree. We choose an arbitrary node as the root
+and construct a rooted tree by orienting the edges in L towards the leaves. We denote by
+
+ch(i) = {j1, j2, . . . , j|ch(i)|} the set of children of i; and we denote by desc(i, c) the set of
+the descendants of the ﬁrst c-th children of i (including j1, j2, . . . , jc) in the rooted tree.
+Then, for each player i ∈ N , each c ∈ [|ch(i)|], each alternative (a, k) ∈ X, and t ∈ [k]
+we set NS[i, c, (a, k), t] to true if there exists a feasible assignment π : N → A such that
+|πi ∩ (desc(i, c) ∪ {i})| = t, π(i) = a, each player in πi ∩ (desc(i, c) ∪ {i}) likes (a, k) at
+least as much as any alternative she can deviate to (including the void activity), and no
+player in desc(i, c) \ πi has an NS feasible deviation. Otherwise, we set NS[i, c, (a, k), t]
+
+11
+
+Igarashi, Bredereck, Peters, & Elkind
+
+to false. By construction, there exists a Nash stable feasible assignment if and only if
+NS[r,|ch(r)|, (a, k), k] is true for some alternative (a, k) ∈ X, where r is the root of the
+rooted tree.
+For each player i ∈ N , each c ∈ [|ch(i)|], each alternative (a, k) ∈ X, and each t ∈ [k],
+we initialize NS[i, c, (a, k), t] to true if t = 1 and i weakly prefers (a, k) to any alternative of
+size 1, and we set NS[i, c, (a, k), t] to false otherwise. Then, for i ∈ N from the bottom to
+the root, we iterate through all the children jc of i and update NS[i, c, (a, k), t] step-by-step;
+more precisely, for each child jc of i and for t ∈ [k], we set NS[i, c, (a, k), t] to true if
+
+• t ≥ 2 and there exists an x ∈ [t − 1] such that both NS[i, c − 1, (a, k), t − x] and
+
+NS[j, c, (a, k), x] are true, or
+
+• NS[i, c − 1, (a, k), t] is true, and players i and jc can be separated from each other,
+i.e., there exists (b, (cid:96)) ∈ X such that (i) NS[jc,|ch(j)|, (b, (cid:96)), (cid:96)] is true, (ii) b = a∅ or
+(a, k) (cid:23)i (b, (cid:96) + 1), and (iii) a = a∅ or (b, (cid:96)) (cid:23)j (a, k + 1).
+
+In cases where NS[r,|ch(r)|, (a, k), k] is true for some alternative (a, k) ∈ X, a Nash stable
+feasible assignment can be found using dynamic programming.
+
+This can be done in polynomial time since the size of the dynamic programming table is
+at most n3p and each entry can be ﬁlled in time O(n2p). This completes the proof of the
+theorem.
+
+We note that these tractability results for copyable cases do not extend to arbitrary
+graphs: Ballester (2004) showed that it is NP-complete to determine the existence of core or
+individually or Nash stable outcomes for anonymous hedonic games, which can be considered
+as a subclass of gGASPs whose graph is a clique.
+
+4. NP-completeness results
+
+We now move on to the case where each activity can be used at most once. For other types
+of cooperative games, many desirable outcomes can be computed in polynomial time if the
+underlying network structure is simple (Chalkiadakis et al., 2016; Elkind, 2014; Igarashi
+& Elkind, 2016). In particular, Igarashi and Elkind (2016) showed it is easy to compute
+stable partitions for hedonic games on trees with polynomially bounded number of connected
+coalitions. However, computing stable solutions of gGASP turns out to be NP-complete
+even if the underlying network is a path, a star, or a graph with constant-size connected
+components. For each family of graphs, we will reduce from a diﬀerent combinatorial problem
+that is structurally similar to our problem.
+
+Paths. Our proof for paths is by reduction from a restricted version of the NP-complete
+problem Rainbow Matching. Given a graph G and a set of colors C, a proper edge coloring
+is a mapping φ : E → C where φ(e) (cid:54)= φ(e(cid:48)) for all edges e, e(cid:48) such that e (cid:54)= e(cid:48) and e ∩ e(cid:48) (cid:54)= ∅.
+Without loss of generality, we assume that φ is surjective. A properly edge-colored graph
+(G,C, φ) is a graph together with a set of colors and a proper edge coloring. A matching
+M in an edge-colored graph (G,C, φ) is called a rainbow matching if all edges of M have
+diﬀerent colors. Given a properly edge-colored graph (G,C, φ) together with an integer k,
+Rainbow Matching asks whether G admits a rainbow matching with at least k edges. Le
+
+12
+
+Group Activity Selection on Social Networks
+
+and Pfender (2014) show that Rainbow Matching remains NP-complete even for properly
+edge-colored paths.
+
+Theorem 10. Given an instance of gGASP whose underlying graph is a path, it is NP-
+complete to determine whether it has a Nash stable feasible assignment.
+
+Proof. Clearly, our problems are contained in NP since we can easily check whether a given
+assignment is Nash stable. The hardness proof proceeds by a reduction from Path Rainbow
+Matching.
+Construction. Given an instance (G,C, φ, k) of Path Rainbow Matching where |C| = q,
+we create a vertex player v for each v ∈ V and an edge player e for each e ∈ E. To create the
+social network, we start with G and place each edge player in the middle of the respective
+edge, i.e., we let NG = V ∪ E and LG = {{v, e} | v ∈ e ∈ E }. To the right of the graph
+(NG, LG), we attach a path consisting of “garbage collectors” {g1, g2, . . . , gq−k} and q copies
+(Nc, Lc) of the stalker game where Nc = {c1, c2} and Lc = {{c1, c2}} for each c ∈ C. See
+Figure 1.
+
+u
+
+e
+
+v
+
+gi
+
+Nc
+
+Figure 1: The graph constructed in the hardness proof for gGASPs on paths.
+
+We introduce a color activity c for each color c ∈ C. Each vertex player v approves color
+activities φ(e) of its adjacent edges e with size 3; each edge player e approves the color
+activity φ(e) of its color with size 3; each garbage collector gi approves any color activity c
+with size 1; ﬁnally, for players in Nc, c ∈ C, player c1 approves its color activity c with size
+1, whereas player c2 approves c with size 2.
+
+Correctness. We show that G has a rainbow matching of size at least k if and only if
+
+there exists a Nash stable feasible assignment.
+Suppose that there exists a rainbow matching M of size k. We construct a feasible
+assignment π where for each e = {u, v} ∈ M we set π(e) = π(u) = π(v) = φ(e), each garbage
+collector gi, i ∈ [q − k], is arbitrarily assigned to one of the remaining q − k color activities,
+and the remaining players are assigned to the void activity. The assignment π is Nash
+stable, since every garbage collector as well as every edge or vertex player assigned to a
+color activity are allocated their top alternative, and no remaining player has an NS feasible
+deviation.
+Conversely, suppose that there is a Nash stable feasible assignment π. Let M = { e ∈
+E(G) | π(e) ∈ C }. We will show that M is a rainbow matching of size at least k. To see this,
+notice that π cannot allocate a color activity to a member of Nc, since otherwise no feasible
+assignment would be Nash stable. Further, at most q − k color activities are allocated to
+the garbage collectors, which means that at least k color activities should be assigned to
+vertex and edge players. The only individually rational way to do this is to select triples
+of the form (u, e, v) where e = {u, v} ∈ E(G) and assign to them their color activity φ(e).
+Thus, M is a rainbow matching of size at least k.
+
+Stars. For gGASPs on stars we provide a reduction from the NP-complete problem
+Minimum Maximal Matching (MMM). Given a graph G and a positive integer k ≤ |E|,
+
+13
+
+Igarashi, Bredereck, Peters, & Elkind
+
+MMM asks whether G admits a maximal matching with at most k edges. The problem
+remains NP-complete for bipartite graphs (Demange & Ekim, 2008).
+
+Theorem 11. Given an instance of gGASP whose underlying graph is a star, it is NP-
+complete to determine whether it has a Nash stable feasible assignment.
+
+Proof. Clearly, our problem is in NP. To prove NP-hardness, we reduce from MMM on
+bipartite graphs.
+Construction. Given a bipartite graph G = (U ∪ V, E) with vertex bipartition (U, V )
+and an integer k, we create a star with center c and |V | + 1 leaves: one leaf for each vertex
+player v ∈ V plus one stalker s. See Figure 2.
+
+s
+
+c
+
+v2
+
+v3
+
+v1
+
+vn
+
+Figure 2: The graph constructed in the hardness proof for gGASPs on stars.
+
+We introduce an activity u for each u ∈ U , and two additional activities a and b. A
+player v ∈ V approves (u, 1) for each activity u such that {u, v} ∈ E as well as (a,|V |− k + 1)
+and prefers the former to the latter. That is, (u, 1) (cid:31)v (a,|V | − k + 1) for every u ∈ U with
+{u, v} ∈ E; v is indiﬀerent among the activities associated with its neighbors in the graph,
+that is, (u, 1) ∼v (u(cid:48), 1) for all u, u(cid:48) ∈ U such that {u, v} ∈ E and {u(cid:48), v} ∈ E. The center
+player c approves both (a,|V | − k + 1) and (b, 1), and prefers the former to the latter, i.e.,
+(a,|V | − k + 1) (cid:31)c (b, 1) (cid:31)c (a∅, 1). Finally, the stalker s only approves (b, 2).
+
+Correctness. We now show that G admits a maximal matching M with at most k edges
+
+if and only if our instance of gGASP admits a Nash stable assignment.
+Suppose that G admits a maximal matching M with at most k edges. We construct
+a feasible assignment π by setting π(v) = u for each {u, v} ∈ M , assigning |V | − k vertex
+players and the center to a, and assigning the remaining players to the void activity. Clearly,
+the center c has no incentive to deviate and no vertex player in a singleton coalition wants
+to deviate to the coalition of the center. Further, no vertex v has an NS-deviation to an
+unused activity u, since if π admits such a deviation, this would mean that M ∪{u, v} forms
+a matching, contradicting maximality of M . Finally, the stalker player does not deviate
+since the center does not engage in b. Hence, π is Nash stable.
+Conversely, suppose that there exists a Nash stable feasible assignment π and let
+M = {{π(v), v} | v ∈ V ∧ π(v) ∈ U }. We will show that M is a maximal matching of size
+at most k. By Nash stability, the stalker player should not have an incentive to deviate, and
+hence the center player and |V | − k vertex players are assigned to activity a. It follows that
+k vertex players are not assigned to a, and therefore |M| ≤ k. Moreover, M is a matching
+since each vertex player is assigned to at most one activity, and by individual rationality each
+activity can be assigned to at most one player. Now suppose towards a contradiction that
+
+14
+
+Group Activity Selection on Social Networks
+
+M is not maximal, i.e., there exists an edge {u, v} ∈ E such that M ∪ {u, v} is a matching.
+This would mean that in π no player is assigned to u, and v is assigned to the void activity;
+hence, v has an NS-deviation to u, contradicting the Nash stability of π.
+
+Small components.
+In the analysis of cooperative games on social networks one can
+usually assume that the social network is connected: if this is not the case, each connected
+component can be processed separately. This is also the case for gGASP as long as all
+activities are copyable. However, if each activity can only be used by a single group, diﬀerent
+connected components are no longer independent, as they have to choose from the same
+pool of activities. Indeed, we will now show that the problem of ﬁnding stable outcomes
+remains NP-hard even if the size of each connected component is at most four. Our hardness
+proof for this problem proceeds by reduction from a restricted version of 3Sat. Speciﬁcally,
+we consider (3,B2)-Sat: in this version of 3Sat each clause contains exactly 3 literals, and
+each variable occurs exactly twice positively and twice negatively. This problem is known to
+be NP-complete (Berman et al., 2003).
+
+Theorem 12. Given an instance of gGASP whose underlying graph has connected compo-
+nents whose size is bounded by 4, it is NP-complete to determine whether it has a Nash
+stable feasible assignment.
+
+Proof. Our problem is in NP. We reduce from (3,B2)-Sat.
+Construction. Consider a formula φ with variable set X and clause set C, where for each
+variable x ∈ X we write x1 and x2 for the two positive occurrences of x, and ¯x1 and ¯x2 for the
+two negative occurrences of x. For each x ∈ X, we introduce four players p1(x), p2(x), ¯p1(x),
+and ¯p2(x). For each clause c ∈ C, we introduce one stalker sc and three other players c1, c2,
+and c3. The network (N, L) consists of one component for each clause—a star with center
+sc and leaves c1, c2, and c3—and of two components for each variable x ∈ X consisting of
+a single edge each: {p1(x), p2(x)} and {¯p1(x), ¯p2(x)}. See Figure 3. Thus, the size of each
+component of this graph is at most 4.
+
+sc
+
+c2
+
+c3
+
+c1
+
+p1(x)
+
+p2(x)
+
+¯p1(x)
+
+¯p2(x)
+
+Figure 3: The graph used in the hardness proof for gGASPs on graphs with small components.
+For each x ∈ X we introduce one variable activity x, two positive literal activities x1 and
+x2, and two negative literal activities ¯x1 and ¯x2, which correspond to the four occurrences of
+x; also, we introduce two further activities a(x) and ¯a(x). Finally, we introduce an activity
+c for each clause c ∈ C. Thus,
+A∗ =
+
+{x, x1, x2, ¯x1, ¯x2, a(x), ¯a(x)} ∪ C.
+
+(cid:91)
+
+x∈X
+
+15
+
+Igarashi, Bredereck, Peters, & Elkind
+
+For each x ∈ X the preferences of the positive literal players p1(x) and p2(x) are given as
+follows:
+
+p1(x): (x, 2) (cid:31) (x, 1) (cid:31) (x1, 1) (cid:31) (x2, 2) (cid:31) (a(x), 1) (cid:31) (a∅, 1),
+p2(x): (x, 2) (cid:31) (x2, 1) (cid:31) (x1, 2) (cid:31) (a(x), 2) (cid:31) (a∅, 1).
+
+If one of the positive literal players p1(x) and p2(x) is engaged in the void activity and the
+other is engaged alone in a non-void activity, this would cause the former player to deviate
+to another activity; thus, in a Nash stable assignment, none of the activities a(x) and a∅
+can be assigned to positive literal players. Similarly, for each x ∈ X the preferences of the
+negative literal players ¯p1(x) and ¯p2(x) are given as follows:
+
+¯p1(x): (x, 2) (cid:31) (x, 1) (cid:31) (¯x1, 1) (cid:31) (¯x2, 2) (cid:31) (¯a(x), 1) (cid:31) (a∅, 1),
+¯p2(x): (x, 2) (cid:31) (¯x2, 1) (cid:31) (¯x1, 2) (cid:31) (¯a(x), 2) (cid:31) (a∅, 1).
+
+As argued above, Nash stable assignments cannot allocate activities ¯a(x) and a∅ to negative
+literal players. Hence, if there exists a Nash stable assignment, there are only two possible
+cases:
+
+• both players p1(x) and p2(x) are assigned to x, and players ¯p1(x) and ¯p2(x) are assigned
+
+to ¯x1 and ¯x2, respectively;
+
+• both players ¯p1(x) and ¯p2(x) are assigned to x, and players p1(x) and p2(x) are assigned
+
+to x1 and x2, respectively.
+
+For players in Nc where (cid:96)c
+
+1, (cid:96)c
+
+2, and (cid:96)c
+
+3 are the literals in a clause c, the preferences are
+
+given by
+
+cr : ((cid:96)c
+sc : ((cid:96)c
+
+r, 1) (cid:31) (c, 2) (cid:31) (a∅, 1),
+1, 2) ∼ ((cid:96)c
+
+2, 2) ∼ ((cid:96)c
+
+(r = 1, 2, 3)
+3, 2) ∼ (c, 2) (cid:31) (a∅, 1).
+
+That is, players c1, c2, and c3 prefer to engage alone in their approved literal activity, whereas
+sc wants to join one of the adjacent leaves whenever π(sc) = a∅ and that leaf is assigned
+a literal activity; however, the leaf would then prefer to switch to the void activity. This
+means that if there exists a Nash stable outcome, at least one of the literal activities must
+be used outside of Nc, and some leaf and the stalker sc must be assigned to activity c.
+
+Correctness. We will show that φ is satisﬁable if and only if there exists a Nash stable
+
+outcome.
+
+Suppose that there exists a truth assignment that satisﬁes φ. First, for each variable x
+that is set to true, we assign positive literal activities x1 and x2 to the positive literal players
+p1(x) and p2(x), respectively, and assign x to the negative literal players ¯p1(x) and ¯p2(x).
+For each variable x that is set to false, we assign negative literal activities ¯x1 and ¯x2 to
+the negative literal players ¯p1(x) and ¯p2(x), respectively, and assign x to the positive literal
+players p1(x) and p2(x). Note that this procedure uses at least one of the literal activities (cid:96)c
+1,
+3 of each clause c ∈ C, since the given truth assignment satisﬁes φ. Then, for each
+(cid:96)c
+2 and (cid:96)c
+clause c ∈ C, we select a player cj whose approved activity (cid:96)c
+j has been assigned to some
+literal player, and assign cj and the stalker to c, and the rest of the clause players to their
+
+16
+
+Group Activity Selection on Social Networks
+
+approved literal activity if it is not used yet, and to the void activity otherwise. It is easy to
+see that the resulting assignment π is Nash stable.
+Conversely, suppose that there exists a Nash stable feasible assignment π. By Nash
+stability, for each variable x ∈ X, either a pair of positive literal players p1(x) and p2(x)
+or a pair of negative literal players ¯x1 and ¯p2(x) should be assigned to the corresponding
+pair of literal activities; in addition, for each clause c ∈ C, the stalker sc and one of the
+players c1, c2, and c3 should engage in the activity c, thereby implying that the approved
+literal activity of the respective leaf should be assigned to some literal players. Then, take
+the truth assignment that sets the variable x to true if its positive literal players p1(x) and
+p2(x) are assigned to positive literal activities x1 and x2; otherwise, x is set to false. This
+assignment can be easily seen to satisfy φ.
+
+The hardness reductions for the core and individual stability are similar to the respective
+reductions for Nash stability; essentially, we have to replace copies of the stalker game from
+Example 3 with copies of games with an empty core (Example 4) or with no individually
+stable outcome (Example 5).
+
+Theorem 13. Given an instance of gGASP whose underlying graph is a path, a star, or has
+connected components whose size is bounded by 3, it is NP-complete to determine whether it
+has a core stable feasible assignment, and it is NP-complete to determine whether it has an
+individually stable feasible assignment.
+
+Proof. Clearly, our problems are contained in NP for any social network due to Proposition
+2 and the fact that we can easily check whether a given assignment is individually stable.
+The hardness proofs can be found in the appendix.
+
+5. Few Activities
+
+In the instances of gGASP that are created in our hardness proofs, the number of activities
+p is unbounded. In reality, however, there are many settings where this parameter can
+be very small. For instance, when organizing social events for a workshop, the number of
+activities one could organize is often restricted, due to a limited number of facilities for
+sports competition or a limited number of buses for a bus trip. It is thus natural to wonder
+what can be said when there are few activities to be assigned. It turns out that for each
+of the restricted families of graphs considered in the previous section, ﬁnding some stable
+assignments in gGASP is ﬁxed parameter tractable with respect to the number of activities.
+The basic idea behind each of the algorithms we present is that we ﬁx a set of activities that
+will be assigned to the players, and for each possible subset B ⊆ A∗ of activities we check
+whether there exists a stable assignment using the activities from that subset only.
+
+5.1 Small components
+
+We ﬁrst present an algorithm for small components based on dynamic programming, allowing
+us to build up the set B step-by-step. We order the components, and, for each preﬁx of that
+ordering, we check if a given subset of activities can be assigned to that preﬁx in a stable
+way. Within each component, we have enough time to consider all possible assignments,
+and each potential deviation involves at most one component. The resulting algorithm is
+
+17
+
+Igarashi, Bredereck, Peters, & Elkind
+
+FPT with respect to the combined parameter p + c, where c is a bound on the size of the
+components of the network.
+
+Theorem 14. There exists an algorithm that given an instance of gGASP checks whether
+it has a Nash stable or an individually stable, ﬁnds one if it exists, and runs in time
+O(8ppc+1c2n) where p is the number of activities and c is the maximum size of connected
+components.
+
+Proof. We give a dynamic programming algorithm. Suppose our graph (N, L) has k con-
+nected components (N1, L1), (N2, L2), . . . , (Nk, Lk) and each component has size at most c,
+i.e., |Ni| ≤ c for all i ∈ [k]. For each i ∈ [k], each set B ⊆ A∗ of activities assigned to N ,
+j=1 Nj, we let NS[i, B, B(cid:48)] and IS[i, B, B(cid:48)]
+denote whether there is such an assignment that gives rise to a Nash stable outcome and an
+individually stable outcome, respectively. Speciﬁcally, NS[i, B, B(cid:48)] (respectively, IS[i, B, B(cid:48)])
+j=1 Nj → A such that
+
+and each set B(cid:48) ⊆ B of activities assigned to(cid:83)i
+is true if there exists an individually rational feasible assignment π :(cid:83)i
+• the set of activities assigned to(cid:83)i
+• no player in(cid:83)i
+
+j=1 Nj is exactly B(cid:48); and
+
+B(cid:48) or to an activity in A∗ \ B.
+
+j=1 Nj has an NS (respectively, IS) feasible deviation to an activity in
+
+Otherwise, NS[i, B, B(cid:48)] (respectively, IS[i, B, B(cid:48)]) is false.
+For i = 1, each B ⊆ A∗, and each B(cid:48) ⊆ B, we compute the value of NS[1, B, B(cid:48)]
+(respectively, IS[1, B, B(cid:48)]) by trying all possible mappings π : N1 → B(cid:48) ∪ {a∅}, and checking
+whether it is an individually rational feasible assignment using all activities in B(cid:48) and such
+that no player in N1 has an NS (respectively, IS) feasible deviation to a used activity in B(cid:48)
+or an unused activity in A∗ \ B.
+For i = 2, 3, . . . , k, each B ⊆ A∗, and B(cid:48) ⊆ B, we set NS[i, B, B(cid:48)] (respectively, IS[i, B, B(cid:48)])
+to true if there exists a bipartition of B(cid:48) into P and Q such that NS[i − 1, B, P ] is true and
+there exists a mapping π : Ni → Q ∪ {a∅} such that π is an individually rational feasible
+assignment using all the activities in Q, and no player in Ni has an NS (respectively, IS)
+feasible deviation to a used activity in Q or an unused activity in A∗ \ B. This property
+holds because players cannot deviate to an activity played within a diﬀerent connected
+component by feasibility.
+It is not diﬃcult to see that a Nash stable (respectively, individually stable) solution exists
+if and only if NS[k, B, B] (respectively, IS[k, B, B]) is true for some B ⊆ A∗. If this is the
+case, such a stable feasible assignment can be found using standard dynamic programming
+techniques. The size of the dynamic programming table NS[i, B, B(cid:48)] (respectively, IS[i, B, B(cid:48)])
+is at most 4pn. For each entry, we consider O(2p) bipartitions of B(cid:48) and the time required
+to ﬁnd a stable assignment for a single component is O(pc+1c2). Thus, each entry can be
+ﬁlled in time O(2ppc+1c2). This completes the proof.
+
+The FPT result for graphs with small connected components can also be adapted to the
+
+core. The proof can be found in the appendix.
+
+Theorem 15. There exists an algorithm that given an instance of gGASP checks whether it
+has a core stable feasible assignment, ﬁnds one if it exists, and runs in time O(8ppc+1c3n)
+where p is the number of activities and c is the maximum size of connected components.
+
+18
+
+Group Activity Selection on Social Networks
+
+5.2 Acyclic graphs
+
+We will next show that computing Nash and individually stable outcomes is in FPT for
+arbitrary acyclic networks. Essentially, we will construct a rooted tree and check in a
+bottom-up manner whether there is a partial assignment that is extensible to a stable
+outcome.
+Theorem 16. The problem of deciding whether an instance of gGASP with |A∗| = p whose
+underlying social network (N, L) is acyclic has a Nash stable feasible assignment is in FPT
+with respect to p.
+
+Proof. We will ﬁrst present a proof for the case where (N, L) is a tree; in the end, we will
+show how to extend the result to arbitrary forests. Fix an instance (N, A, ((cid:23)i)i∈N , L) of
+gGASP such that (N, L) is a tree. We choose an arbitrary node in N as the root of this
+tree, thereby making (N, L) a rooted tree; we denote by ch(i) the set of children of i and by
+desc(i) the set of descendants of i (including i herself). Intuitively, we ﬁx the set B ⊆ A∗ of
+activities assigned to the set of all players; then, we process the nodes from the leaves to
+the root, and for each player i and each subset B(cid:48) of B, we check whether there is a partial
+assignment of B(cid:48) to the descendants of i that is extensible to a stable assignment.
+Formally, for each i ∈ N , each B ⊆ A∗, each B(cid:48) ⊆ B, each (a, k) ∈ (B(cid:48) × [n]) ∪ {(a∅, 1)},
+and each t ∈ [k], we let NS[i, B, B(cid:48), (a, k), t] be true if there is an assignment π : N → A
+where
+
+(i) the set of activities assigned to players in desc(i) is exactly B(cid:48);
+
+(ii) player i is assigned to a and is in a coalition with k other players;
+(iii) exactly t players in desc(i) belong to the same group as i, so |desc(i) ∩ πi| = t;
+(iv) the t players in desc(i) ∩ πi weakly prefer (a, k) to (b, 1) for each b ∈ A \ B, and have
+no incentive to deviate to the other groups, i.e., every player in desc(i) ∩ πi whose
+children do not belong to πi likes (a, k) at least as much as each of the alternatives
+she can deviate to;
+
+(v) the players in desc(i) \ πi weakly prefer their alternative under π to engaging alone in
+any of the activities in A \ B, have no NS-deviation to activities in B(cid:48) \ {a}, and have
+no incentive to deviate to i’s coalition, i.e., if a (cid:54)= a∅, then every player j ∈ desc(i) \ πi
+whose parent belongs to πi likes (π(j),|πj|) at least as much as (a, k + 1).
+
+Otherwise, we let NS[i, B, B(cid:48), (a, k), t] be false. By construction, our instance admits a Nash
+stable assignment if and only if NS[r, B, B(cid:48), (a, k), k] is true for some combination of the
+arguments B, B(cid:48), and (a, k), where r is the root, because by (iv) and (v) there are then no
+NS-deviations. Notice that the size of the dynamic programming table is at most p4pn3. See
+Figure 4a for the high-level idea of the algorithm.
+To complete the proof, we show that values NS[i, B, B(cid:48), (a, k), t] can be eﬃciently com-
+puted in a bottom-up manner. If i is a leaf, we set NS[i, B, B(cid:48), (a, k), t] to true if B(cid:48) = {a},
+t = 1, and i weakly prefers (a, k) to every alternative (b, 1) such that b ∈ A \ B; otherwise,
+we set NS[i, B, B(cid:48), (a, k), t] to false.
+
+19
+
+Igarashi, Bredereck, Peters, & Elkind
+
+r
+
+i
+
+desc(i)
+
+B B(cid:48)
+
+P1
+
+P2
+
+P3
+
+P4
+
+j1
+
+j2
+
+j3
+
+j4
+
+j5
+
+(a)
+
+(b)
+
+Figure 4: Figure 4a describes the high-level idea of the algorithm: at each subtree, the algorithm
+checks whether the descendants desc(i) can be assigned to the activity set B(cid:48), when the whole tree
+only uses the activity set B. Figure 4b illustrates how each subtree is matched to a diﬀerent activity
+set.
+
+Now, consider the case when i is an internal vertex. We order the children of i and let
+
+ch(i) = {j1, j2, . . . , j|ch(i)|}. Observe that in each feasible assignment π : desc(i) → B(cid:48) the
+coalition of players that engage in the same activity b ∈ B(cid:48) \ {a} is fully contained in a
+subtree of some child of i. This induces a partition P = {P1, P2, . . . , P|P|} of the activity
+set B(cid:48) \ {a} and a permutation/indexing of these activity sets so that the activities in Pi
+are assigned to the subtree of ji. We will thus go through all possible partitions of B(cid:48) \ {a}
+and their permutations, and try to ﬁnd a feasible assignment compatible with it. Figure 4b
+illustrates how each subtree is matched to a diﬀerent activity set.
+We ﬁrst check whether i strictly prefers some alternative (b, 1) such that b ∈ A \ B to
+(a, k); if so, we set NS[i, B, B(cid:48), (a, k), t] to false. Otherwise, we proceed and guess a partition
+and indexing P = {P1, P2, . . . , P|P|} of B(cid:48) \ {a}. Now we will show that we can determine
+in polynomial time whether there exists of a stable assignment compatible with this indexed
+partition.
+Claim 17. There exists an algorithm that given a partition P = {P1, P2, . . . , P|P|} of B(cid:48)\{a},
+checks whether there exists a feasible assignment π : N → A such that the conditions (i) to
+(v) hold, and each activity set in P is assigned to the players in desc(j) for some j ∈ ch(i)
+in such a way that for every q ∈ [|P|] and c ∈ [|ch(i)|], Pq is assigned to desc(jc) only if the
+preﬁx P1, P2, . . . , Pq−1 are assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1), ﬁnds
+one if it exists, and runs in time O(p2n3) with respect to the number of activities p.
+
+Proof. We give a dynamic programming algorithm. Observe that a stable assignment can
+allocate only activity a or nothing to players before allocating the activity set P1 to some
+subtree. For convention, we thus denote P0 by the empty activity set, which may be assigned
+to the ﬁrst c subtrees where the subtree desc(jc+1) is assigned to the activity set P1. We will
+now determine for each c ∈ [|ch(i)|] and q ∈ [0,|P|] whether the activity sets P0, P1, . . . , Pq
+
+20
+
+Group Activity Selection on Social Networks
+
+can be assigned to the subtrees rooted at j1, j2, . . . , jc, and exactly (cid:96) players can be assigned
+to the activity a; we refer to this subproblem by T [jc, Pq, (cid:96)].
+
+We initialize T [j1, Pq, (cid:96)] to true if
+• the empty activity set P0 can be allocated to the ﬁrst subtree desc(j1), i.e., q = 0,
+(cid:96) = 0, and NS[j1, B,∅, (a∅, 1), 1] is true, and (a = a∅ or j weakly prefers (a∅, 1) to
+(a, k + 1)); or
+• only the activity a can be assigned to (cid:96) players in desc(j1), i.e., q = 0, (cid:96) ≥ 1, and
+
+NS[j1, B,{a}, (a, k), (cid:96)] is true;
+
+• only the activity set P1 can be assigned to players in desc(j1), i.e., q = 1, (cid:96) = 0, and
+there exists an alternative (b, x) ∈ P1 × [n] ∪ {(a∅, 1)} such that NS[j1, B, P1, (b, x), x]
+is true, b = a∅ or i weakly prefers (a, k) to (b, x + 1), and (a = a∅ or j1 weakly prefers
+(b, x) to (a, k + 1)); or
+• P1 can be assigned to players in desc(j1), and activity a can be assigned to (cid:96) players
+
+from desc(j1), i.e., q = 1, (cid:96) ≥ 1, and NS[j1, B, P1 ∪ {a}, (a, k), (cid:96)] is true.
+
+We set T [j1, Pq, (cid:96)] to false otherwise.
+Then, we iterate through j1, j2, . . . , j|ch(i)| and P0, P1, . . . , P|P|, and update T [jc, Pq, (cid:96)]:
+for each c ∈ [|ch(i)|], for each q ∈ [0,|P|], and for each (cid:96) ∈ [0, t], we set T [jc, Pq, (cid:96)] to true if
+one of the following statements holds:
+
+• P1, P2, . . . , Pq can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) with (cid:96)
+players from the subtrees being assigned to the activity a, and the void activity can
+be assigned to the subtree desc(jc), i.e., both T [jc−1, Pq, (cid:96)] and NS[jc, B,∅, (a∅, 1), 1]
+are true, and a = a∅ or player jc weakly prefers (a∅, 1) to (a, k + 1);
+
+• P1, P2, . . . , Pq can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) while
+the activity a is assigned to x players from the subtrees desc(j1), desc(j2), . . . , desc(jc−1)
+and to (cid:96)− x players from the subtree desc(jc), i.e., (cid:96) ≥ 2, and there exists an x ∈ [(cid:96)− 1]
+such that T [jc−1, Pq, (cid:96) − x] and NS[jc, B,{a}, (a, k), x] are true;
+
+• P1, P2, . . . , Pq−1 can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) with
+(cid:96) players from the subtrees being assigned to the activity a, and only the activity
+set Pq can be assigned to the subtree desc(jc), i.e., T [jc−1, Pq−1, (cid:96)] is true, and there
+exists an alternative (b, x) ∈ Pq × [n]∪{(a∅, 1)} such that NS[jc, B, Pq, (b, x), x] is true,
+(b = a∅ or i weakly prefers (a, k) to (b, x + 1)), and (a = a∅ or jc weakly prefers (b, x)
+to (a, k + 1));
+
+• P1, P2, . . . , Pq−1 can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) and
+Pq can be assigned to the subtree desc(jc) while the activity a is assigned to x players
+from the subtrees desc(j1), desc(j2), . . . , desc(jc−1) and to (cid:96)−x players from the subtree
+desc(jc), i.e., (cid:96) ≥ 2, and there exists an x ∈ [(cid:96) − 1] such that both T [jc−1, Pq−1, (cid:96) − x]
+and NS[jc, B, Pq ∪ {a}, (a, k), x] are true.
+
+We set T [jc, Pq, (cid:96)] to false otherwise.
+
+21
+
+Igarashi, Bredereck, Peters, & Elkind
+
+Clearly, a desired assignment exists if and only if T [j|ch(i)|, P|P|, t− 1] is true. The size of
+the dynamic programming table is at most pn2 and each entry can be ﬁlled in O(pn) time.
+This prove the claim.
+
+The size of the dynamic programming table NS[i, B, B(cid:48), (a, k), t] is at most 4ppn3. For
+each entry, we consider at most (p + 1)p partitions of B(cid:48) \ {a}, and for each partition at
+most p! permutations; further, for each permutation we have shown that there exists an
+O(p2n3) time algorithm that checks the existence of a stable assignment compatible with it.
+Hence we conclude that our problem for trees can be solved in O(4p(p + 1)pp!p3n6) time.
+
+Now, if (N, L) is a forest, we can combine the FPT algorithm described above with the
+algorithm for graphs with small connected components in the proof of Theorem 14. The
+running time of the latter algorithm is a product of the time required to ﬁnd a Nash stable
+assignment for a single connected component and the time required to combine solutions for
+diﬀerent components; As we have seen, the former is O(pc+1c2), where c is the maximum
+component size and the latter is O(2pn). In our case, each connected component is a tree,
+so instead of the O(pc+1c2) algorithm for general graphs we can use our FPT algorithm for
+trees. This shows that our problem is in FPT for arbitrary forests.
+
+The proof for individual stability is similar and can be found in the appendix.
+
+Theorem 18. The problem of deciding whether an instance of gGASP with |A∗| = p whose
+underlying social network (N, L) is acyclic has an individually stable feasible assignment is
+in FPT with respect to p.
+
+Core stability turns out to be more computationally challenging than Nash stability and
+individual stability when the number of activities is small and the graph is a star: we will
+now show that core stable assignments are hard to ﬁnd even if there are only two activities
+and the underlying graph is a star (and thus one cannot expect an FPT result with respect
+to the number of activities for this setting). Later, we will see that this hardness result can
+be extended to the case where (N, L) is a clique, i.e., to standard GASP, thereby solving a
+problem left open in the work of Darmann (2015).
+
+Theorem 19. It is NP-complete to determine whether an instance of gGASP admits a core
+stable assignment even when the underlying graph is a star and the number of non-void
+activities is 2.
+
+of V , X3C asks whether S admits an exact cover S(cid:48) ⊆ S, i.e., |S(cid:48)| = k and V =(cid:83)
+
+Proof. Our problem is in NP by Proposition 2. To establish NP-hardness, we reduce from
+the NP-complete problem Exact Cover by 3-Sets (X3C) (Garey & Johnson, 1979). Given
+a ﬁnite set V = {v1, v2, . . . , v3k} and a collection S = {S1, S2, . . . , Sm} of 3-element subsets
+Si∈S(cid:48) Si.
+Given an instance of X3C, we construct an instance of gGASP as follows. We deﬁne the
+set of activities to be A∗ = {a, b}. We introduce a center player c, two players x1 and x2,
+and a player Sj for each Sj ∈ S.
+Idea. We will construct the dummies of each vi ∈ V and the preferences of players as
+
+follows:
+
+1. The players c, x1, and x2 form an empty core instance; thus, in order to stabilize them,
+the center c needs to be assigned to activity a, together with k players from S, and x2
+must be assigned to activity b.
+
+22
+
+Group Activity Selection on Social Networks
+
+2. If the dummies of vi and the players corresponding to the sets including vi (denoted
+by S(vi)) are assigned to the void activity, then these players together with the center
+c and x2 will form a blocking coalition of size β(vi) and deviate to activity b.
+
+Construction details. For each vi ∈ V , we let S(vi) = { Sj | vi ∈ Sj ∈ S } and
+β(vi) = i + 3k + 1 and create a set Dummy(vi) = {d(1)
+} of dummy
+players. We attach each of the dummies to the center c. Intuitively, for each i ∈ [3k] the
+number β(vi) is the target coalition size when all players in Dummy(vi) are engaged in
+activity b, together with c, x2, and the players in S(vi). Note that the values β(vi) are at
+least 3 and distinct over i ∈ [3k]. We then attach to the center, the players x1, x2, all the
+players in S, and all the dummy players. The illustration of the graph is presented in Figure
+5.
+
+, . . . , d(β(vi)−|S(vi)|−2)
+
+i
+
+, d(2)
+
+i
+
+i
+
+Dummy(v2)
+
+Dummy(v1)
+
+Dummy(v3k)
+
+x1
+
+c
+
+x2
+
+S1
+
+S2
+
+Sm
+
+Figure 5: The graph constructed in the hardness proof for Theorem 19.
+
+{b} × { β(vi) | vi ∈ Sj }; also, set B =(cid:83)
+
+Now the players’ preferences are deﬁned as follows. For each Sj ∈ S, we let Bj =
+Sj∈S Bj. The preferences of each player Sj ∈ S are
+
+given by
+
+Sj : (a, k + 1) (cid:31) Bj (cid:31) (a∅, 1).
+
+For each i ∈ [3k] the dummy players in Dummy(vi) only approve the alternative (b, β(vi)).
+
+Finally, the preferences of x1, c, and x2 are given by
+
+x1 : (b, 2) (cid:31) (a, 3) (cid:31) (a∅, 1)
+c : (a, 2) (cid:31) (b, 2) (cid:31) (a, 3) (cid:31) B (cid:31) (a, k + 1) (cid:31) (a∅, 1)
+x2 : (a, 3) (cid:31) B (cid:31) (b, 1) (cid:31) (a, 2) (cid:31) (a∅, 1).
+
+Note that the preferences of c, x1 and x2, when restricted to A × [1, 2, 3], form an instance
+of gGASP with an empty core (Example 4).
+Correctness. We will show that (V,S) admits an exact cover if and only if there exists a
+core stable feasible assignment.
+Let S(cid:48) be an exact cover in (V,S). Then, we construct a feasible assignment π by
+assigning activity a to the player c and the players Sj ∈ S(cid:48), assigning b to the player x2,
+and assigning the void activity to the remaining players. Clearly, π is individually rational
+
+23
+
+Igarashi, Bredereck, Peters, & Elkind
+
+since |S(cid:48)| = k and hence |πa| = k + 1. Further, notice that no connected subset T together
+with activity a strongly blocks π: by the deﬁnition of a blocking coalition, every such subset
+has to contain the players in S(cid:48), who are currently enjoying one of their top alternatives.
+It remains to show that no connected subset T together with activity b strongly blocks π.
+Suppose towards a contradiction that such a subset T exists; as x2 ∈ T , it must be the case
+that |T| = β(vi) for some vi ∈ V and hence T consists of agents who approve (b, β(vi)),
+i.e., T = {c, x2} ∪ S(vi) ∪ Dummy(vi) for some vi ∈ V . However, since S(cid:48) is an exact cover,
+there is a set Sj ∈ S(cid:48) ∩ S(vi) with π(Sj) = a, and this agent prefers (a, k + 1) to (b, β(vi)), a
+contradiction. Hence, π is core stable.
+Conversely, suppose that there exists a core stable feasible assignment π and let S(cid:48) =
+{ Sj ∈ S | π(Sj) = a}.
+We will ﬁrst argue that π(c) = a. Indeed, if π(c) = b and the only other agent to engage
+in b is x1, then πa = ∅ since no player approves (a, 1); thus, the players c and x2 can deviate
+to a. If π(c) = b and |πb| = β(vi) for some vi ∈ V then πa = ∅ and c, x1 and x2 can deviate
+to a. If π(c) = a∅, then πa = ∅ and the players c, x1, and x2 would deviate to a. It follows
+that π(c) = a. Now, if πa = {c, x2} then πb = ∅ and agent x2 can deviate to b. Similarly, if
+πa = {c, x1, x2} then πb = ∅, and c and x1 can deviate to b. If follows that |πa| = k + 1 and
+hence |S(cid:48)| = k. Also, since there is no coalition assigned to an alternative in B, x2 must be
+engaged alone in activity b; otherwise, the player can deviate to b.
+Now, if S(cid:48) is not an exact cover for (V,S), there exists an element vi ∈ V such that no
+player in S(vi) is assigned to a; that is, all players in S(vi) are assigned to the void activity.
+Then the coalition {c, x2} ∪ S(vi) ∪ Dummy(vi) together with the activity b strongly blocks
+π, contradicting the stability of π. Thus, S(cid:48) is an exact cover for (V,S).
+
+The hardness result in Theorem 19 immediately generalizes to instances of gGASP with
+more than two activities: we can modify the construction in our hardness reduction by
+introducing additional activities that no player wants to engage in. In contrast, checking
+the existence of core stable assignments in gGASP is easy if |A∗| = 1, irrespective of the
+structure of the social network.
+Proposition 20. Every instance of gGASP with A = {a, a∅} admits a core stable assignment;
+moreover, such an assignment can be computed in polynomial time.
+Proof. Consider an instance (N, ((cid:23)i))i∈N , A, L) of gGASP with A = {a, a∅}, and let n = |N|.
+For each s ∈ [n], let Ss be the set of all players who weakly prefer (a, s) to (a∅, 1). If for each
+s ∈ [n] the largest connected component of Ss with respect to (N, L) contains fewer than s
+agents, then no outcome in which a non-empty set of agents engages in a is individually
+rational, whereas the assignment π given by π(i) = a∅ for all i ∈ N is core stable. Otherwise,
+consider the largest value of s such that Ss has a connected component of size at least s.
+Find a connected subset of Ss of size exactly s, and assign the agents in this subset to a;
+assign the remaining agents to a∅. To see that this assignment is core stable, note that
+for every deviating coalition S we would have |S| > s, and hence such a coalition is either
+disconnected or some players in S prefer (a∅, 1) to (a,|S|).
+
+It is not clear if the problem of ﬁnding core stable assignments in gGASP is in FPT with
+respect to the number of activities when the underlying graph is a path. However, we can
+place this problem in XP with respect to this parameter. In fact, we have the following
+
+24
+
+Group Activity Selection on Social Networks
+
+more general result for graphs with few connected coalitions (see the work of Elkind (2014)
+for insights on the structure of such graphs).
+Proposition 21. Given an instance (N, ((cid:23)i))i∈N , A, L) of gGASP with |N| = n, |A| = p+1,
+such that the number of non-empty connected subsets of (N, L) is κ, we can decide in time
+O(κp) · poly(n, p) whether this instance admits a core stable assignment, and ﬁnd one such
+assignment if it exists.
+
+Proof. Let C1, . . . , Cκ be the list of all non-empty connected subsets of (N, L). Since each
+assignment of players to activities has to assign a connected (possibly empty) subset of
+players to each activity, we can bound the number of possible assignments by (κ + 1)p: each
+of the p non-void activities is assigned to a coalition in our list or to no player at all, and the
+remaining players are assigned the void activity. We can then generate all these assignments
+one by one and check if any of them is core stable; by Proposition 2, the stability check can
+be performed in time polynomial in n and p.
+
+If the social network (N, L) is a path, it has O(|N|2) connected subsets. Thus, we obtain
+
+the following corollary.
+
+Corollary 22. The problem of deciding whether a given instance of gGASP whose underlying
+graph is a path admits a core stable assignment is in XP with respect to the number of
+activities.
+
+5.3 Cliques
+
+It is unlikely that our FPT results can be extended to even cliques: our next result shows
+that the problem of ﬁnding a Nash stable outcome is W[1]-hard with respect to the number
+of activities even for classic GASP, i.e., when the social network imposes no constraints on
+possible coalitions and players have approval preferences.
+
+Theorem 23. The problem of determining whether an instance of gGASP admits a Nash
+stable is W[1]-hard with respect to the number of activities, even if the underlying graph
+G = (N, L) is a clique.
+Proof. We will provide a parameterized reduction from Clique on regular graphs. Given
+an undirected graph G = (V, E) and a positive integer k, Clique asks if G admits a clique
+of size k. The problem is known to be W[1]-hard even for regular graphs, i.e., graphs where
+each vertex has the same degree (see e.g. Theorem 13.4 in the book of Cygan et al. (2015)).
+Given a regular graph G = (V, E) and a positive integer k, where |V | = n, |E| = m, and
+each vertex of G has degree δ ≥ k − 1, we create an instance of gGASP whose underlying
+graph is a clique, as follows. We create one vertex activity ai for each i ∈ [k], one edge
+activity bj for each j ∈ [k(k − 1)/2], and two other activities c and d. The set of non-void
+activities is given by
+
+A∗ = { ai | i ∈ [k]} ∪ { bj | j ∈ [k(k − 1)/2]} ∪ {c, d}.
+
+For each v ∈ V , we create one vertex player v, and for each edge e = {u, v} ∈ E, we create
+two edge players euv and evu.
+
+Idea. We will create dummies of vertices and edges in such a way that a stable assignment
+
+has the following properties:
+
+25
+
+Igarashi, Bredereck, Peters, & Elkind
+
+1. if a vertex player v is assigned to a vertex activity, it forms a coalition of size α(v)
+that consists of the player v, its dummies, and δ − k + 1 edge players incident to the
+vertex; and
+
+2. if an edge player evu is assigned to an edge activity, it forms a coalition of size β(e)
+
+that consists of the edge player euv, evu, and the dummies of the edge {u, v}.
+
+Construction details. Let P = {2j + n | j ∈ [n]}, and let α : V → P be a bijection
+that assigns a distinct number in P to each vertex v ∈ V . Note that u (cid:54)= v implies that
+α(u) and α(v) diﬀer by at least 2, i.e., α(u) + 1 (cid:54)= α(v) and α(v) + 1 (cid:54)= α(u). Similarly, let
+Q = {2j | j ∈ [m]} and let β : E → Q be a bijection that assigns a distinct number in Q to
+each edge e ∈ E. For each v ∈ V we construct a set Dummy(v) of α(v) − δ + k − 2 dummy
+vertex players. Similarly, for each e ∈ E we construct a set Dummy(e) of β(e) − 2 dummy
+edge players. Lastly, we create one stalker s. The set of players is given by
+
+N = V ∪ (cid:91)
+
+Dummy(v) ∪ E ∪ (cid:91)
+
+Dummy(e) ∪ {s}.
+
+v∈V
+
+e∈E
+
+Now the preferences are given as follows.
+• Each vertex player v ∈ V approves the alternatives (c, n − k) and (d, 1) as well as each
+
+alternative (ai, α(v)) where i ∈ [k].
+
+• Each dummy in Dummy(v) of a vertex player v approves the alternatives (ai, α(v))
+
+and (ai, α(v) + 1) where i ∈ [k].
+
+• Each edge player evu approves the alternatives (ai, α(v)) and (ai, α(v) + 1) where
+
+i ∈ [k] as well as the alternatives (bj, β(e)) where j ∈ [k(k − 1)/2].
+
+• The dummies in Dummy(e) only approve the alternatives (bj, β(e)) where j ∈ [m].
+• The stalker s approves the alternative (d, 2).
+
+All of these players are indiﬀerent among all alternatives they approve. Finally, we take
+the underlying social network to be a complete graph. Note that the number of activities
+depends on k, but not on n, and the size of our instance of gGASP is bounded by O(n2 + m2).
+Correctness. We will now argue that the graph G contains a clique of size k if and only
+
+if there exists a Nash stable assignment for our instance of gGASP.
+
+Suppose that G contains a clique S of size k. We construct an assignment π as follows.
+We assign the activity c to all vertex players who do not belong to S. The size of this
+coalition is n − k. We then assign the vertex activities to the rest of vertex players and
+its dummies: We take some bijection η between S and [k], and for each v ∈ V we form
+a coalition of size α(v) that engages in aη(v): this coalition consists of v, all players in
+Dummy(v), and all edge players evu such that u (cid:54)∈ S. Lastly, we assign the edge activities to
+the edge players both of whose endpoints are in S: we establish a bijection ξ between the
+edge set { e = {u, v} ∈ E | u, v ∈ S } and [k(k − 1)/2], and assign the activity bξ(e) to the
+edge players euv and evu as well as to all players in Dummy(e). All other players, namely
+the stalker s as well as the remaining edge players and dummy players, are assigned the void
+activity. We will now argue that the resulting assignment π is Nash stable.
+
+26
+
+Group Activity Selection on Social Networks
+
+Clearly, no player assigned to an activity ai, bj, or c wishes to deviate. Now, consider
+a dummy of some vertex v that is assigned to the void activity. By construction, we have
+π(v) = c. The dummy only wants to join a coalition if there is a coalition which engages in
+an activity ai and whose size is α(v)− 1 or α(v); however, no such coalition exists. Similarly,
+consider an edge player evu with π(evu) = a∅. We have v (cid:54)∈ S, and therefore evu does not
+want to join any of the existing coalitions because they have the wrong sizes; the same
+argument applies to all the dummies of e. Further, the stalker s does not want to deviate
+since there is no coalition of size 1 that engages in an activity d. Hence, π is Nash stable.
+Conversely, suppose that there exists a Nash stable feasible assignment π. By individual
+rationality of π, every player engages either in the void activity or in an approved alternative.
+Notice that if a vertex player v were assigned to the activity d, the stalker s would have an
+NS-deviation to d; thus, no player is assigned to d. If a vertex player v were assigned to the
+void activity, then v would have an NS-deviation to activity d. Thus, π cannot allocate vertex
+players to either d or the void activity. This means that π must allocate the activity c to n−k
+vertex players, and allocate the k vertex activities ai to the remaining k vertex players v,
+each together with α(v)− 1 other players. Now, let S = {v ∈ V | π(v) = ai for some i ∈ [k]}.
+By construction, |S| = k. We will show that S is a clique. That is, we prove the following
+claim.
+Claim 24. For any v ∈ S, v is adjacent to every other vertex in S, i.e., there are k − 1
+edge players evu with u ∈ S.
+
+Proof. Consider a player v ∈ S, and let π(v) = ai. Observe that by individual rationality
+|πai| = α(v); thus, all players in Dummy(v) are assigned to ai since otherwise they could
+deviate to ai. The only other players who approve (ai, α(v)) are edge players evu. Thus,
+δ − k + 1 such players must be assigned to ai, and the remaining k − 1 of these players must
+be assigned to some activity bj, since otherwise they would deviate to ai. It remains to show
+that the k − 1 edge players assigned to some bj are incident to vertices in S. For each v ∈ S,
+consider the set of players Eπ,v = {evu | v ∈ S, π(evu) = bj for some j ∈ [k(k − 1)/2]}. We
+
+have argued that |Eπ,v| = k − 1 for each v. Thus, |(cid:83)
+Clearly (cid:83)
+|Eπ| ≤ k(k − 1). Therefore, we must have(cid:91)
+
+Now, let Eπ be the set of all edge players who are assigned to edge activities bj.
+v∈S Eπ,v ⊆ Eπ. Note that by individual rationality, each edge activity bj can
+be assigned to at most two edge players simultaneously (namely, to the two edge players
+euv, evu corresponding to edge e). Since there are k(k − 1)/2 edge activities, it follows that
+
+v∈S Eπ,v| = k(k − 1).
+
+Eπ,v = Eπ.
+
+v∈S
+
+(2)
+
+all dummies of the edge {u, v}. By (2), we have euv ∈(cid:83)
+
+Now, consider an edge player evu with v ∈ S and π(evu) = bj for some j ∈ [k(k − 1)/2].
+By individual rationality we have |πbj| = β({u, v}) and hence πbj consists of evu, euv and
+v∈S Eπ,v ⊆ Eπ, and so we see that
+u ∈ S.
+
+Hence, we conclude that S is a clique of size k.
+
+27
+
+Igarashi, Bredereck, Peters, & Elkind
+
+We note that if players have approval preferences, individually and core stable outcomes
+can be computed in polynomial time for any network structure: one can repeatedly ﬁnd
+activity a and a maximal unanimous coalition S all of whose members approve a, assign S
+to a, and remove the activity a and the players in S from consideration. However, if we allow
+full preference orders, deciding the existence of an individually stable outcome is W[1]-hard
+with respect to the number of activities for standard GASP i.e., the graph is a clique. The
+proof can be found in the appendix.
+
+Theorem 25. The problem of determining whether an instance of gGASP admits an indi-
+vidually stable assignment is W[1]-hard with respect to the number of activities, even if the
+underlying graph G = (N, L) is a clique.
+
+On the positive side, for gGASPs on cliques, a Nash stable assignment turns out be
+computable in polynomial time if the number of activities is a constant. However, it is open
+if this result can be extended to general gGASPs.
+Theorem 26. There exist an algorithm that, given an instance (N, A, ((cid:23)i)i∈N , L) of gGASP
+with |N| = n, |A| = p + 1 such that (N, L) is a clique, determines whether it admits a Nash
+stable assignment in time (n + 1)p+1O(np(n + p)).
+
+Proof. For every mapping f : A → [0, n] where(cid:80)
+Fix a mapping f : A → [0, n] with (cid:80)
+
+a∈A f (a) = n, we will check if there is a
+Nash stable assignment π such that |πa| = f (a) for each a ∈ A∗ and |{ i ∈ N | π(i) = a∅ }| =
+f (a∅). There are at most (n + 1)p+1 such mappings; hence, it remains to show that each
+check will take at most poly(n) steps.
+
+a∈A f (a) = n. We construct an instance of the
+network ﬂow problem as follows. We introduce a source s, a sink t, a node i for each player
+i ∈ N , and a node a for each activity a ∈ A. We create an arc with unit capacity from the
+source s to each player, and an arc with capacity f (a) from node a ∈ A to the sink t. Then,
+for each i ∈ N we create an arc of unit capacity from player i to an activity a ∈ A if and
+only if
+
+• a (cid:54)= a∅, and i weakly prefers (a, f (a)) to (a∅, 1) and to all pairs of the form (b, f (b) + 1),
+
+where b ∈ A∗ \ {a}; or
+
+• a = a∅, and i weakly prefers (a∅, 1) to all pairs of the form (b, f (b) + 1), where b ∈ A∗.
+It can be easily veriﬁed that an integral ﬂow of size n in this network corresponds to a Nash
+stable assignment where exactly f (a) players are engaged in each activity a ∈ A. It remains
+to note that one can check in O(|V ||E|) time whether a given network (V, E) admits a ﬂow
+of a given size (Orlin, 2013).
+
+A similar argument applies to individual stability: ﬁnding an individually stable assign-
+
+ment can be done in polynomial time if the number of activities is a constant.
+Theorem 27. There exist an algorithm that, given an instance (N, A, ((cid:23)i)i∈N , L) of gGASP
+with |N| = n, |A| = p + 1 such that (N, L) is a clique, determines whether it admits an
+individually stable assignment in time 2p(n + 1)p+1O(np(n + p)).
+Proof. For every mapping f : A → [0, n] and g : A∗ → {0, 1}, we will check if there is an
+individually stable assignment such that
+
+28
+
+Group Activity Selection on Social Networks
+
+(i) for each a ∈ A∗, |πa| = f (a), and |{ i ∈ N | π(i) = a∅ }| = f (a∅);
+(ii) for each a ∈ A∗ with g(a) = 1, πa contains a player i who does not want to increase
+
+the size of a group, that is, who strictly prefers (a, f (a)) to (a, f (a) + 1); and
+
+(iii) for each a ∈ A∗ with g(a) = 0, no player wants to deviate to πa.
+There are at most 2p(n + 1)p+1 such combinations of mappings. We will show that each
+check will take at most poly(n) steps.
+Fix a mapping f : A∗ → [0, n] and g : A∗ → {0, 1}. Let A0 = { a ∈ A∗ | g(a) = 0} and
+A1 = { a ∈ A∗ | g(a) = 1}.
+We construct an instance of the network ﬂow problem as follows. We introduce a source s,
+a sink t, a node i for each player i ∈ N , a node a for each a ∈ A0 ∪ {a∅}, and two nodes a
+and x(a) for each activity a ∈ A1. We create an arc with unit capacity from the source s to
+each player, and an arc with capacity f (a) from node a ∈ A0 ∪ {a∅} to the sink t. For each
+a ∈ A1 with f (a) ≥ 1, we create an arc with capacity f (a) − 1 from node a to the sink t,
+and an arc with unit capacity from node x(a) to the sink t. Then, for each i ∈ N
+
+• we create an arc of unit capacity from player i to a node a ∈ A∗ if and only if i weakly
+prefers (a, f (a)) to (a∅, 1) and to all pairs of the form (b, f (b) + 1), where b ∈ A0 \ {a};
+• we create an arc of unit capacity from player i to a node x(a) where a ∈ A1 if and only
+if i strictly prefers (a, f (a)) to (a, f (a) + 1), and i weakly prefers (a, f (a)) to (a∅, 1)
+and to all pairs of the form (b, f (b) + 1), where b ∈ A0 \ {a};
+
+• ﬁnally, we create an arc of unit capacity from player i to the void activity a∅ if and
+
+only if i weakly prefers (a∅, 1) to all pairs of the form (b, f (b) + 1), where b ∈ A0.
+
+It can be easily veriﬁed that an integral ﬂow of size n in this network corresponds to an
+individually stable assignment satisfying the conditions (i) - (iii). Again, one can check in
+polynomial time whether a given network admits a ﬂow of a given size (Orlin, 2013), and
+hence our theorem follows.
+
+For core stability, Theorem 19 can be extended from stars to cliques; however, our proof
+for cliques relies on having at least four non-void activities. It remains an interesting open
+problem whether core stable outcomes of gGASPs on cliques can be found eﬃciently if the
+number of activities does not exceed 3. We conjecture that the answer is ‘no’, i.e., the
+problem of computing core stable outcomes remains NP-hard for |A∗| = 2, 3. The proof for
+the theorem below can be found in the appendix.
+
+Theorem 28. It is NP-complete to determine whether an instance of gGASP admits a core
+stable assignment even if the underlying graph is a clique and the number of activities is 4.
+
+6. Few Players
+
+In the previous sections, the parameter that we focused on was the number of activities p.
+Although we expect this parameter to be small in many realistic settings, there are also
+situations where players can choose from a large variety of possible activities. Assume, for
+instance, that a small number of scientists are gathering at the university of a large city
+
+29
+
+Igarashi, Bredereck, Peters, & Elkind
+
+which oﬀers plenty of options for social, cultural, or sports activities. Usually, the number
+of options is much larger than the number of people attending. It is, thus, natural to ask
+if stability-related problems for gGASP are tractable in the number of players n is small.
+In this section, we give a negative answer by showing that even classical GASP remains
+W[1]-hard with respect to the number of players n.
+
+We ﬁrst observe that for all stability concepts considered in this paper, the problem of
+ﬁnding a stable feasible assignment is in XP with respect to n: we can simply guess the
+activity of each player (there are at most (p + 1)n possible guesses) and check whether the
+resulting assignment is feasible and stable.
+
+Observation 29. The problem of deciding whether a given instance of gGASP admits a core
+stable, Nash stable, or individually stable assignment is in XP with respect to the number of
+players n.
+
+The following theorem shows that gGASP is not ﬁxed-parameter tractable with respect
+to n unless FPT = W[1]. This is somewhat surprising, because an FPT algorithm with
+respect to n could aﬀord to iterate through all possible partitions of the players into coalitions.
+Thus, the computational diﬃculty must arise from deciding which group engages in which
+activity, rather than from deciding who belongs to which group. Indeed, in the following
+hardness reduction, there is a unique partition of players into coalitions that can potentially
+lead to a stable assignment; thus, computational hardness comes solely from assigning known
+coalitions of players to activities.
+
+Theorem 30. The problem of determining whether an instance of gGASP whose underlying
+graph is a clique admits a core stable assignment is W[1]-hard with respect to the number of
+players n.
+
+Proof. We describe a parameterized reduction from the W[1]-hard Multicolored Inde-
+pendent Set problem (see, e.g., Corollary 13.8 in the book of Cygan et al. (2015)). Given
+an undirected graph G = (V, E), a positive integer h ∈ N, and a vertex coloring φ : V → [h],
+Multicolored Independent Set asks whether G admits an h-colored independent set,
+that is, a size-h vertex subset Q ⊆ V such that no pair of distinct vertices in Q is adjacent
+and the vertices in Q have h pairwise distinct colors. Without loss of generality, we assume
+that there are exactly q vertices of each color for some q ∈ N, and that there are no edges
+between vertices of the same color.
+
+1 , . . . , v(i)
+
+Let (G, h, φ) be an instance of Multicolored Independent Set with G = (V, E).
+q } to denote the set of vertices of color i for
+For convenience, we write V (i) = {v(i)
+every i ∈ [h]. We construct our gGASP instance as follows. We have one vertex activity v
+for each vertex v ∈ V , one edge activity e for each edge e ∈ E, and four other activities a, b,
+c, and d.
+Idea. We will have one color gadget Color(i) for each color i ∈ [h] and one empty core
+gadget Ng. For most of the possible assignments, the empty core gadget will be unstable,
+unless the following holds:
+
+1. For each color i ∈ [h], the players from the color gadget select a vertex of color i (by
+
+being assigned together to the corresponding vertex activity).
+
+2. For each pair of colors {i, j}, the corresponding selected vertices are not adjacent.
+
+30
+
+Group Activity Selection on Social Networks
+
+3. The stabilizer player g forms a coalition with the players in Ng.
+
+If all three conditions hold, then the assignment encodes an h-colored independent set.
+
+Construction details. The color gadget Color(i), i ∈ [h] consists of two players p(i)
+
+1 and p(i)
+
+2
+
+with the following preferences:
+
+p(i)
+1
+
+p(i)
+2
+
+: E(v(i)
+··· (cid:31) E(v(i)
+: E(v(i)
+··· (cid:31) E(v(i)
+
+1 ) × {5} (cid:31) (v(i)
+
+1 , 2) (cid:31) E(v(i)
+
+2 ) × {5} (cid:31) (v(i)
+
+2 , 2) (cid:31) ···
+
+q ) × {5} (cid:31) (v(i)
+
+q , 2) (cid:31) (a∅, 1),
+
+q ) × {5} (cid:31) (v(i)
+
+q , 2) (cid:31) E(v(i)
+
+q−1) × {5} (cid:31) (v(i)
+
+q−1, 2) (cid:31) ···
+
+1 ) × {5} (cid:31) (v(i)
+
+1 , 2) (cid:31) (a∅, 1),
+
+where E(v) denotes the set of activities corresponding to edges incident to vertex v.
+
+The stabilizer g approves each alternative of the form (e, 5) with e ∈ E and is indiﬀerent
+among them; she also approves (d, 4), but likes it less than all other approved alternatives:
+
+g : E × {5} (cid:31) (d, 4) (cid:31) (a∅, 1).
+
+Finally, Ng consists of three players g1, g2, and g3 with the following preferences:
+
+g1 : (d, 4) (cid:31) (b, 2) (cid:31) (a, 3) (cid:31) (a∅, 1),
+g2 : (d, 4) (cid:31) (a, 2) (cid:31) (b, 2) (cid:31) (a, 3) (cid:31) (a∅, 1),
+g3 : (d, 4) (cid:31) (a, 3) (cid:31) (b, 1) (cid:31) (a, 2) (cid:31) (a∅, 1).
+
+In a core stable assignment, the activity d should be assigned to the players in Ng together
+with the stabilizer g; otherwise, the assignment would not be stable as we have seen in
+Example 4.
+
+Together, there are 2h + 4 players, namely
+
+(cid:91)
+
+i∈[h]
+
+N =
+
+Color(i) ∪ {g} ∪ Ng.
+
+We take the underlying social network to be a complete graph.
+
+Correctness. We will now argue that the graph G admits an h-colored independent set if
+
+and only if our instance of gGASP admits a core stable feasible assignment.
+
+Suppose that there exists an h-colored independent set H. We will construct a core
+stable assignment π as follows: We assign the players of the color gadget Color(i) to the
+activity corresponding to the vertex of color i from H, and we assign the activity d to players
+in Ng and the stabilizer g. This assignment is core stable: Clearly, no player from Ng wishes
+to deviate since they are assigned to their top alternatives. Consider the players of color
+gadget Color(i). They cannot deviate to another vertex activity, since they have completely
+opposed preferences over vertex activities of size 2. Now suppose towards a contradiction
+that there is a coalition S that blocks π together with some edge activity e = {v(i)
+}.
+, v(j)
+(cid:96)j
+Activity e is approved by exactly 5 players, and only with size 5. Thus, S must consist of
+exactly these 5 players, namely the stabilizer g and the players in Color(i) and Color(j). Now
+we see that the edge e must be incident to the vertex activity assigned to the two players
+
+(cid:96)i
+
+31
+
+Igarashi, Bredereck, Peters, & Elkind
+
+in Color(i) (otherwise one of these players would prefer their current alternative to (e, 5))
+and similarly e must be adjacent to the vertex activity assigned to the players in Color(j).
+However, this means that there is a pair of adjacent vertices in H, contradicting the fact
+that H is an independent set. We conclude that π is a core stable feasible assignment.
+
+, v(j)
+(cid:96)j
+
+(cid:96)i
+
+Conversely, suppose that there exists a core stable feasible assignment π. Then, by
+core stability, the stabilizer g as well as the players in Ng must be assigned to the activity
+d. Now, consider some edge activity corresponding to some edge e = {v(i)
+}. Recall
+that e is approved by exactly ﬁve players: two player from color gadget Color(i), two players
+from color gadget Color(j), and the stabilizer g. However, all ﬁve players approve the edge
+activity only of size ﬁve and g does engage in activity d and not in e. Thus, for every i ∈ [h],
+the two players from Color(i) must be assigned to some vertex activity in V (i). Now, let
+H = { v | π(p(i)
+1 ) = v for some i ∈ [h]}. We have argued that |H| = h. It remains to show
+that H is an independent set. Suppose towards a contradiction that there are vertices v(i)
+(cid:96)i
+and v(j)
+in H that are adjacent. Notice that the players in Color(i) strictly prefers the edge
+} with size 5 to their vertex activity with size 2. Similarly, the players
+activity e = {v(i)
+(cid:96)j
+in Color(j) as well as the stabilizer g strictly prefer the edge activity e with size 5 to their
+alternatives. Together with the activity e, these players can block π, a contradiction to the
+core stability of π.
+
+, v(j)
+(cid:96)j
+
+(cid:96)i
+
+The proofs for Nash and individually stability are related to the above reduction, but
+
+technically more involved and can be found in the appendix.
+
+Theorem 31. The problem of determining whether an instance of gGASP whose underlying
+graph is a clique admits a Nash stable or individually stable assignment is W[1]-hard with
+respect to the number of players n.
+
+Note that although we showed W[1]-hardness for each of the parameters p and n, param-
+eterizing by the combined parameter p + n immediately gives ﬁxed-parameter tractability,
+since the input size is trivially upper-bounded by n2 · p.
+
+7. Conclusion and Discussion
+
+In this paper, we have initiated the study of group activity selection problems with network
+structure, and found that even for very simple families of graphs, computing stable outcomes
+is NP-hard. We identiﬁed several ways to circumvent this computational intractability. For
+gGASPs with copyable activities, we showed that there exists a polynomial time algorithm to
+compute stable outcomes. We then investigated the parameterized complexity of computing
+stable outcomes of group activity selection problems on networks, with respect to two natural
+parameters. Many of our hardness results hold for the standard GASP, where there are no
+constraints on possible coalitions; however, some of our positive results only hold for acyclic
+graphs.
+
+Interestingly, one of our tractability results holds for GASP, but it is not clear if it
+can be extended to gGASP; thus, while simple networks may decrease complexity, allowing
+for arbitrary networks may have the opposite eﬀect. However, counterintuitively, for core
+stability we obtain hardness with just 2 activities when the undelying network is simple
+(a star), whereas for cliques our construction uses 4 activities. It is not clear if this is an
+
+32
+
+Group Activity Selection on Social Networks
+
+artefact of our proof approach, or whether ﬁnding core stable outcomes is genuinely easier
+for cliques than for stars.
+
+References
+
+Aziz, H., & Savani, R. (2016). Hedonic games. In Brandt, F., Conitzer, V., Endriss, U., Lang,
+J., & Procaccia, A. D. (Eds.), Handbook of Computational Social Choice, chap. 15.
+Cambridge University Press.
+
+Ballester, C. (2004). NP-competeness in hedonic games. Games and Economic Behavior,
+
+49, 1–30.
+
+Banerjee, S., Konishi, H., & S¨onmez, T. (2001). Core in a simple coalition formation game.
+
+Social Choice and Welfare, 18 (1), 135–153.
+
+Berman, P., Karpi´nski, M., & Scott, A. D. (2003). Approximation hardness for short
+
+symmetric instances of MAX-3SAT..
+
+Bogomolnaia, A., & Jackson, M. O. (2002). The Stability of Hedonic Coalition Structures.
+
+Games and Economic Behavior, 38 (2), 201–230.
+
+Bouveret, S., Cechl´arov´a, K., Elkind, E., Igarashi, A., & Peters, D. (2017). Fair division
+of a graph. In Proceedings of the 24th International Joint Conference on Artiﬁcial
+Intelligence, IJCAI 2017.
+
+Chalkiadakis, G., Greco, G., & Markakis, E. (2016). Characteristic function games with
+restricted agent interactions: Core-stability and coalition structures. Artiﬁcial Intelli-
+gence, 232, 76–113.
+
+Cygan, M., Fomin, F. V., Kowalik, L., Lokshtanov, D., Marx, D., Pilipczuk, M., Pilipczuk,
+M., & Saurabh, S. (2015). Parameterized Algorithms (1st edition). Springer Publishing
+Company, Incorporated.
+
+Darmann, A., & Lang, J. (2017). Group activity selection problems. In Endriss, U. (Ed.),
+
+Trends in Computational Social Choice, chap. 5. AI Access.
+
+Darmann, A. (2015). Group activity selection from ordinal preferences. In Proceedings of the
+4th International Conference on Algorithmic Decision Theory, ADT 2015, pp. 35–51.
+
+Darmann, A., Elkind, E., Kurz, S., Lang, J., Schauer, J., & Woeginger, G. (2012). Group
+activity selection problem. In Proceedings of the 8th International Conference on
+Internet and Network Economics, WINE 2012, pp. 156–169.
+
+Demange, G. (2004). On group stability in hierarchies and networks. Journal of Political
+
+Economy, 112 (4), 754–778.
+
+Demange, M., & Ekim, T. (2008). Minimum maximal matching is NP-hard in regular
+bipartite graphs. In Proceedings of the 5th International Conference on Theory and
+Applications of Models of Computation, TAMC 2008, pp. 364–374.
+
+Elkind, E. (2014). Coalitional games on sparse social networks.
+
+In Proceedings of the
+10th International Conference on Internet and Network Economics, WINE 2014, pp.
+308–321.
+
+33
+
+Igarashi, Bredereck, Peters, & Elkind
+
+Garey, M., & Johnson, D. (1979). Computers and Intractability: A Guide to the Theory of
+
+NP-Completeness. W. H. Freeman and Company.
+
+Gupta, S., Roy, S., Saurabh, S., & Zehavi, M. (2017). Parameterized analysis for the
+group activity selection problem on graphs. In Proceedings of the 10th International
+Symposium on Algorithmic Game Theory (SAGT), Lecture Notes in Computer Science.
+
+Igarashi, A., Bredereck, R., & Elkind, E. (2017). On parameterized complexity of group
+activity selection problems on social networks. In Proceedings of the 16th International
+Joint Conference on Autonomous Agents and Multi Agent Systems, AAMAS 2017, pp.
+1575 – 1577. Extended version available as arXiv:1703.01121 [cs.GT].
+
+Igarashi, A., & Elkind, E. (2016). Hedonic games with graph-restricted communication. In
+Proceedings of the 15th International Conference on Autonomous Agents and Multiagent
+Systems, AAMAS 2016, pp. 242–250.
+
+Igarashi, A., Peters, D., & Elkind, E. (2017). Group activity selection on social networks. In
+Proceedings of the 31st AAAI Conference on Artiﬁcial Intelligence, AAAI 2017, pp.
+565–571. Extended version available as arXiv:1611.04524 [cs.GT].
+
+Le, V. B., & Pfender, F. (2014). Complexity results for rainbow matchings. Theoretical
+
+Computer Science, 524 (C), 27–33.
+
+Lee, H., & Shoham, Y. (2015). Stable invitations. In Proceedings of the 29th AAAI Conference
+
+on Artiﬁcial Intelligence, AAAI 2015, pp. 965–971.
+
+Lee, H., & Williams, V. V. (2017). Parameterized complexity of group activity selection. In
+Proceedings of the 16th Conference on Autonomous Agents and Multiagent Systems,
+AAMAS 2017, pp. 353–361.
+
+Myerson, R. B. (1977). Graphs and cooperation in games. Mathematics of Operations
+
+Research, 2 (3), 225–229.
+
+Orlin, J. B. (2013). Max ﬂows in O(nm) time, or better. In Proceedings of the Forty-ﬁfth
+
+Annual ACM Symposium on Theory of Computing, STOC 2013, pp. 765–774.
+
+Suksompong, W. (2017). Fairly allocating contiguous blocks of indivisible items. In Pro-
+ceedings of the 10th International Symposium on Algorithmic Game Theory (SAGT),
+Lecture Notes in Computer Science. Extended version available as arXiv:1707.00345
+[cs.GT].
+
+Sung, S. C., & Dimitrov, D. (2007). On core membership testing for hedonic coalition
+
+formation games. Operations Research Letters, 35 (2), 155–158.
+
+Talmon, N. (2017). Structured proportional representation. In Proceedings of the 16th
+Conference on Autonomous Agents and Multiagent Systems, AAMAS 2017, pp. 633–
+641.
+
+Woeginger, G. J. (2013). Core Stability in Hedonic Coalition Formation. In Lecture Notes
+
+in Computer Science, Vol. 7741 LNCS, pp. 33–50.
+
+34
+
+Group Activity Selection on Social Networks
+
+Appendix. Proof omitted from Section 3
+
+Proof of Theorem 6
+
+Proof. The algorithm is similar to the one for hedonic games (Igarashi & Elkind, 2016). We
+ﬁrst give an informal description of our algorithm (Algorithm 2), followed by pseudocode.
+Again, if the input graph (N, L) is a forest, we can process each of its connected components
+separately, so we assume that (N, L) is a tree. We choose an arbitrary node r as the
+root and construct a rooted tree (N, T ) by orienting the edges in L towards the leaves.
+We denote by ch(i) the set of children of i and by desc(i) the set of descendants of i
+(including i) in the rooted tree. For each i ∈ N , we deﬁne height(i) = 0 if ch(i) = ∅,
+and height(i) = 1 + max{ height(j) | j ∈ ch(i)} otherwise. We denote by (N, T|S) the
+subdigraph induced by S ⊆ N , i.e., T|S = { (i, j) ∈ T | i, j ∈ S }.
+
+The algorithm has two diﬀerent phases: the bottom-up and top-down phases.
+• Bottom-up phase: In the bottom-up phase, we will determine guaranteed activity a(i)
+and coalition S(i) for every subroot i. To this end, we start with the assignment
+obtained by combining the previously constructed assignments a(j) for the children j
+of i and assigning i to the void activity. We then let player i join the most preferred
+activity among those to which she has an IS deviation. After that we keep adding
+players to i’s coalition S(i) as long as the resulting coalition remains feasible, the player
+being added is willing to move, and such a deviation is acceptable for all members of
+i’s coalition.
+
+• Top-down phase: In the top-down phase, the algorithm builds a feasible assignment
+π, by iteratively choosing a root r(cid:48) of the remaining rooted trees and reassigning the
+activity a(r(cid:48)) to its coalition S(r(cid:48)). Since each activity is copyalbe, we can always ﬁnd
+an activity that is equivalent to a(r(cid:48)) and has not been used by their predecessors.
+
+We will now argue that Algorithm 2 correctly ﬁnds an individually stable feasible
+
+assignment. We start by observing the following lemma.
+Lemma 32. For all i ∈ N , the following statements hold:
+
+(i) i has no incentive to deviate to an alternative of size 1, i.e., (a(i),|S(i)|) (cid:23)i (b, 1) for
+
+all b ∈ A,
+
+(ii) i has no IS-deviation to her children’s coalitions, i.e., (a(i),|S(i)|) (cid:23)i (a(j),|S(j)| + 1)
+
+for any j ∈ C∗(i), and
+
+(iii) all players in S(i) weakly prefer (a(i),|S(i)|) to their guaranteed alternative (a(j),|S(j)|).
+
+Proof. The statements (i) and (ii) in Lemma 32 immediately follow from the choice of a(i)
+in lines 4 – 11 and the stopping criterion of the while loop in line 14.
+We will now prove (iii). Assume that there is a pair of players not satisfying the condition
+(iii). Among such pairs, take i ∈ N and j ∈ S(i) with |height(i) − height(j)| being the
+minimum. First, suppose that j joins the coalition S(i) when S(i) is initialized in line
+12. Then, (a(j∗),|S(j∗)|) (cid:23)j (a(j),|S(j)|) by the minimality but we have (a(i),|S(i)|) (cid:23)j
+(a(j∗),|S(j∗)|) by the fact that adding players to S(i) does not decrease j’s utility, which
+
+35
+
+Igarashi, Bredereck, Peters, & Elkind
+
+Algorithm 2: Finding individually stable assignments
+input : tree (N, L), activity set A = A∗ ∪ {a∅}, r ∈ N , preference (cid:23)i, i ∈ N
+output : π : N → A
+
+1 // Bottom-up phase: assign activities to players in a bottom-up
+
+manner.;
+
+2 make a rooted tree (N, T ) with root r by orienting all the edges in L;
+3 initialize S(i) ← {i} and a(i) ← a∅ for each i ∈ N ;
+4 foreach t = 0, . . . , height(r) do
+5
+
+foreach i ∈ N with height(i) = t do
+
+// Let i join the favourite activity to which i has an
+IS-deviation. set
+C∗(i) = { j ∈ ch(i) | (a(j),|S(j)| + 1) (cid:23)k (a(j),|S(j)|) for all k ∈ S(j)};
+if there exists b ∈ A such that (b, 1) (cid:31)i (a(j),|S(j)| + 1) for all j ∈ C∗(i) then
+
+ﬁnd b∗ ∈ A such that (b∗, 1) (cid:23)i (b, 1) for all b ∈ A;
+set S(i) ← {i} and a(i) ← b∗;
+else
+
+ﬁnd j∗ ∈ C∗(i) such that (a(j∗),|S(j∗)| + 1) (cid:23)i (a(j),|S(j)| + 1) for all
+j ∈ C∗(i);
+set S(i) ← S(j∗) ∪ {i} and a(i) ← a(j∗) ;
+
+// Add a player to S(i) as long as the deviation is IS-feasible.;
+while (a(i),|S(i)| + 1) (cid:23)k (a(i),|S(i)|) for all k ∈ S(i) and there exists
+j ∈ N \ S(i) such that j’s parent belongs to S(i) and
+(a(i),|S(i)| + 1) (cid:31)j (a(j),|S(j)|) do
+
+S(i) ← S(i) ∪ {j};
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+19
+
+20
+
+21
+
+activities;
+
+16 // Top-down phase: relabel players with their predecessor’s
+17 set N(cid:48) ← N and A(cid:48) ← A∗;
+18 while N(cid:48) (cid:54)= ∅ do
+
+choose a root r(cid:48) of some connected component of the digraph (N(cid:48), T|N(cid:48)) and ﬁnd
+an activity b ∈ A(cid:48) ∪ {a∅} that is equivalent to a(r(cid:48));
+set π(i) ← b for all i ∈ S(r(cid:48));
+set N(cid:48) ← N(cid:48) \ S(r(cid:48)) and A(cid:48) ← A(cid:48) \ {b};
+
+36
+
+Group Activity Selection on Social Networks
+
+leads to (a(i),|S(i)|) (cid:23)j (a(j),|S(j)|), a contradiction. Second, suppose that the player j
+has been added to S(i) in the while loop in line 14. This would mean that j strictly prefers
+(a(i),|S(i)|) to (a(j),|S(j)|) at the time of termination, a contradiction.
+
+Now, by (iii) in Lemma 32, it can be easily veriﬁed that (π(i),|πi|) (cid:23)i (a(i),|S(i)|) for
+all i ∈ N . Combining this with (i), we know that at the assignment π, all players weakly
+prefer their alternatives to engaging alone in unused activities or the void activity. It thus
+remains to show that no player has an IS deviation to used activity. Suppose towards a
+contradiction that there is a player i who has an IS feasible deviation to the activity π(j)
+of her neighbour j. If the player j is a child of i, this would mean that all players in S(j)
+accept i, i.e., j ∈ C∗(i), and i strictly prefers (π(j),|πj| + 1) to her alternative, namely,
+
+(a(j),|S(j)| + 1) = (π(j),|πj| + 1) (cid:31)i (π(i),|πi|) (cid:23)i (a(i),|S(i)|),
+
+contradicting (ii) in Lemma 32. If the player j is the parent of i in the rooted tree T , j must
+have been added to πj in the while loop in line 14, a contradiction. We conclude that no
+player has an IS-deviation to used activities, and hence π is individually stable.
+
+It remains to analyze the running time of Algorithm 2. Consider the execution of the
+algorithm for a ﬁxed player i. Let c = |ch(i)| and d = |desc(i)|. Line 4 requires at most
+d queries: no descendant of i is queried more than once. Lines 5 – 10 require p queries.
+Moreover, at each iteration of the while loop in lines 12–14 at least one player joins S(i),
+so there are at most d iterations, in each iteration we consider at most d candidates, and for
+each candidate we perform at most d queries. Summing over all players, we conclude that
+the number of queries for the bottom-up phase is bounded by O(n(n2 + p)). It is immediate
+that the top-down phase can be done in polynomial time. This completes the proof of the
+theorem.
+
+Appendix. Proofs omitted from Section 4
+
+Proof of Theorem 13
+
+Proof. We give separate proofs for the three types of networks considered: paths, stars, and
+graphs with small components.
+
+Paths. We prove hardness via a reduction from Path Rainbow Matching.
+
+Construction. Given an instance (G,C, φ, k) of Path Rainbow Matching where
+|C| = q, we create a vertex player v for each v ∈ V and an edge player e for each e ∈ E. To
+create the social network, we ﬁrst construct the graph (NG, LG) as deﬁned in the proof for
+Theorem 10. To the right of the graph (NG, LG), we attach a path consisting of garbage
+collectors {g1, g2, . . . , gq−k} and q copies (Nc, Lc) of the empty-IS instance of Example 5
+where Nc = {c1, c2, c3} and Lc = {{c1, c2},{c2, c3}} for each c ∈ C. For each color c ∈ C, we
+introduce a color activity c, and introduce additional activities a(c) and b(c). Each vertex
+player v approves color activities φ(e) of its adjacent edges e with size 3; each edge player e
+approves the color activity φ(e) of its color with size 3; each garbage collector gi approves
+any color activity c with size 1; ﬁnally, the preference for players in Nc (c ∈ C) is cyclic and
+
+37
+
+Igarashi, Bredereck, Peters, & Elkind
+
+given by
+
+c1 : (b(c), 2) (cid:31) (a(c), 1) (cid:31) (c, 3) (cid:31) (c, 2) (cid:31) (c, 1) (cid:31) (a∅, 1)
+c2 : (c, 3) (cid:31) (c, 2) (cid:31) (a(c), 2) (cid:31) (b(c), 2) (cid:31) (b(c), 1) (cid:31) (a∅, 1)
+c3 : (c, 3) (cid:31) (a(c), 2) (cid:31) (a(c), 1) (cid:31) (a∅, 1)
+
+Correctness. We will now prove that the following three statements are equivalent.
+
+(i) There exists an individually stable feasible assignment.
+
+(ii) There exists a core stable feasible assignment.
+
+(iii) G contains a rainbow matching of size at least k.
+(i) or (ii) =⇒ (iii): We will show that if one of two stable solutions exists, then there exists a
+rainbow matching of size at least k. First, suppose that there is a core or individually stable
+feasible assignment π : N → A. Let M = { e ∈ E | π(e) ∈ C }. We will show that M is a
+rainbow matching of size at least k. To see this, notice that at π, all the color activities
+should be played outside Nc’s, since otherwise no core or individually stable assignment
+would exist as we have seen in Example 5. Further, at most q − k colour activities are
+played among the garbage collectors, which means that at least k colour activities should be
+assigned to vertex and edge players. The only individual rational way to do this is to select
+triples of the form (u, e, v) where e = {u, v} ∈ E and assign to them their colour activity
+φ(e); thus, M is a rainbow matching of size at least k.
+(iii) =⇒ (i) and (ii): Suppose that there exists a rainbow matching M of size k. We construct
+a feasible assignment π where for each e = {u, v} ∈ M we set π(e) = π(u) = π(v) = φ(e),
+each garbage collector gi, i ∈ [q − k], is arbitrarily assigned to one of the remaining q − k
+color activities, each pair of c2 and c3 (c ∈ C) is assigned to a(c), and the remaining players
+are assigned to the void activity. The assignment π is individually stable, since every garbage
+collector as well as every edge or vertex player assigned to a color activity is allocated their
+top alternative, and no remaining player has an IS feasible deviation. Similarly, it can be
+easily veriﬁed that π is core stable.
+
+Stars. Again, we reduce from a restricted variant of MMM where the graph is a bipartite
+graph. We have seen that computing a core stable outcome is NP-hard for stars in Theorem
+19; hence, we only provide a hardness proof for individual stability.
+Construction. Given a bipartite graph (U, V, E) and an integer k, we construct an
+instance of gGASP on a path as follows. We create a star with center c and the |V | + 2
+leaves: one leaf for each vertex v ∈ V plus two other players s1 and s2. We then introduce
+an activity u for each u ∈ U , and four other simple activities a, x, y, and z.
+A player v ∈ V approves (u, 1) for each u ∈ U such that {u, v} ∈ E as well as (a,|V |−k+1)
+and prefers the former to the latter. That is, (u, 1) (cid:31)v (a,|V | − k + 1) for any u ∈ U with
+{u, v} ∈ E; v is indiﬀerent among activities associated with its neighbors in the graph, that
+is, (u, 1) ∼v (u(cid:48), 1) for all u, u(cid:48) ∈ U such that {u, v},{u(cid:48), v} ∈ E. The center player c strictly
+prefers (a,|V | − k + 1) to any other alternative, and has the same cyclic preferences over the
+alternatives of x, y, and z as in Example 5 together with players s1 and s2; explicitly, the
+
+38
+
+Group Activity Selection on Social Networks
+
+preferences are given by
+
+s1 : (y, 2) (cid:31) (x, 1) (cid:31) (z, 3) (cid:31) (z, 2) (cid:31) (z, 1) (cid:31) (a∅, 1)
+c : (a,|V | − k + 1) (cid:31) (z, 3) (cid:31) (z, 2) (cid:31) (x, 2) (cid:31) (y, 2) (cid:31) (y, 1) (cid:31) (a∅, 1)
+s2 : (z, 3) (cid:31) (x, 2) (cid:31) (x, 1) (cid:31) (a∅, 1).
+
+Here, s1’s (respectively, the center c and the player s2) preference corresponds to the
+
+one for player 1 (respectively, player 2 and player 3) in Example 5.
+
+Correctness. We will show that there exists an individually stable feasible assignment if
+
+and only if G contains a maximal matching of size at most k.
+Suppose that there exists an individually stable feasible assignment π and let M =
+{{π(v), v} | v ∈ V ∧ π(v) ∈ U }. We will show that M is a maximal matching of size at
+most k. By stability, the center player and |V |− k vertex players are assigned to the activity
+a; otherwise, no individually stable outcome would exist as we have seen in Example 5; thus,
+|M| ≤ k. Notice further that M is a matching since each vertex player v plays at most one
+activity, and by individual rationality each vertex activity should be assigned to at most one
+player. Now suppose towards a contradiction that M is not maximal, i.e., there exists an
+edge {u, v} ∈ E such that u ∈ U , v ∈ V , and M ∪ {u, v} is a matching. This would mean
+that π assigns no player to activity u and no vertex activity to player v. Hence, the player v
+has an IS-deviation to the vertex activity u, contradicting the stability of π.
+Conversely, suppose that G admits a maximal matching M with at most k edges. We
+construct a feasible assignment π by setting π(v) = u for each {u, v} ∈ M , and assigning
+|V | − k non-matched vertex players and the center to a, assigning s1 to x, and assigning the
+remaining players to the void activity. The center c is allocated to her top alternative; hence
+no player has an IS-deviation to an activity a and the center does not want to deviate to a
+used vertex activity activity. No vertex player v has an IS-deviation to an unused vertex
+activity u, since if such a pair {u, v} existed, this would mean that {u, v} is not included in
+M , and hence M ∪ {u, v} forms a matching, which contradicts the maximality of M . Hence,
+π is individually stable. This completes the proof.
+
+Small components. We reduce from (3,B2)-Sat.
+Construction. Consider a formula φ with variable set X and clause set C, where for
+each variable x ∈ X we write x1 and x2 for the two positive occurrences of x, and ¯x1 and ¯x2
+for the two negative occurrences of x. We construct an instance of gGASP as follows. For
+each variable x ∈ X, we introduce three variable players v1(x), v2(x), and v3(x); and we
+also introduce three positive variable players p1(x), p2(x), and p3(x), and three negative
+variable players ¯p1(x), ¯p2(x), and ¯p3(x). For each clause c ∈ C, we introduce three players
+Nc = {c1, c2, c3}. The network consists of one component for each clause c ∈ C: a star with
+center c2 and leaves c1 and c3, and of three components for each variable x ∈ X:
+
+• a star with center v2(x) and leaves v1(x) and v3(x),
+• a star with center p2(x) and leaves p1(x) and p3(x), and
+• a star with center ¯p2(x) and leaves ¯p1(x) and ¯p3(x).
+
+Hence, the size of each connected component of this graph is at most 3. Corresponding to
+the variable occurrences, we introduce two positive literal activities x1 and x2, two negative
+
+39
+
+Igarashi, Bredereck, Peters, & Elkind
+
+literal activities ¯x1 and ¯x2 for each x ∈ X; we also introduce one variable activity x, and
+eight further activities y(x), z(x), a(x), b(x), c(x), ¯a(x), ¯b(x), and ¯c(x). Thus, the set of
+activities given by
+
+A∗ =
+
+{x1, x2, ¯x1, ¯x2, x, y(x), z(x), a(x), b(x), c(x), ¯a(x), ¯b(x), ¯c(x)}.
+
+(cid:91)
+
+x∈X
+
+For each x ∈ X, the preferences of variable players are given as follows:
+
+v1(x) : (y(x), 2) (cid:31) (x, 1) (cid:31) (z(x), 3) (cid:31) (z(x), 2) (cid:31) (z(x), 1) (cid:31) (a∅, 1),
+v2(x) : (z(x), 3) (cid:31) (z(x), 2) (cid:31) (x, 2) (cid:31) (y(x), 2) (cid:31) (y(x), 1) (cid:31) (a∅, 1),
+v3(x) : (z(x), 3) (cid:31) (x, 2) (cid:31) (x, 1) (cid:31) (a∅, 1).
+
+Notice that the preferences are cyclic; thus, in a core or individually stable assignment, one
+of the activities x, y(x), and z(x) must be allocated outside of the variable players v1(x),
+v2(x), and v3(x). For each x ∈ X, the preferences of the three positive variable players
+p1(x), p2(x), and p3(x) are given as follows:
+p1(x) : (x, 3) ∼ (x1, 1) (cid:31) (b(x), 2) (cid:31) (a(x), 1) (cid:31) (c(x), 3) (cid:31) (c(x), 2) (cid:31) (c(x), 1) (cid:31) (a∅, 1),
+p2(x) : (x, 3) ∼ (x2, 1) (cid:31) (c(x), 3) (cid:31) (c(x), 2) (cid:31) (a(x), 2) (cid:31) (b(x), 2) (cid:31) (b(x), 1) (cid:31) (a∅, 1),
+p3(x) : (x, 3) (cid:31) (c(x), 3) (cid:31) (a(x), 2) (cid:31) (a(x), 1) (cid:31) (a∅, 1).
+Similarly, for each x ∈ X, the preferences of the negative variable players ¯p1(x), ¯p2(x), and
+¯p3(x) are given as follows:
+¯p1(x) : (x, 3) ∼ (¯x1, 1) (cid:31) (¯b(x), 2) (cid:31) (¯a(x), 1) (cid:31) (¯c(x), 3) (cid:31) (¯c(x), 2) (cid:31) (¯c(x), 1) (cid:31) (a∅, 1),
+¯p2(x) : (x, 3) ∼ (¯x2, 1) (cid:31) (¯c(x), 3) (cid:31) (¯c(x), 2) (cid:31) (¯a(x), 2) (cid:31) (¯b(x), 2) (cid:31) (¯b(x), 1) (cid:31) (a∅, 1),
+¯p3(x) : (x, 3) (cid:31) (¯c(x), 3) (cid:31) (¯a(x), 2) (cid:31) (¯a(x), 1) (cid:31) (a∅, 1).
+Again, observe that the preferences of each triple contains a cyclic relation, and hence in a
+core stable assignment and an individually stable assignment, there are three possible cases:
+• all the three players p1(x), p2(x), and p3(x) are assigned to x1, x2, and a(x), respectively,
+and players ¯p1(x), ¯p2(x), and ¯x are assigned to activities ¯x1 , ¯x2, and ¯a(x), respectively;
+• all the three players p1(x), p2(x), and p3(x) are assigned to x, and players ¯p1(x), ¯p2(x),
+
+and ¯x are assigned to activities ¯x1 , ¯x2, and ¯a(x), respectively; or,
+
+• all the players ¯p1(x), ¯p2(x), and ¯p3(x) are assigned to x, and players p1(x), p2(x), and
+
+p3(x) are assigned to activities x1, x2, and a(x), respectively.
+
+Later we will see that the last two cases can only occur in a stable assignment.
+
+For each clause c ∈ C where (cid:96)c
+
+1, (cid:96)c
+
+2, and (cid:96)c
+
+3 are the literals in a clause c, the preferences
+
+for clause players c1, c2, and c3 are again cyclic and given as follows:
+
+c1 : ((cid:96)c
+c2 : ((cid:96)c
+c3 : ((cid:96)c
+
+2, 2) (cid:31) ((cid:96)c
+3, 3) (cid:31) ((cid:96)c
+3, 2) (cid:31) ((cid:96)c
+
+1, 1) (cid:31) ((cid:96)c
+3, 2) (cid:31) ((cid:96)c
+1, 3) (cid:31) ((cid:96)c
+
+3, 2) (cid:31) ((cid:96)c
+2, 2) (cid:31) ((cid:96)c
+
+3, 3) (cid:31) ((cid:96)c
+1, 2) (cid:31) ((cid:96)c
+1, 1) (cid:31) (a∅, 1).
+
+3, 1) (cid:31) (a∅, 1),
+2, 1) (cid:31) (a∅, 1),
+
+40
+
+Group Activity Selection on Social Networks
+
+If there exists a core or individually stable outcome, it must be the case that at least one of
+the literal activities (cid:96)c
+3 must be used outside of the three players c1, c2, and c3;
+otherwise, no feasible assignment would be individually stable.
+
+2, and (cid:96)c
+
+1, (cid:96)c
+
+Correctness. Now we will show that the following three statements are equivalent.
+
+(i) There exists an individually stable feasible assignment.
+
+(ii) There exists a core stable feasible assignment.
+
+(iii) The formula φ is satisﬁed by some truth assignment.
+(i) or (ii) =⇒ (iii): Suppose that there exists a core or individually stable feasible assignment
+π. By stability, for each variable x ∈ X, one of the activities x, y(x), and z(x) must be
+assigned outside of the variable players v1(x), v2(x), and v3(x). The only individually
+rational way to do this is to assign the variable activity x to either the positive variable
+players p1(x), p2(x), and p3(x), or the negative variable players ¯p1(x), ¯p2(x), and ¯p3(x),
+meaning that either a pair of positive literal activities x1 and x2 or a pair of negative literal
+activities ¯x1 and ¯x2 should be assigned to the corresponding pair of variable players. Further,
+for each clause c, at least one of the literal activities (cid:96)c
+3 should be played outside
+of the clause players c1, c2, and c3. Then, take the truth assignment that sets the variables
+x to true if their positive variable players p1(x) and p2(x) are assigned to positive literal
+activities x1 and x2; otherwise, x is set to false; this can be easily seen to satisfy φ.
+(iii) =⇒ (i) and (ii): Suppose that there exists a truth assignment that satisﬁes φ. We
+construct a feasible assignment π as follows. First, for every variable x ∈ X, we assign z(x)
+to the variable players v1(x), v2(x), and v3(x). Then, for each variable x that is set to true,
+we assign positive literal activities x1, x2, and a(x) to positive variable players p1(x), p2(x),
+and p3(x), respectively, and assign a variable activity x to players ¯p1(x), ¯p2(x), and ¯p3(x).
+For each variable x that is set to false, we assign negative literal activities ¯x1, ¯x2, and ¯a(x)
+to negative literal players ¯p1(x), ¯p2(x), and ¯p3(x), respectively, and assign a variable activity
+x to players p1(x), p2(x), and p3(x). Note that this procedure uses at least one of the literal
+activities (cid:96)c
+3 of each clause c, since the given truth assignment satisﬁes φ. Then,
+for each clause c ∈ C, we assign activities to the clause players c1, c2, and c3 as follows.
+
+2, and (cid:96)c
+
+2 and (cid:96)c
+
+1, (cid:96)c
+
+1, (cid:96)c
+
+• If all the activities are already assigned in a previous step, then we assign the void
+
+activity to all the clause players c1, c2, and c3.
+
+• If (cid:96)c
+
+1 is already assigned and (cid:96)c
+
+3 is not assigned, then we assign (cid:96)c
+
+3 to all the clause
+
+players c1, c2, and c3.
+
+• If (cid:96)c
+c3.
+
+3 is already assigned and (cid:96)c
+
+1 is not assigned, then we assign (cid:96)c
+
+1 to the players c2, and
+
+• If both (cid:96)c
+
+1 and (cid:96)c
+player c1 and c2.
+
+3 are already assigned and (cid:96)c
+
+2 is not assigned, then we assign (cid:96)c
+
+2 to the
+
+The resulting assignment π of players to activities is individually stable, because no variable
+player wishes to change their alternative and no player of each Nc has an IS feasible deviation.
+Similarly, it can be easily veriﬁed that π is core stable.
+
+41
+
+Igarashi, Bredereck, Peters, & Elkind
+
+Appendix. Proofs omitted from Section 5
+
+Proof of Theorem 15
+
+Proof. Again, we give a dynamic programming algorithm. Suppose our graph (N, L)
+has k connected components (N1, L1), (N2, L2), . . . , (Nk, Lk). For each i ∈ [k], each set
+j=1 Nj,
+we let CR[i, B, B(cid:48)] to be true if there exists an individually rational feasible assignment
+
+B ⊆ A∗ of activities assigned to N , and each set B(cid:48) ⊆ B of activities assigned to(cid:83)i
+π :(cid:83)i
+• the set of activities assigned to(cid:83)i
+• no connected subset S ⊆(cid:83)i
+
+j=1 Nj → A such that
+
+j=1 Nj is exactly B(cid:48); and
+
+j=1 Nj together with an activity in B(cid:48) ∪ (A∗ \ B) strongly
+
+blocks π
+
+Otherwise, CR[i, B, B(cid:48)] is false.
+For i = 1, each B ⊆ A∗, and each B(cid:48) ⊆ B, we compute the value of CR[1, B, B(cid:48)] by
+trying all possible mappings π : N → B(cid:48) ∪ {a∅}, and checking whether it is an individually
+rational feasible assignment using all activities in B(cid:48) and such that none of the connected
+subsets S ⊆ N1 together with an activity in B(cid:48) ∪ (A∗ \ B) strongly blocks π.
+For i = 2, 3, . . . , k, each B ⊆ A∗, and B(cid:48) ⊆ B, we set CR[i, B, B(cid:48)] to true if there exists
+a bipartition of B(cid:48) into P and Q such that CR[i − 1, B, P ] is true and there exists an
+individually rational feasible assignment π : Ni → Q ∪ {a∅} such that each activity in Q is
+assigned to some player in Ni, and none of the connected subsets S ⊆ Ni together with an
+activity in Q ∪ (A∗ \ B) strongly blocks π.
+It is not diﬃcult to see that a core stable solution exists if and only if CR[k, B, B] is true
+for some B ⊆ A∗. If this is the case, such a stable feasible assignment can be found using
+standard dynamic programming techniques. The size of the dynamic programming table is
+at most 4pn. There are at most 2p bipartitions of B(cid:48), and for each bipartition, we consider
+O(pc) possible assignments; further, for each assignment, we have shown that there is an
+O(pc3) time algorithm to check the existence of a strongly blocking coalition. Thus, each
+entry can be ﬁlled in time O(2ppc+1c3). This completes the proof.
+
+Proof of Theorem 18
+
+Proof. Again, given a tree (N, L), we choose an arbitrary node as the root and construct a
+rooted tree by orienting the edges in L towards the leaves; we denote by ch(i) the set of
+children of i and by desc(i) the set of descendants of i (including i).
+We process the nodes from the leaves to the root. For each i ∈ N , each B ⊆ A∗, each
+B(cid:48) ⊆ B, each (a, k) ∈ B(cid:48) × [n]∪{(a∅, 1)}, and each t ∈ [k], we will again check whether there
+is a partial assignment of B(cid:48) to i’s descendants that is extensible to a stable assignment,
+assuming that the whole players are assigned to the activities in B. Here, there are three
+cases: ﬁrst, the i’s coalition may admit a deviation from their descendants but some player
+who does not want to increase the size of the coalition may join the coalition later on (possibly
+stable); second, there is already a player in the i’s coalition who does not want to increase
+the size of the coalition (deﬁnitely stable); third, no descendant of i’s coalition wants to
+deviate to it (weakly stable). For all three concepts, all coalitions of descendants of i that do
+not involve i are immune to any IS-deviation.
+
+42
+
+Group Activity Selection on Social Networks
+
+Formally, we ﬁrst let PS[i, B, B(cid:48), (a, k), t] be true if there exists a feasible assignment
+
+π : N → A where
+
+(i) the set of activities assigned to players in desc(i) is exactly B(cid:48);
+
+(ii) player i is assigned to a and is in a coalition with k other players;
+
+(iii) exactly t players in desc(i) belong to the same group as i;
+(iv) the t players in desc(i) ∩ πi weakly prefer (a, k) to (b, 1) for each b ∈ A \ B, and has
+
+no IS-deviation to the activities assigned to players in Di \ πi; and
+
+(v) the players in desc(i) \ πi weakly prefer their alternative under π to engaging alone in
+
+any of the activities in A \ B, and have no IS-deviations to activities in B(cid:48) \ {a}.
+
+Otherwise, we let PS[i, B, B(cid:48), (a, k), t] be false. Second, we let DS[i, B, B(cid:48), (a, k), t] be true if
+there exists a feasible assignment π : N → R such that (i) - (v) hold, and (vi) a = a∅ or some
+player in desc(i) ∩ πi strictly prefers (a, k) to (a, k + 1); we let DS[i, B, B(cid:48), (a, k), t] be false
+otherwise. Third, we let WS[i, B, B(cid:48), (a, k), t] be true if there exists a feasible assignment
+π : N → R such that (i) - (v) hold, and (vii) a = a∅ or no player in desc(i) \ πi strictly
+prefers (a, k + 1) to their alternative under π; we let WS[i, B, B(cid:48), (a, k), t] be false otherwise.
+By construction, our instance admits an individually stable assignment if and only if
+there exists a combination of the arguments B, B(cid:48), and (a, k) such that DS[t, B, B(cid:48), (a, k), k]
+is true or WS[r, B, B(cid:48), (a, k), k] is true, where r is the root. In what follows, we will describe
+how to compute each entry of all the three tables in a bottom-up manner.
+Leaves. If i is a leaf, we set both PS[i, B, B(cid:48), (a, k), t] and WS[i, B, B(cid:48), (a, k), t] to true
+if B(cid:48) = {a}, t = 1, and i weakly prefers (a, k) to any other alternative (b, 1) such that
+b ∈ A \ B; otherwise, we set both PS[i, B, B(cid:48), (a, k), t] and WS[i, B, B(cid:48), (a, k), t] to false. We
+set DS[i, B, B(cid:48), (a, k), t] to true if PS[i, B, B(cid:48), (a, k), t] is true, and a = a∅ or i strictly prefers
+(a, k) to (a, k + 1); otherwise, we set DS[i, B, B(cid:48), (a, k), t] to false.
+
+Internal vertices. Now consider the case where i is an internal vertex; we assume that
+all the values for i’s descendants have been computed. We ﬁrst check whether i strictly
+prefers some alternative (b, 1) such that b ∈ A \ B to (a, k); if so, we set PS[i, B, B(cid:48), (a, k), t],
+DS[i, B, B(cid:48), (a, k), t], and WS[i, B, B(cid:48), (a, k), t] to false. Otherwise, we proceed and check for
+each partition P of B(cid:48) \ {a} and each of its permutations whether there is an allocation of
+each activity set P ∈ P to some subtree rooted at i’s child that gives rise to an assignment
+with the conditions described before. One can show that determining the existence of a
+desired assignment can be computed in polynomial time. Then, similarly to the proof of
+Theorem 18, our problem for trees is in FPT and, moreover, we can easily extend this to
+arbitrary forests.
+Now let us ﬁx a partition P = {P1, P2, . . . , P|P|} of B(cid:48) \ {a}. Again, without loss of
+generality, we consider an ordering P1, P2, . . . , P|P| and seek to assign each activity set to the
+subtrees in that order. It remains to show that there exists a polynomial time algorithm that
+determines whether there exists a feasible assignment π : N → A such that the conditions (i)
+- (v) (respectively, (i) - (vi), and (i) - (v), (vii)) hold, and each activity set in P is assigned
+to the players in desc(j) for some j ∈ ch(i) in such a way that for each q ∈ [|P|] and each
+c ∈ [|ch(i)|], Pq is assigned to desc(jc) only if the preﬁxes P1, P2, . . . , Pq−1 are assigned to
+
+43
+
+Igarashi, Bredereck, Peters, & Elkind
+
+the subtrees desc(j1), desc(j2), . . . , desc(jc−1). To this end, we give a dynamic programming
+for a respective problem; we denote by P0 the empty activity set.
+
+Computation of PS[i, B, B(cid:48), (a, k), t]: First, for each c ∈ [|ch(i)|] and q ∈ [0,|P|], we
+will check whether the activity sets P0, P1, . . . , Pq can be assigned to the subtrees rooted
+at j1, j2, . . . , jc, and exactly (cid:96) players can be assigned to the activity a; we refer to this
+subproblem by T P [jc, Pq, (cid:96)]. We initialize T P [j1, Pq, (cid:96)] to true if one of the following
+statements holds:
+
+• the empty activity set P0 can be allocated to the ﬁrst subtree desc(j1), i.e., q = 0,
+
+(cid:96) = 0, and PS[j1, B,∅, (a∅, 1), 1] is true;
+
+• only the activity a can be assigned to (cid:96) players in desc(j1), i.e., q = 0, (cid:96) ≥ 1, and
+
+PS[j1, B,{a}, (a, k), (cid:96)] is true;
+
+• only the activity set P1 can be assigned to players in desc(j1), i.e., q = 1, (cid:96) = 0, and
+there exists an alternative (b, x) ∈ P1× [n]∪{(a∅, 1)} such that DS[j1, B, P1, (b, x), x] is
+true, or WS[j1, B, P1, (b, x), x] is true and (b = a∅ or i weakly prefers (a, k) to (b, x + 1));
+• P1 can be assigned to players in desc(j1) while activity a can be assigned to (cid:96) players
+
+from desc(j1), i.e., q = 1, (cid:96) ≥ 1, and PS[j1, B, P1 ∪ {a}, (a, k), (cid:96)] is true.
+
+We set T P [j1, Pq, (cid:96)] to false otherwise. Then, we iterate through j1, j2, . . . , j|ch(i)| and
+P0, P1, . . . , P|P|, and update T [jc, Pq, (cid:96)]: for each c ∈ [|ch(i)|], for each q ∈ [|P|], and for each
+(cid:96) ∈ [0, t], we set T [jc, Pq, (cid:96)] to true if one of the following statements holds:
+
+• P1, P2, . . . , Pq can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) with (cid:96)
+players from the subtrees being assigned to the activity a, and the void activity can
+be assigned to the subtree desc(jc), i.e., both T P [jc−1, Pq, (cid:96)] and PS[jc, B,∅, (a∅, 1), 1]
+are true;
+
+• P1, P2, . . . , Pq can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) while
+the activity a is assigned to x players from the subtrees desc(j1), desc(j2), . . . , desc(jc−1)
+and to (cid:96)− x players from the subtree desc(jc), i.e., (cid:96) ≥ 2, and there exists an x ∈ [(cid:96)− 1]
+such that both T P [jc−1, Pq, (cid:96) − x] and PS[jc, B,{a}, (a, k), x] are true;
+
+• P1, P2, . . . , Pq−1 can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) with
+(cid:96) players from the subtrees being assigned to the activity a, and only the activity set
+Pq can be assigned to the subtree desc(jc), i.e., T P [jc−1, Pq−1, (cid:96)] is true, and there
+exists an alternative (b, x) ∈ Pq × [n]∪{(a∅, 1)} such that DS[jc, B, Pq, (b, x), x] is true,
+or WS[jc, B, Pq, (b, x), x] is true and (b = a∅ or i weakly prefers (a, k) to (b, x + 1));
+• P1, P2, . . . , Pq−1 can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1), and
+the activity set Pq can be assigned to the subtree desc(jc) while the activity a is
+assigned to x players from the subtrees desc(j1), desc(j2), . . . , desc(jc−1) and to (cid:96) − x
+players from the subtree desc(jc), i.e., (cid:96) ≥ 2, and there exists an x ∈ [(cid:96) − 1] such that
+both T P [jc−1, Pq−1, (cid:96) − x] and PS[jc, B, Pq ∪ {a}, (a, k), x] are true.
+
+44
+
+Group Activity Selection on Social Networks
+
+We set T P [jc, Pq, (cid:96)] to false otherwise.
+
+Computation of DS[i, B, B(cid:48), (a, k), t]: Second, for each c ∈ [|ch(i)|] and q ∈ [0,|P|], we
+will check whether the activity sets P0, P1, . . . , Pq can be assigned to the subtrees rooted at
+j1, j2, . . . , jc, and exactly (cid:96) players can be assigned to the activity a, and (a = a∅ or some of
+the (cid:96) players strictly prefers (a, k) to (a, k + 1)); we refer to this by T D[jc, Pq, (cid:96)].
+
+If i strictly prefers (a, k) to (a, k + 1), then we set each value T D[jc, Pq, (cid:96)] to T P [j1, Pq, (cid:96)].
+Otherwise, we compute T D[jc, Pq, (cid:96)] as follows. We initialize T D[j1, Pq, (cid:96)] to true if one of
+the following statements holds:
+
+• only the activity a can be assigned to (cid:96) players in desc(j1), i.e., q = 0, (cid:96) ≥ 1, and
+
+DS[j1, B,{a}, (a, k), (cid:96)] is true;
+
+• P1 can be assigned to players in desc(j1) while activity a can be assigned to (cid:96) players
+
+from desc(j1), i.e., q = 1, (cid:96) ≥ 1, and DS[j1, B, P1 ∪ {a}, (a, k), (cid:96)] or ) is true.
+
+We set T D[j1, Pq, (cid:96)] to false otherwise. Then, for each c ∈ [|ch(i)|], for each q ∈ [|P|], and
+for each (cid:96) ∈ [0, t], we set T D[jc, Pq, (cid:96)] to true if one of the following statements holds:
+
+• P1, P2, . . . , Pq can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) with (cid:96)
+players from the subtrees being assigned to the activity a, and the void activity can
+be assigned to the subtree desc(jc), i.e., both T D[jc−1, Pq, (cid:96)] and PS[jc, B,∅, (a∅, 1), 1]
+are true;
+
+• P1, P2, . . . , Pq can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) while
+the activity a is assigned to x players from the subtrees desc(j1), desc(j2), . . . , desc(jc−1)
+and to (cid:96) − x players from the subtree desc(jc), i.e., (cid:96) ≥ 2, and there exists an
+x ∈ [(cid:96) − 1] such that both T P [jc−1, Pq, (cid:96) − x] and DS[jc, B,{a}, (a, k), x] are true, or
+both T D[jc−1, Pq, (cid:96) − x] and PS[jc, B,{a}, (a, k), x] are true;
+
+• P1, P2, . . . , Pq−1 can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) with
+(cid:96) players from the subtrees being assigned to the activity a, and only the activity set
+Pq can be assigned to the subtree desc(jc), i.e., T D[jc−1, Pq−1, (cid:96)] is true, and there
+exists an alternative (b, x) ∈ Pq × [n]∪{(a∅, 1)} such that DS[jc, B, Pq, (b, x), x] is true,
+or WS[jc, B, Pq, (b, x), x] is true and (b = a∅ or i weakly prefers (a, k) to (b, x + 1));
+• P1, P2, . . . , Pq−1 can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) and
+Pq can be assigned to the subtree desc(jc) while the activity a is assigned to x players
+from the subtrees desc(j1), desc(j2), . . . , desc(jc−1) and to (cid:96)−x players from the subtree
+desc(jc), i.e., (cid:96) ≥ 2, and there exists an x ∈ [(cid:96)− 1] such that both T D[jc−1, Pq−1, (cid:96)− x]
+and PS[jc, B, Pq∪{a}, (a, k), x] are true, or both T P [jc−1, Pq−1, (cid:96)−x] and DS[jc, B, Pq∪
+{a}, (a, k), x] are true.
+
+We set T D[jc, Pq, (cid:96)] to false otherwise.
+
+Computation of WS[i, B, B(cid:48), (a, k), t]: Third, for each c ∈ [|ch(i)|] and q ∈ [0,|P|], we
+will check whether the activity sets P0, P1, . . . , Pq can be assigned to the subtrees rooted
+at j1, j2, . . . , jc, and exactly (cid:96) players can be assigned, and no player in desc(j) has an
+incentive to deviate to i’s coalition; we refer to this subproblem by T W [jc, Pq, (cid:96)]. We
+initialize T W [j1, Pq, (cid:96)] to true if one of the following statements holds:
+
+45
+
+Igarashi, Bredereck, Peters, & Elkind
+
+• the empty activity set P0 can be allocated to the ﬁrst subtree desc(j1), i.e., q = 0, (cid:96) = 0,
+
+PS[j1, B,∅, (a∅, 1), 1] is true, and (a = a∅ or j1 weakly prefers (a∅, 1) to (a, k + 1));
+
+• only the activity a can be assigned to (cid:96) players in desc(j1), i.e., q = 0, (cid:96) ≥ 1, and
+
+WS[j1, B,{a}, (a, k), (cid:96)] is true;
+
+• only the activity set P1 can be assigned to players in desc(j1), i.e., q = 1, (cid:96) = 0, and there
+exists an alternative (b, x) ∈ P1 × [n] ∪ {(a∅, 1)} such that (1). DS[j1, B, P1, (b, x), x]
+is true, or (WS[j1, B, P1, (b, x), x] is true and (b = a∅ or i weakly prefers (a, k) to
+(b, x + 1))), and (2). (a = a∅ or j1 weakly prefers (b, x) to (a, k + 1));
+• P1 can be assigned to players in desc(j1) while activity a can be assigned to (cid:96) players
+
+from desc(j1), i.e., q = 1, (cid:96) ≥ 1, and WS[j1, B, P1 ∪ {a}, (a, k), (cid:96)] is true.
+
+We set T W [j1, Pq, (cid:96)] to false otherwise. Then, for each c ∈ [|ch(i)|], for each q ∈ [|P|], and
+for each (cid:96) ∈ [0, t], we set T W [jc, Pq, (cid:96)] to true if one of the following statements holds:
+
+• P1, P2, . . . , Pq can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) with (cid:96)
+players from the subtrees being assigned to the activity a, and the void activity can
+be assigned to the subtree desc(jc), i.e., both T W [jc−1, Pq, (cid:96)] and PS[jc, B,∅, (a∅, 1), 1]
+are true, and a = a∅ or player jc weakly prefers (a∅, 1) to (a, k + 1);
+
+• P1, P2, . . . , Pq can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) while
+the activity a is assigned to x players from the subtrees desc(j1), desc(j2), . . . , desc(jc−1)
+and to (cid:96)− x players from the subtree desc(jc), i.e., (cid:96) ≥ 2, and there exists an x ∈ [(cid:96)− 1]
+such that both T W [jc−1, Pq, (cid:96) − x] and WS[jc, B,{a}, (a, k), x] are true;
+
+• P1, P2, . . . , Pq−1 can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) with
+(cid:96) players from the subtrees being assigned to the activity a, and Pq can be assigned
+to the subtree desc(jc) with no player from the subtree being assigned to a, i.e.,
+T W [jc−1, Pq−1, (cid:96)] is true, and there exists an alternative (b, x) ∈ Pq × [n] ∪ {(a∅, 1)}
+such that (1). DS[jc, B, Pq, (b, x), x] is true, or (WS[jc, B, Pq, (b, x), x] is true and
+(b = a∅ or i weakly prefers (a, k) to (b, x + 1))), and (2). a = a∅ or jc weakly prefers
+(b, x) to (a, k + 1);
+• P1, P2, . . . , Pq−1 can be assigned to the subtrees desc(j1), desc(j2), . . . , desc(jc−1) and
+Pq can be assigned to the subtree desc(jc) while the activity a is assigned to x players
+from the subtrees desc(j1), desc(j2), . . . , desc(jc−1) and to (cid:96)−x players from the subtree
+desc(jc), i.e., (cid:96) ≥ 2, and there exists an x ∈ [(cid:96)− 1] such that both T W [jc−1, Pq−1, (cid:96)− x]
+and WS[jc, B, Pq ∪ {a}, (a, k), x] are true.
+
+We set T W [jc, Pq, (cid:96)] to false otherwise.
+A desired assignment exists if and only T P [jc, Pq, t − 1] (respectively, T D[jc, Pq, t − 1]
+and T W [jc, Pq, t − 1]) is true. Clearly, the size of each dynamic programming table is at
+most pn2 and each entry can be ﬁlled in polynomial time.
+
+46
+
+Group Activity Selection on Social Networks
+
+Proof of Theorem 25
+
+, a(2)
+
+i
+
+i
+
+Proof. We provide a parameterized reduction from Clique on regular graphs. Given a
+regular graph G = (V, E) and a positive integer k, where |V | = n, |E| = m, and each vertex
+of G has degree δ ≥ k − 1, we create an instance of gGASP whose underlying graph is a
+clique, as follows.
+
+We create three vertex activities a(1)
+
+Idea. We will create k empty IS-instances Ni = {p(i)
+
+for each i ∈ [k], one edge activity bj
+for each j ∈ [k(k − 1)/2], and four other activities d, x, y, and z. For each v ∈ V , we create
+one vertex player v, and for each edge e = {u, v} ∈ E, we create two edge players euv and
+evu.
+3 } for each i ∈ [k], and
+another empty IS-instance Ng = {g1, g2, g3} together with the stabilizer g; in order to
+stabilize these gadgets, each activity a(1)
+should be assigned to some vertex player, and
+the stabilizer g needs to form a coalition with the players in Ng. Further, we will create
+dummies of vertex and edge players in such a way that a stable assignment has the following
+properties:
+
+1 , p(i)
+
+2 , p(i)
+
+, and a(3)
+
+i
+
+i
+
+1. if a vertex player v is assigned to a vertex activity, it forms a coalition of size α(v)
+
+that consists of its dummies and δ − k + 1 edge players incident to the vertex; and
+
+2. if an edge player evu is assigned to an edge activity, it forms a coalition of size β(e)
+
+that consists of the edge player euv and the dummies of {u, v}.
+
+Construction details. Now, let P = {j(k + 3) + n | j ∈ [n]}, and let α : V → P be a
+bijection that assigns a distinct number in P to each vertex v ∈ V . Note that u (cid:54)= v implies
+that the intervals [α(u), α(u) + k + 1] and [α(v) − 1, α(v) + k] are disjoint. Similarly, let
+Q = {2j | j ∈ [m]} and let β : E → Q be a bijection that assigns a distinct number in Q to
+each edge e ∈ E. For each v ∈ V we construct a set Dummy(v) of α(v) − δ + k − 2 dummy
+vertex players. Similarly, for each e ∈ E we construct a set Dummy(e) of β(e) − 2 dummy
+edge players.
+
+We will now deﬁne the players’ preferences.
+• Each vertex player v ∈ V and the players in Dummy(v) approve each alternative
+
+, s) where i ∈ [k] and s ∈ [α(v), α(v) + k].
+
+(a(1)
+
+i
+
+• Each edge player evu approves each alternative (a(1)
+
+[α(v), α(v) + k] as well as each alternative in (bj, β(e)) where j ∈ [k(k − 1)/2].
+
+, s) where i ∈ [k] and s ∈
+
+i
+
+• The dummies in Dummy(e) only approve the alternatives in (bj, β(e)) where j ∈
+
+[k(k − 1)/2].
+
+All of these players are indiﬀerent among all alternatives they approve. The stabilizer g
+approves each alternative of the form (a(1)
+v∈V [α(v) + 2, α(v) + k] and
+is indiﬀerent among them; she also approves (d, 4), but likes it less than all other approved
+alternatives.
+
+i
+
+, s) with i ∈ [k], s ∈(cid:83)
+
+47
+
+Igarashi, Bredereck, Peters, & Elkind
+
+For players in Ng, we have
+
+g1 : (d, 4) (cid:31) (y, 2) (cid:31) (z, 1) (cid:31) (x, 3) (cid:31) (x, 2) (cid:31) (x, 1) (cid:31) (a∅, 1),
+g2 : (d, 4) (cid:31) (x, 3) (cid:31) (x, 2) (cid:31) (z, 2) (cid:31) (y, 2) (cid:31) (y, 1) (cid:31) (a∅, 1),
+g3 : (d, 4) (cid:31) (x, 3) (cid:31) (z, 2) (cid:31) (z, 1) (cid:31) (a∅, 1).
+
+Notice that their preference over the alternatives of x, y, and z is cyclic; hence, in an
+individually stable assignment, the activity d should be assigned to all the players in Ng
+together with its stablizer g; otherwise π cannot be stable as we have seen in Example 5.
+Similarly, the preference for players in Ni is cyclic and given by
+, 2) (cid:31) (a(3)
+, 2) (cid:31) (a(2)
+
+, 1) (cid:31) (a∅, 1),
+, 1) (cid:31) (a∅, 1),
+
+i
+
+i
+
+i
+
+, 2) (cid:31) (a(1)
+, 3) (cid:31) (a(3)
+, 3) (cid:31) (a(1)
+
+i
+
+, 1) (cid:31) (a(3)
+, 2) (cid:31) (a(1)
+, 2) (cid:31) (a(1)
+
+i
+
+i
+
+, 3) (cid:31) (a(3)
+, 2) (cid:31) (a(2)
+, 1) (cid:31) (a∅, 1).
+
+i
+
+p(i)
+1
+p(i)
+2
+p(i)
+3
+
+i
+
+: (a(2)
+: (a(3)
+: (a(3)
+
+i
+
+i
+
+i
+
+i
+
+i
+
+Again, in an individually stable assignment, at least one of the three activities a(1)
+, a(3)
+must be assigned outside of Ni; the only individual rational way to do this is to assign the
+activity a(1)
+
+to other players.
+
+, a(2)
+
+i
+
+i
+
+i
+
+i
+
+Finally, we take the underlying social network to be a complete graph. Note that the
+number of activities depends on k, but not on n, and the size of our instance of gGASP is
+bounded by O(n2 + m2).
+
+1 ) = π(p(i)
+
+Correctness. We will now argue that the graph G contains a clique of size k if and only
+if there exists an individually stable assignment for our instance of gGASP. Suppose that
+G contains a clique S of size k. We construct an assignment π as follows. We establish a
+bijection η between S and [k], and for each v ∈ V we form a coalition of size α(v) that engages
+in aη(v): this coalition consists of v, all players in Dummy(v), and all edge players evu such
+that u (cid:54)∈ S. Also, we establish a bijection ξ between the edge set { e = {u, v} ∈ E | u, v ∈ S }
+and [k(k − 1)/2], and assign the activity bξ(e) to the edge players euv, evu as well as to all
+for each i ∈ [k] and
+players in Dummy(e). Finally, we set π(p(i)
+π(g) = π(g1) = π(g2) = π(g3) = d, and assign the void activity to the remaining players.
+We will now argue that the resulting assignment π is individually stable.
+or bj wishes to deviate. Now, consider a
+player v ∈ N with π(v) = a∅; by construction, v only wants to join a coalition if it engages
+and its size is in the interval [α(v) − 1, α(v) + k], and no such coalition
+in an activity a(1)
+exists. The same argument applies to players in Dummy(v). Similarly, consider an edge
+player evu with π(evu) = a∅. We have v (cid:54)∈ S, and therefore evu does not want to join any of
+the existing coalitions; the same argument applies to all dummies of e = {u, v}. Further,
+players in Ni do not want to deviate since players p(i)
+3 are allocated to their top
+alternative and the activity a(1)
+is assigned to at least one player. Also, players in Ng do
+not want to deviate since they are allocated one of their top choices. Finally, the stabilizer g
+v∈V [α(v) + 1, α(v) + k − 1]
+
+does not want to deviate, since there is no coalition of size s ∈(cid:83)
+
+Clearly, no player assigned to an activity a(1)
+
+2 ) = π(p(i)
+
+2 and p(i)
+
+3 ) = a(3)
+
+i
+
+i
+
+i
+
+i
+
+that engages in an activity a(1)
+
+i
+
+. Hence, π is individually stable.
+
+Conversely, suppose that there exists an individually stable feasible assignment π. Notice
+to players in Ni, or leave it unallocated, since no
+
+that π cannot allocate an activity a(1)
+
+i
+
+48
+
+Group Activity Selection on Social Networks
+
+such assignment can be individually stable. Thus, each vertex activity a(1)
+is allocated to a
+coalition whose size lies in the interval [α(v), α(v) + k] for some v ∈ V . Further, individual
+stability implies that π allocates the activity d to the players in Ng and its stabilizer g. Now,
+is assigned to s players, where s ∈ [α(v) + 1, α(v) + k − 1] for
+if some vertex activity a(1)
+some v ∈ V , the stabilizer g would then deviate to that coalition. Further, for each v ∈ V ,
+the number of players other than g who approve the alternatives of the form (a(1)
+, α(v) + k)
+is at most α(v) + k − 1 but g is assigned to d; thus, for each a(1)
+| = α(v) for
+i we have |πa(1)
+some v ∈ V . Consider a player v ∈ S, and let a(v) be the activity assigned to α(v) players
+under π. We have π(v) = a(v), since otherwise v has an IS-deviation to a(v).
+
+i
+
+i
+
+i
+
+i
+
+Now, let S = {v ∈ V | π(v) = a(1)
+
+for some i ∈ [k]}. By construction, |S| = k. We can
+
+show that S is a clique in a similar manner to the proof of Claim 24.
+
+i
+
+Proof of Theorem 28
+Proof. Our problem is in NP by Proposition 2. We again reduce from X3C. Let (V,S) be
+an instance of X3C where V = {v1, v2, . . . , v3k} and S = {S1, S2, . . . , Sm}.
+We deﬁne the set of activities by A∗ = {a, b, c1, c2}. We introduce three players x1, x2, x3
+and one player Sj for each Sj ∈ S.
+Idea. Again, we will create the dummies of each vi ∈ V and the preferences of players as
+
+follows:
+
+• The players x1, x2, and x3 form an empty core instance. In a stable assignment, they
+
+need to be assigned to the activity a.
+
+• If the dummies of vi are assigned to the void activity and none of the players corre-
+sponding to the sets including vi (denoted by S(vi)) is assigned to the activity c2, then
+these players will form a blocking coalition of size β(vi) and deviate to activity b.
+
+Construction details. For each vi ∈ V , we let S(vi) = { Sj | vi ∈ Sj ∈ S } and
+} of dummy
+β(vi) = i + 3k + 1 and create a set Dummy(vi) = {d(1)
+players. For each i ∈ [3k] the number β(vi) is the target coalition size when all players in
+S(vi) are engaged in activity b, together with the players in Dummy(vi). We then create an
+edge between any pair of players.
+The agents’ preferences over alternatives are deﬁned as follows. For each Sj ∈ S, we let
+Bj = {b} × { β(vi) | vi ∈ Sj }. The preferences of each player Sj ∈ S are given by
+
+, . . . , d(β(vi)−|S(vi)|)
+
+, d(2)
+
+i
+
+i
+
+i
+
+Sj : (c2, k) (cid:31) Bj (cid:31) (c1, n − k) (cid:31) (a∅, 1).
+
+For each vi ∈ V the dummy players in Dummy(vi) only approve the alternative (b, β(vi)).
+
+Finally, the preferences of players x1, x2, and x3 are given by
+
+x1 : (c1, 2) ∼ (c2, 2) (cid:31) (a, 3) (cid:31) (a∅, 1)
+x2 : (a, 2) (cid:31) (c1, 2) ∼ (c2, 2) (cid:31) (a, 3) (cid:31) (a∅, 1)
+x3 : (a, 3) (cid:31) (c1, 1) ∼ (c2, 1) (cid:31) (a, 2) (cid:31) (a∅, 1).
+
+Notice that the preferences of x1, x2, and x3, when restricted to {a, c1, a∅} × [1, 2, 3] or
+{a, c2, a∅} × [1, 2, 3], form an empty core instance (Example 4).
+
+49
+
+Igarashi, Bredereck, Peters, & Elkind
+
+We will show that (V,S) contains an exact cover if and only if there exists a core stable
+
+feasible assignment.
+
+Correctness. Suppose that (V,S) admits an exact cover S(cid:48). Then, we construct a feasible
+assignment π by setting π(xi) = a for i = 1, 2, 3, π(Sj) = c2 for Sj ∈ S(cid:48), π(Sj) = c1 for
+Sj ∈ S \ S(cid:48), and assigning the remaining players to the void activity. Clearly, no subset
+together with ci (i = 1, 2) or a strongly blocks π. We will show that no subset T together
+with activity b strongly blocks π. Suppose towards a contradiction that such a subset
+T exists; as no players in {x1, x2, x3} approves alterntives of b, it must be the case that
+|T| = β(vi) for some vi ∈ V and hence T consists of agents who approve (b, β(vi)), i.e.,
+T = S(vi) ∪ Dummy(vi) for some vi ∈ V . However, since S(cid:48) is an exact cover, there is
+an agent Sj ∈ S(cid:48) ∩ S(vi) with π(Sj) = c2, and this agent prefers (c2, k) to (b, β(vi)), a
+contradiction. Hence, π is core stable.
+
+Conversely, suppose that there exists a core stable feasible assignment π and let S(cid:48) =
+{ Sj ∈ S | π(Sj) = c2 }. We will show that S(cid:48) is an exact cover. Observe that by individual
+rationality, the only agents who can be allocated to a are the players x1, x2, and x3. Hence,
+by core stability, both activities c1 and c2 must be allocated outside of the players x1, x2,
+and x3; otherwise, no core stable outcome would exist as we have seen in Example 4. The
+only indivudally rational way to do this is to assign activity c2 to k players from S, and
+assign activity c1 to the remaining n − k players in S. Thus, |S(cid:48)| = k. Then, no player in S
+can be engaged in activity b, and hence, by individual rationality, all dummy players must
+be assigned to the void activity. Now suppose towards a contradiction that S(cid:48) is not a cover,
+i.e., there exists an element vi ∈ V such that S(vi)∩S(cid:48) = ∅. This would mean that π assigns
+all players in S(vi) to the activity c1, and hence the coalition S(vi) ∪ Dummy(vi) together
+with the activity b strongly blocks π, contradicting the stability of π.
+
+Appendix. Proofs omitted from Section 6
+
+Proof of Theorem 31
+
+Proof. We describe a parameterized reduction from the W[1]-hard Multicolored Clique
+problem. Given an undirected graph G = (V, E), a positive integer h ∈ N, and a vertex
+coloring φ : V → [h], Multicolored Clique asks whether G admits a colorful h-clique,
+that is, a size-h vertex subset Q ⊆ V such that the vertices in Q are pairwise adjacent and
+have pairwise distinct colors. Without loss of generality, we assume that there are exactly q
+vertices of each color for some q ∈ N, and that there are no edges between vertices of the
+same color.
+
+1 , . . . , v(i)
+
+Let (G, h, φ) be an instance of Multicolored Clique with G = (V, E). For convenience,
+q } to denote the set of vertices of color i for every i ∈ [h]. We
+we write V (i) = {v(i)
+construct our gGASP instance as follows. We have one vertex activity v for each vertex v ∈ V ,
+one edge activity e for each edge e ∈ E, three color activities ai, bi, and ci for each color i ∈ [h],
+three colorpair activities a{ij}, b{ij}, and c{ij} for each color pair {i, j} ⊆ [h], i (cid:54)= j, and four
+other additional activities d, x, y, and z.
+
+Idea. We will have one color gadget Color(i) for each color i ∈ [h], one colorpair gadget
+ColorPair({i, j}) for each color pair {i, j}, i (cid:54)= j, and one empty IS-instance Ng = {g1, g2, g3}
+
+50
+
+Group Activity Selection on Social Networks
+
+together with the stabilizer g. For most of the possible assignments, these gadgets will be
+unstable, unless the following holds:
+
+1. For each color i ∈ [h] the ﬁrst two players from the color gadget select a vertex of
+
+color i (by being assigned together to the corresponding vertex activity).
+
+2. For each color pair {i, j} ⊆ [h], i (cid:54)= j the ﬁrst two players of the colorpair gadget select
+an edge connecting one vertex of color i and one vertex of color j (by being assigned
+together to the corresponding edge activity).
+
+3. Every selected edge for the color pair {i, j} must be incident to both vertices selected
+
+for color i and color j.
+
+4. The stabilizer g as well as the players in Ng are engaged in the activity d.
+
+If the four conditions above hold, then the assignment must encode a colorful h-clique.
+
+Construction details. The color gadget Color(i), i ∈ [h] consists of the following three
+
+players.
+
+2 ) × [3, 5] (cid:31) ··· (cid:31) (v(i)
+
+q , 2) (cid:31) E(v(i)
+
+q ) × [3, 5] (cid:31)
+
+p(i)
+1
+
+p(i)
+2
+
+p(i)
+3
+
+2 , 2) (cid:31) E(v(i)
+
+1 ) × [3, 5] (cid:31) (v(i)
+
+1 , 2) (cid:31) E(v(i)
+: (v(i)
+(bi, 2) (cid:31) (ai, 1) (cid:31) (ci, 3) (cid:31) (ci, 2) (cid:31) (ci, 1) (cid:31) (a∅, 1),
+q , 2) (cid:31) E(v(i)
+: (v(i)
+(ci, 3) (cid:31) (ci, 2) (cid:31) (ai, 2) (cid:31) (bi, 2) (cid:31) (bi, 1) (cid:31) (a∅, 1),
+: (ci, 3) (cid:31) (ai, 2) (cid:31) (ai, 1) (cid:31) (a∅, 1),
+
+q ) × [3, 5] (cid:31) (v(i)
+
+q−1, 2) (cid:31) E(v(i)
+
+q−1) × [3, 5] (cid:31) ··· (cid:31) (v(i)
+
+1 , 2) (cid:31) E(v(i)
+
+1 ) × [3, 5] (cid:31)
+
+where E(v) to denote the set of activities corresponding to edges incident to vertex v for
+every v ∈ V .
+
+The colorpair gadget ColorPair({i, j}), {i, j} ⊆ [h], i (cid:54)= j, consists of three players.
+: E({i, j}) × [2, 5] (cid:31) (b{ij}, 2) (cid:31) (a{ij}, 1) (cid:31) (c{ij}, 3) (cid:31) (c{ij}, 2) (cid:31) (c{ij}, 1) (cid:31) (a∅, 1)
+: E({i, j}) × [2, 5] (cid:31) (c{ij}, 3) (cid:31) (c{ij}, 2) (cid:31) (a{ij}, 2) (cid:31) (b{ij}, 2) (cid:31) (c{ij}, 1) (cid:31) (a∅, 1), and
+: (c{ij}, 3) (cid:31) (a{ij}, 2) (cid:31) (a{ij}, 1) (cid:31) (a∅, 1)
+
+p
+where E({i, j}) denotes the set of edge activities incident to vertices of color i and j.
+
+{i,j}
+1
+{i,j}
+2
+{i,j}
+3
+
+p
+
+p
+
+There is a stabilizer player g with the following preferences.
+
+g : E × [4, 5] (cid:31) (d, 4) (cid:31) (a∅, 1).
+
+The set Ng consists of three players.
+
+g1 : (d, 4) (cid:31) (y, 2) (cid:31) (z, 1) (cid:31) (x, 3) (cid:31) (x, 2) (cid:31) (x, 1) (cid:31) (a∅, 1),
+g2 : (d, 4) (cid:31) (x, 3) (cid:31) (x, 2) (cid:31) (z, 2) (cid:31) (y, 2) (cid:31) (y, 1) (cid:31) (a∅, 1),
+g3 : (d, 4) (cid:31) (x, 3) (cid:31) (z, 2) (cid:31) (z, 1) (cid:31) (a∅, 1).
+
+51
+
+Igarashi, Bredereck, Peters, & Elkind
+
+We take the underlying social network to be a complete graph. Together, there are
+
+3h + 3(cid:0)h
+
+2
+
+(cid:1) + 4 players, namely
+(cid:91)
+
+N =
+
+Color(i) ∪ (cid:91)
+
+i∈[h]
+
+i(cid:54)=j∈[h]
+
+ColorPair({i, j}) ∪ {g} ∪ Ng.
+
+Note that the number of players depends on h, but not on n, and the size of our instance of
+gGASP is bounded by O(n2 + m2).
+
+Correctness. We will now argue that the graph G admits a colorful clique of size h if and
+only if our instance of gGASP admits a Nash stable feasible assignment or an individually
+stable feasible assignment.
+
+Suppose that there exists a colorful clique H of size h. We construct a Nash stable
+
+assignment π where
+
+• the ﬁrst two players p(i)
+
+1 and p(i)
+
+2 of the color gadget Color(i) are assigned to the activity
+
+corresponding to the vertex of color i from H,
+
+• the last player p(i)
+• the ﬁrst two players p
+
+3 of the color gadget Color(i) is assigned to the activity ai,
+
+of the colorpair gadget ColorPair({i, j}) are assigned
+to the activity corresponding to the edge between the vertices of color i and j in H,
+of the colorpair gadget ColorPair({i, j}) is assigned to the activity
+
+• the last player p
+
+and p
+
+{i,j}
+1
+
+{i,j}
+2
+
+{i,j}
+3
+
+a{ij}, and
+
+• the stabilizer g and the players in Ng are assigned to the activity d.
+
+Observe that for a successful Nash deviation a player must join an existing non-empty
+coalition, because no player prefers a size-one activity to the currently assigned one. By
+construction, the last player of each color gadget and the last player of the colorpair
+gadget cannot deviate (no other players engage in an approved activity). Consider the ﬁrst
+two players of a color gadget Color(i). They cannot deviate to a vertex activity, because
+their current activity is their only approved vertex activity that has some players assigned
+to it. They cannot deviate to an edge activity either, because they would only prefer
+edge activities corresponding to edges that are not incident to the vertex of color i; these
+activities, however, have no players assigned to them. The ﬁrst two players of each colorpair
+gadget ColorPair({i, j}) and the players in Ng do not wish to deviate since they are each
+assigned to their top alternative. Finally, the stabilizer g does not wish to deviate since
+there is no coalition of size 3 or 4 assigned to an edge activity. Thus, we have a Nash stable
+feasible assignment, and hence, an individually stable assignment.
+
+Conversely, suppose that there exists an individually stable feasible assignment π. Then,
+π must assign the activity d to the stabilizer as well as the players in Ng; otherwise, π cannot
+be stable as we have seen in Example 5. Likewise, the ﬁrst two players of each colorpair
+gadget ColorPair({i, j}) must be assigned to the same edge activity corresponding to some
+edge ˆei,j ∈ E. We say that these players “select edge ˆei,j”.
+
+Now suppose towards a contradiction that the ﬁrst player p(i)
+
+1 of color gadget Color(i) is
+assigned to an edge activity ˆei,j incident to vertices of color i and j. Then, such a coalition
+
+52
+
+Group Activity Selection on Social Networks
+
+has size in [3, 5] by individual rationality, and must not contain the stabilizer g, because g has
+to be engaged in activity d as discussed before. Hence the player p(i)
+1 can only be assigned
+2 and the ﬁrst two players from the colorpair gadget ColorPair({i, j}),
+to ˆei,j together with p(i)
+which results in a coalition of size 3 or 4. This would, however, cause an IS-deviation by the
+stabilizer g to the edge activity ˆei,j, a contradiction. The same argument applies to when
+the second player p(i)
+is assigned to an edge activity. Therefore, the ﬁrst two players of
+2
+each color gadget Color(i) are assigned to the same vertex activity corresponding to some
+vertex v(cid:96)i ∈ V (i). We say that these players “select vertex v(cid:96)i”. (Note that at this point, the
+coalition structure of any stable outcome is already ﬁxed: The ﬁrst two players of each color
+gadget and of each colorpair gadget must form a coalition of size two, respectively, and all
+other players must be form singleton coalitions.)
+
+Now, assume towards a contradiction that the selected vertices and edges do not form a
+colorful clique of size h. The size and colorfulness are clear from the construction. Hence,
+there must be some pair {v(cid:96)i, v(cid:96)j} of selected vertices that are not adjacent. However, this
+would imply that colorpair gadget ColorPair({i, j}) selected an edge that is not incident to
+vertex v(cid:96)i or not incident to vertex v(cid:96)j . Without loss of generality let it be non-incident to
+vertex v(cid:96)i. Now, there are two cases. First, if ˆei,j ∈ E(v(i)
+x ) with x < (cid:96)i, then player p(i)
+1
+would have an IS-deviation to the activity corresponding to ˆei,j. Second, if ˆei,j ∈ E(v(i)
+x )
+with x > (cid:96)i, then player p(i)
+2 would have an IS-deviation to the activity corresponding to ˆei,j.
+In both cases we have a contradiction to the assumption that π is individually stable. A
+similar argument applies to the case when there is a Nash stable assignment.
+
+53
+
+

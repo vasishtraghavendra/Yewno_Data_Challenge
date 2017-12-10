@@ -1,0 +1,689 @@
+A Comparative Study on Regularization Strategies
+
+for Embedding-based Neural Networks
+
+Hao Peng∗, 1 Lili Mou,∗1 Ge Li,†1 Yunchuan Chen,2 Yangyang Lu,1 Zhi Jin1
+
+1Software Institute, Peking University, 100871, P. R. China
+
+{penghao.pku, doublepower.mou}@gmail.com,{lige, luyy11, zhijin}@sei.pku.edu.cn
+2University of Chinese Academy of Sciences, chenyunchuan11@mails.ucas.ac.cn
+
+5
+1
+0
+2
+
+ 
+
+g
+u
+A
+5
+1
+
+ 
+
+ 
+ 
+]
+L
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+1
+2
+7
+3
+0
+
+.
+
+8
+0
+5
+1
+:
+v
+i
+X
+r
+a
+
+Abstract
+
+This paper aims to compare different reg-
+ularization strategies to address a com-
+mon phenomenon, severe overﬁtting, in
+embedding-based neural networks
+for
+NLP. We chose two widely studied neu-
+ral models and tasks as our
+testbed.
+We tried several frequently applied or
+newly proposed regularization strategies,
+including penalizing weights (embeddings
+excluded), penalizing embeddings,
+re-
+embedding words, and dropout. We also
+emphasized on incremental hyperparame-
+ter tuning, and combining different regu-
+larizations. The results provide a picture
+on tuning hyperparameters for neural NLP
+models.
+
+1
+
+Introduction
+
+Neural networks have exhibited considerable po-
+tential in various ﬁelds (Krizhevsky et al., 2012;
+Graves et al., 2013).
+In early years on neural
+NLP research, neural networks were used in lan-
+guage modeling (Bengio et al., 2003; Morin and
+Bengio, 2005; Mnih and Hinton, 2009); recently,
+they have been applied to various supervised tasks,
+such as named entity recognition (Collobert and
+Weston, 2008), sentiment analysis (Socher et al.,
+2011; Mou et al., 2015), relation classiﬁcation
+(Zeng et al., 2014; Xu et al., 2015), etc. In the ﬁeld
+of NLP, neural networks are typically combined
+with word embeddings, which are usually ﬁrst pre-
+trained by unsupervised algorithms like Mikolov
+et al. (2013); then they are fed forward to standard
+neural models, ﬁne-tuned during supervised learn-
+ing. However, embedding-based neural networks
+usually suffer from severe overﬁtting because of
+the high dimensionality of parameters.
+
+∗Equal contribution.
+
+†Corresponding author.
+
+A curious question is whether we can regular-
+ize embedding-based NLP neural models to im-
+prove generalization. Although existing and newly
+proposed regularization methods might alleviate
+the problem, their inherent performance in neural
+NLP models is not clear: the use of embeddings
+is sparse;
+the behaviors may be different from
+those in other scenarios like image recognition.
+Further, selecting hyperparameters to pursue the
+best performance by validation is extremely time-
+consuming, as suggested in Collobert et al. (2011).
+Therefore, new studies are needed to provide a
+more complete picture regarding regularization for
+neural natural language processing. Speciﬁcally,
+we focus on the following research questions in
+this paper.
+RQ 1: How do different regularization strategies
+typically behave in embedding-based neural
+networks?
+
+RQ 2: Can regularization coefﬁcients be tuned in-
+crementally during training so as to ease the
+burden of hyperparameter tuning?
+
+RQ 3: What is the effect of combining different
+
+regularization strategies?
+
+In this paper, we systematically and quan-
+titatively compared four different regularization
+strategies, namely penalizing weights, penalizing
+embeddings, newly proposed word re-embedding
+(Labutov and Lipson, 2013), and dropout (Srivas-
+tava et al., 2014). We analyzed these regulariza-
+tion methods by two widely studied models and
+tasks. We also emphasized on incremental hyper-
+parameter tuning and the combination of different
+regularization methods.
+
+Our experiments provide some interesting re-
+sults: (1) Regularizations do help generalization,
+but their effect depends largely on the datasets’
+size. (2) Penalizing (cid:96)2-norm of embeddings helps
+optimization as well,
+improving training accu-
+racy unexpectedly. (3) Incremental hyperparam-
+eter tuning achieves similar performance, indicat-
+
+ing that regularizations mainly serve as a “local”
+effect. (4) Dropout performs slightly worse than
+(cid:96)2 penalty in our experiments; however, provided
+very small (cid:96)2 penalty, dropping out hidden units
+and penalizing (cid:96)2-norm are generally complemen-
+tary. (5) The newly proposed re-embedding words
+method is not effective in our experiments.
+
+2 Tasks, Models, and Setup
+Experiment I: Relation extraction. The dataset
+in this experiment comes from SemEval-2010
+Task 8.1 The goal is to classify the relationship
+between two marked entities in each sentence. We
+refer interested readers to recent advances, e.g.,
+Hashimoto et al. (2013), Zeng et al. (2014), and
+Xu et al. (2015). To make our task and model
+general, however, we do not consider entity tag-
+ging information; we do not distinguish the order
+of two entities either. In total, there are 10 labels,
+i.e., 9 different relations plus a default other.
+
+Regarding the neural model, we applied Col-
+lobert’s convolutional neural network (CNN)
+(Collobert and Weston, 2008) with minor modi-
+ﬁcations. The model comprises a ﬁxed-window
+convolutional layer with size equal to 5, 0 padded
+at the end of each sentence; a max pooling layer;
+a tanh hidden layer; and a softmax output layer.
+Experiment II: Sentiment analysis. This is
+another testbed for neural NLP, aiming to pre-
+dict the sentiment of a sentence. The dataset is
+the Stanford sentiment treebank (Socher et al.,
+2011)2;
+target labels are strongly/weakly
+positive/negative, or neutral.
+
+We used the recursive neural network (RNN),
+which is proposed in Socher et al. (2011), and fur-
+ther developed in Socher et al. (2012); Irsoy and
+Cardie (2014). RNNs make use of binarized con-
+stituency trees, and recursively encode children’s
+information to their parent’s; the root vector is ﬁ-
+nally used for sentiment classiﬁcation.
+
+Experimental Setup. To setup a fair compari-
+son, we set all layers to be 50-dimensional in ad-
+vance (rather than by validation). Such setting has
+been used in previous work like Zhao et al. (2015).
+Our embeddings are pretrained on the Wikipedia
+corpus using Collobert and Weston (2008). The
+learning rate is 0.1 and ﬁxed in Experiment I;
+for RNN, however, we found learning rate decay
+helps to prevent parameter blowup (probably due
+
+1 http://www.aclweb.org/anthology/S10-1006
+2 http://nlp.stanford.edu/sentiment/
+
+to the recursive, and thus chaotic nature). There-
+fore, we applied power decay (Senior et al., 2013)
+with power equal to −1. For each strategy, we
+tried a large range of regularization coefﬁcients,
+10−9,··· , 10−2, extensively from underﬁtting to
+no effect with granularity 10x. We ran the model
+5 times with different initializations. We used
+mini-batch stochastic gradient descent; gradients
+are computed by standard backpropagation. For
+source code, please refer to our project website.3
+It needs to be noticed that, the goal of this paper
+is not to outperform or reproduce state-of-the-art
+results. Instead, we would like to have a fair com-
+parison. The testbed of our work is two widely
+studied models and tasks, which were not chosen
+on purpose. During the experiments, we tried to
+make the comparison as fair as possible. There-
+fore, we think that the results of this work can be
+generalized to similar scenarios.
+3 Regularization Strategies
+In this section, we describe four regularization
+strategies used in our experiment.
+• Penalizing (cid:96)2-norm of weights. Let E be the
+cross-entropy error for classiﬁcation, and R
+be a regularization term. The overall cost
+function is J = E + λR, where λ is the co-
+efﬁcient. In this case, R = (cid:107)W(cid:107)2, and the
+coefﬁcient is denoted as λW .
+• Penalizing (cid:96)2-norm of embeddings. Some
+studies do not distinguish embeddings or
+connectional weights for regularization (Tai
+et al., 2015). However, we would like to an-
+alyze their effect separately, for embeddings
+are sparse in use. Let Φ denote embeddings;
+then we have R = (cid:107)Φ(cid:107)2.
+• Re-embedding words (Labutov and Lipson,
+2013). Suppose Φ0 denotes the original em-
+beddings trained on a large corpus, and Φ de-
+notes the embeddings ﬁne-tuned during su-
+pervised training. We would like to penalize
+the norm of the difference between Φ0 and Φ,
+i.e., R = (cid:107)Φ0−Φ(cid:107)2. In the limit of penalty to
+inﬁnity, the model is mathematically equiv-
+alent to “frozen embeddings,” where word
+vectors are used as surface features.
+• Dropout (Srivastava et al., 2014).
+
+In this
+strategy, each neural node is set to 0 with a
+predeﬁned dropout probability p during train-
+ing; when testing, all nodes are used, with ac-
+tivation multiplied by 1 − p.
+3 https://sites.google.com/site/regembeddingnn/
+
+(a) Penalizing weights in Experiment I.
+
+(b) Penalizing weights in Experiment II.
+
+(c) Penalizing embeddings in Experiment I.
+
+(d) Penalizing embeddings in Experiment II.
+
+(e) Re-embedding words in Experiment I.
+
+(f) Re-embedding words in Experiment II.
+
+(g) Applying dropout in Experiment I. p = 0.5, 0.6
+are omitted because they are similar to small values.
+
+(h) Applying dropout in Experiment II.
+
+Figure 1: Averaged learning curves. Left: Experiment I, relation extraction with CNN. Right: Experiment II, sentiment
+analysis with RNN. From top to bottom, we penalize weights, penalize embeddings, re-embed words, and drop out. Dashed
+lines refer to training accuracies; solid lines are validation accuracies.
+
+0510152025Epochs102030405060708090100Accuracy (%)λW = 0λW = 10−5λW = 10−4λW = 10−3TrainingValidation01020304050607080Epochs152025303540455055Accuracy (%)λW = 0λW = 10−5λW = 10−4λW = 10−3TrainingValidation0510152025Epochs102030405060708090100Accuracy (%)λb = 0λb = 10−5λb = 10−4λb = 10−3TrainingValidation01020304050607080Epochs2030405060Accuracy (%)λb = 0λb = 10−5λb = 10−4λb = 10−3TrainingValidation0510152025Epochs102030405060708090100Accuracy (%)λreembed = 0λreembed = 10−5λreembed = 10−4λreembed = 10−3TrainingValidation01020304050607080Epochs2025303540455055Accuracy (%)λreembed = 0λreembed = 10−5λreembed = 10−4λreembed = 10−3TrainingValidation0510152025Epochs102030405060708090100Accuracy (%)pdrop = 0pdrop = 0.1pdrop = 0.2pdrop = 0.3pdrop = 0.4pdrop = 0.7TrainingValidation01020304050607080Epochs152025303540455055Accuracy (%)pdrop = 0pdrop = 0.1pdrop = 0.2pdrop = 0.3pdrop = 0.4pdrop = 0.5TrainingValidationIndividual Regularization Behaviors
+
+4
+This section compares the behavior of each strat-
+egy. We ﬁrst conducted both experiments with-
+out regularization, achieving accuracies of 54.02±
+0.84%, 41.47± 2.85%, respectively. Then we plot
+in Figure 1 learning curves when each regulariza-
+tion strategy is applied individually. We report
+training and validation accuracies through out this
+paper. The main ﬁndings are as follows.
+
+• Penalizing (cid:96)2-norm of weights helps gener-
+alization; the effect depends largely on the
+size of training set. Experiment I contains
+7,000 training samples and the improvement
+is 6.98%; Experiment II contains more than
+150k samples, and the improvement is only
+2.07%. Such results are consistent with other
+machine learning models.
+
+• Penalizing (cid:96)2-norm of embeddings unexpect-
+edly helps optimization (improves training
+accuracy). One plausible explanation is that
+since embeddings are trained on a large cor-
+pus by unsupervised methods, they tend to
+settle down to large values and may not per-
+fectly agree with the tasks of interest.
+(cid:96)2
+penalty pushes the embeddings towards small
+values and thus helps optimization. Regard-
+ing validation accuracy, Experiment I is im-
+proved by 6.89%, whereas Experiment II has
+no signiﬁcant difference.
+
+• Re-embedding words does not improve gen-
+eralization. Particularly, in Experiment II,
+the ultimate accuracy is improved by 0.44,
+which is not large. Further, too much penalty
+hurts the models in both experiments. In the
+limit λreembed to inﬁnity, re-embedding words
+is mathematically equivalent to using embed-
+dings as surface features, that is, freezing em-
+beddings. Such strategy is sometimes applied
+in the literature like Hu et al. (2014), but is
+not favorable as suggested by the experiment.
+• Dropout helps generalization. Under the best
+settings, the eventual accuracy is improved
+by 3.12% and 1.76%, respectively. In our ex-
+periments, dropout alone is not as useful as
+(cid:96)2 penalty. However, other studies report that
+dropout is very effective (Irsoy and Cardie,
+2014). Our results are not consistent; differ-
+ent dimensionality may contribute to this dis-
+agreement, but more experiments are needed
+to conﬁrm the hypothesis.
+
+Incremental Hyperparameter Tuning
+
+5
+The above experiments show that regularization
+generally helps prevent overﬁtting. To pursue the
+best performance, we need to try out different hy-
+perparameters through validation. Unfortunately,
+training deep neural networks is time-consuming,
+preventing full grid search from being a practical
+technique. Things will get easier if we can incre-
+mentally tune hyperparameters, that is, to train the
+model without regularization ﬁrst, and then add
+penalty.
+
+In this section, we study whether (cid:96)2 penalty of
+weights and embeddings can be tuned incremen-
+tally. We exclude the dropout strategy because its
+does not make much sense to incrementally drop
+out hidden units. Besides, from this section, we
+only focus on Experiment I due to time and space
+limit.
+
+possibilities on how regularization works.
+
+Before continuing, we may envision several
+• (On initial effects) As (cid:96)2-norm prevents pa-
+rameters from growing large, adding it at
+early stages may cause parameters settling
+down to local optima. If this is the case, de-
+layed penalty would help parameters get over
+local optima, leading to better performance.
+• (On eventual effects) (cid:96)2 penalty lifts er-
+ror surface of large weights. Adding such
+penalty may cause parameters settling down
+to (a) almost the same catchment basin, or (b)
+different basins. In case (a), when the penalty
+is added does not matter much. In case (b),
+however, it makes difference, because param-
+eters would have already gravitated to catch-
+ment basins of larger values before regular-
+ization is added, which means incremental
+hyperparameter tuning would be ineffective.
+To verify the above conjectures, we design four
+settings: adding penalty (1) at the beginning, (2)
+before overﬁtting at epoch 2, (3) at peak perfor-
+mance (epoch 5), and (4) after overﬁtting (valida-
+tion accuracy drops) at epoch 10.
+
+Figure 2 plots the learning curves regarding pe-
+nalizing weights and embeddings, respectively;
+baseline (without regularization) is also included.
+For both weights and embeddings, all settings
+yield similar ultimate validation accuracies. This
+shows (cid:96)2 regularization mainly serves as a “local”
+effect—it changes the error surface, but parame-
+ters tend to settle down to a same catchment basin.
+We notice a recent report also shows local optima
+
+(a) Incrementally penalizing (cid:96)2-norm of weights.
+
+(b) Incrementally penalizing (cid:96)2-norm of biases.
+
+Figure 2: Tuning hyperparameters incrementally in Experiment I. Penalty is added at epochs 0, 2, 5, 10,
+respectively. We chose the coefﬁcients yielding the best performance in Figure 1. The controlled trial
+(no regularization) is early stopped because the accuracy has already decreased.
+
+λembed
+0
+10−5
+3·10−5
+10−4
+3·10−4
+10−3
+
+0
+
+54.02
+54.94
+55.68
+60.91
+58.92
+54.77
+
+10−4
+57.88
+57.82
+61.02
+64.00
+61.33
+56.43
+
+λW
+
+3·10−4
+59.96
+60.68
+64.00
+63.07
+59.85
+54.05
+
+10−3
+61.00
+62.05
+63.15
+60.56
+42.93
+16.50
+
+Table 1: Accuracy in percentage when we com-
+bine (cid:96)2-norm of weights and embeddings (Exper-
+iment I). Bold numbers are among highest accu-
+racies (greater than peak performance minus 1.5
+times standard deviation, i.e., 1.26 in percentage).
+
+λW
+3·10–4 10–3
+
+λembed
+
+10–4
+
+10–5 3·10–5 10–4
+p
+0 57.88 59.96 61.00 54.94 55.68 60.91
+1/6 58.36 59.36 43.42 58.49 59.59 60.00
+2/6 58.22 60.00 16.60 59.34 60.08 59.61
+3/6 58.63 59.73 16.60 59.59 59.98 58.82
+4/6 56.43 54.63 16.60 56.76 59.19 56.64
+5/6 38.07 16.60 16.60 49.79 53.63 49.75
+
+Table 2: Combining (cid:96)2 regularization and dropout.
+Left: connectional weights. Right: embeddings.
+(p refers to the dropout rate.)
+
+may not play an important role in training neural
+networks, if the effect of parameter symmetry is
+ruled out (Breuel, 2015).
+
+We also observe that regularization helps gener-
+alization as soon as it is added (Figure 2a), and that
+regularizing embeddings helps optimization also
+right after the penalty is applied (Figure 2b).
+6 Combination of Regularizations
+We are further curious about the behaviors when
+different regularization methods are combined.
+
+Table 1 shows that combining (cid:96)2-norm of
+weights and embeddings results in a further accu-
+racy improvement of 3–4 percents from applying
+
+either single one of them.
+In a certain range of
+coefﬁcients, weights and embeddings are comple-
+mentary: given one hyperparameter, we can tune
+the other to achieve a result among highest ones.
+Such compensation is also observed in penal-
+izing (cid:96)2-norm versus dropout (Table 2)—although
+the peak performance is obtained by pure (cid:96)2 regu-
+larization, applying dropout with small (cid:96)2 penalty
+also achieves a similar accuracy. The dropout rate
+is not very sensitive, provided it is small.
+7 Discussion
+In this paper, we systematically compared four
+regularization strategies
+for embedding-based
+neural networks in NLP. Based on the experimen-
+tal results, we answer our research questions as
+follows.
+(1) Regularization methods (except re-
+embedding words) basically help generalization.
+Penalizing (cid:96)2-norm of embeddings unexpectedly
+helps optimization as well. Regularization perfor-
+mance depends largely on the dataset’s size. (2)
+(cid:96)2 penalty mainly acts as a local effect; hyperpa-
+rameters can be tuned incrementally. (3) Combin-
+ing (cid:96)2-norm of weights and biases (dropout and (cid:96)2
+penalty) further improves generalization; their co-
+efﬁcients are mostly complementary within a cer-
+tain range. These empirical results of regulariza-
+tion strategies shed some light on tuning neural
+models for NLP.
+Acknowledgments
+This research is supported by the National Basic
+Research Program of China (the 973 Program) un-
+der Grant No. 2015CB352201 and the National
+Natural Science Foundation of China under Grant
+No. 61232015. We would also like to thank Hao
+Jia and Ran Jia.
+
+01020304050607080Epochs102030405060708090100Accuracy (%)Reg at epoch 0Reg at epoch 2Reg at epoch 5Reg at epoch 10No regularizationTrainingValidation01020304050607080Epochs102030405060708090100Accuracy (%)Reg at epoch 0Reg at epoch 2Reg at epoch 5Reg at epoch 10No regularizationTrainingValidationReferences
+[Bengio et al.2003] Yoshua Bengio, R. Ducharme,
+P. Vincent, and C. Jauvin. 2003. A neural proba-
+bilistic language model. Journal of Machine Learn-
+ing Research, 3:1137–1155.
+
+[Breuel2015] T. Breuel. 2015. The effects of hyperpa-
+rameters on SGD training of neural networks. arXiv
+preprint arXiv:1508.02788.
+
+[Collobert and Weston2008] Ronan
+
+and
+J. Weston. 2008. A uniﬁed architecture for natural
+language processing: Deep neural networks with
+In Proceedings of the 25th
+multitask learning.
+International Conference on Machine learning.
+
+Collobert
+
+[Collobert et al.2011] Ronan Collobert, Jason Weston,
+L´eon Bottou, Michael Karlen, Koray Kavukcuoglu,
+and Pavel Kuksa. 2011. Natural language process-
+ing (almost) from scratch. The Journal of Machine
+Learning Research, 12:2493–2537.
+
+[Graves et al.2013] Alex Graves, A. Mohamed, and
+G. Hinton. 2013. Speech recognition with deep
+In Proceedings of
+recurrent neural networks.
+2013 IEEE International Conference on Acoustics,
+Speech and Signal Processing.
+
+[Hashimoto et al.2013] Kazuma Hashimoto, M. Miwa,
+Y. Tsuruoka, and T. Chikayama. 2013. Simple cus-
+tomization of recursive neural networks for semantic
+In Proceedings of the 2013
+relation classiﬁcation.
+Conference on Empirical Methods in Natural Lan-
+guage Processing.
+
+[Hu et al.2014] Baotian Hu, Z. Lu, H. Li, and Q. Chen.
+2014. Convolutional neural network architectures
+In Ad-
+for matching natural language sentences.
+vances in Neural Information Processing Systems.
+
+[Irsoy and Cardie2014] Ozan Irsoy and C. Cardie.
+2014. Deep recursive neural networks for compo-
+In Advances in Neural In-
+sitionality in language.
+formation Processing Systems.
+
+[Krizhevsky et al.2012] Alex Krizhevsky, I. Sutskever,
+and G. Hinton. 2012. ImageNet classiﬁcation with
+deep convolutional neural networks. In Advances in
+Neural Information Processing Systems.
+
+[Labutov and Lipson2013] Igor Labutov and H. Lipson.
+2013. Re-embedding words. In Proceedings of the
+51st Annual Meeting of the Association for Compu-
+tational Linguistics (Volume 2).
+
+[Mikolov et al.2013] Tomas Mikolov,
+
+I. Sutskever,
+K. Chen, G. Corrado, and J. Dean. 2013. Dis-
+tributed representations of words and phrases and
+In Advances in Neural In-
+their compositionality.
+formation Processing Systems.
+
+[Mnih and Hinton2009] Andriy Mnih and G. Hinton.
+2009. A scalable hierarchical distributed language
+model. In Advances in Neural Information Process-
+ing Systems.
+
+[Morin and Bengio2005] Frederic Morin and Y. Ben-
+gio. 2005. Hierarchical probabilistic neural network
+In Proceedings of International
+language model.
+Conference on Artiﬁcial Intelligence and Statistics.
+
+[Mou et al.2015] Lili Mou, Hao Peng, Ge Li, Yan Xu,
+Lu Zhang, and Zhi Jin. 2015. Tree-based convolu-
+tion: A new neural architecture for sentence mod-
+In Proceedings of Conference on Empirical
+eling.
+Methods in Natural Language Processing (to ap-
+pear).
+
+[Senior et al.2013] Andrew Senior,
+
+G. Heigold,
+M. Ranzato, and K. Yang. 2013. An empirical
+study of learning rates in deep neural networks for
+In Proceedings of 2013 IEEE
+speech recognition.
+International Conference on Acoustics, Speech and
+Signal Processing.
+
+[Socher et al.2011] Richard Socher,
+
+J. Pennington,
+E. Huang, A. Ng, and C. Manning. 2011. Semi-
+supervised recursive autoencoders for predicting
+sentiment distributions. In Proceedings of the Con-
+ference on Empirical Methods in Natural Language
+Processing.
+
+[Socher et al.2012] Richard Socher, B. Huval, C. Man-
+ning, and A. Ng. 2012. Semantic compositional-
+ity through recursive matrix-vector spaces. In Pro-
+ceedings of the 2012 Joint Conference on Empirical
+Methods in Natural Language Processing and Com-
+putational Natural Language Learning.
+
+[Srivastava et al.2014] Nitish Srivastava, G. Hinton,
+A. Krizhevsky, I. Sutskever, and R. Salakhutdinov.
+2014. Dropout: A simple way to prevent neural
+networks from overﬁtting. The Journal of Machine
+Learning Research, pages 1929–1958.
+
+2015.
+
+[Tai et al.2015] Kai Sheng Tai, R. Socher, and D. Man-
+ning.
+Improved semantic representations
+from tree-structured long short-term memory net-
+works. In Proceedings of the 53rd Annual Meeting
+of the Association for Computational Linguistics.
+
+[Xu et al.2015] Yan Xu, Lili Mou, Ge Li, Yunchuan
+Chen, Hao Peng, and Zhi Jin. 2015. Classifying re-
+lations via long short term memory networks along
+shortest dependency paths. In Proceedings of Con-
+ference on Empirical Methods in Natural Language
+Processing (to appear).
+
+[Zeng et al.2014] Daojian Zeng, K. Liu, S. Lai,
+G. Zhou, and J. Zhao. 2014. Relation classiﬁcation
+via convolutional deep neural network. In Proceed-
+ings of Computational Linguistics.
+
+[Zhao et al.2015] Han Zhao, Z. Lu, and P. Poupart.
+2015. Self-adaptive hierarchical sentence model. In
+Proceedings of Intenational Joint Conference in Ar-
+tiﬁcial Intelligence.
+
+

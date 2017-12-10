@@ -1,0 +1,563 @@
+6
+1
+0
+2
+
+ 
+
+v
+o
+N
+7
+2
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+6
+9
+7
+8
+0
+
+.
+
+1
+1
+6
+1
+:
+v
+i
+X
+r
+a
+
+DEEP DEFORMABLE REGISTRATION: ENHANCING ACCURACY BY FULLY
+
+CONVOLUTIONAL NEURAL NET
+
+Sayan Ghosal (cid:63) Nilanjan Ray †
+
+(cid:63) Department of Electronics and Telecom. Engineering, Jadavpur University, Kolkata, India.
+
+† Department of Computing Science, University of Alberta, Canada.
+
+(Corresponding author’s e-mail: nray1@ualberta.ca)
+
+ABSTRACT
+
+Deformable registration is ubiquitous in medical image anal-
+ysis. Many deformable registration methods minimize sum of
+squared difference (SSD) as the registration cost with respect
+to deformable model parameters. In this work, we construct
+a tight upper bound of the SSD registration cost by using a
+fully convolutional neural network (FCNN) in the registra-
+tion pipeline. The upper bound SSD (UB-SSD) enhances
+the original deformable model parameter space by adding a
+heatmap output from FCNN. Next, we minimize this UB-SSD
+by adjusting both the parameters of the FCNN and the pa-
+rameters of the deformable model in coordinate descent. Our
+coordinate descent framework is end-to-end and can work
+with any deformable registration method that uses SSD. We
+demonstrate experimentally that our method enhances the ac-
+curacy of deformable registration algorithms signiﬁcantly on
+two publicly available 3D brain MRI data sets.
+
+Index Terms— Fully convolutional neural network, De-
+
+formable registration, 3D Image registration.
+
+1. INTRODUCTION
+
+Image registration or image alignment is the process of over-
+laying two images taken at different time instants, or differ-
+ent view points, or from different subjects in a common co-
+ordinate system.
+Image registration has remained a signif-
+icant tool in medical imaging applications [1]. 3D data in
+medical images, where image registration is applied, gener-
+ally includes Computed Tomography (CT), Cone-beam CT
+(CBCT), Magnetic Resonance Imaging (MRI) and Computer
+Aided Design (CAD) model of medical devices.
+
+Among all the image registration methods, deformable im-
+age registration is important in neuroscience and clinical stud-
+ies. Diffeomorphic demons [2] and Log-domain diffeomor-
+phic demon [3] algorithms are popular deformable registra-
+tion methods. In these optimization-based methods, the de-
+formable transformation parameters are iteratively optimized
+over a scalar valued cost (e.g., SSD) representing the qual-
+ity of registration [4]. To impose smoothness on the solution,
+typically a regularization term is also added to the registration
+
+cost function. These costs are non-convex in nature, hence the
+optimization sometimes get trapped in the local minima. On
+the basis of the cost functions, different optimization algo-
+rithms are used. In the Gauss-Newton method for minimiz-
+ing SSD, projective geometric deformation is used [5]. The
+method is sensitive to local minima. Levenberg-Marquadt al-
+gorithm was used in [6] to minimize the difference in intensi-
+ties of corresponding pixels. This method update the param-
+eters between gradient descent and Gauss Newton and accel-
+erates towards local minima. The combination of Levenber-
+Marquadt method and SSD is used in [7].
+
+In order to improve the solution of registration, in other
+words, to ﬁnd better local minima in the SSD cost, we pro-
+pose a novel method to modify the reference image by intro-
+ducing a heatmap (essentially another image) produced by a
+Fully Convolutional Neural Network (FCNN) with a skip ar-
+chitecture [8]. This modiﬁed reference image helps to create
+a tight upper bound to the SSD registration cost that we refer
+to as UB-SSD. Next, we minimize the UB-SSD by adjusting
+parameters of the FCNN as well as deformation parameters of
+the registration algorithm. We refer to our proposed method
+by deep deformable registration (DDR).
+
+FCNN is type of deep learning machine that has has been
+successfully used for semantic segmentation in [8].
+In [9]
+convolutional network has been used to classify 1.2 million
+images in 1000 different classes. However, our proposed
+method (DDR) does not employ any learning, rather it uses
+FCNN to optimize SSD registration cost. It is a newer trend
+in computer vision and graphics, where deep learning tools
+are used only for optimization purposes and not for learning.
+One prominent example is artistic style transfer [10].
+
+Prior to our work, convolutional network was used for im-
+age registration in [11], where the authors trained the param-
+eters of a 2-layers convolutional network. The network was
+used to seek the hierarchical representation for each image,
+where high level features are inferred from the low level net-
+work. The goal of their work was to learn feature vectors for
+better registration. In contrast, DDR focuses on ﬁnding better
+solution during optimization, where we make use of end-to-
+end back-propagation and the deep learning architecture.
+
+2. PROPOSED METHOD
+
+In this section, we provide detailed descriptions of each com-
+ponent of our solution pipeline. We start with the overall reg-
+istration framework. Then, we illustrate our FCNN architec-
+ture and deﬁne upper bound of the SSD cost. We end the
+section by explaining the registration module.
+
+The DDR framework works in an iterative coordinate descent
+manner by alternating between the following two steps until
+convergence: (a) ﬁx h(x) and optimize for deformable param-
+eters T (x) and (b) ﬁx T (x) and optimize for heatmap h(x)
+by back-propagation. Thus, the DDR framework works in an
+end-to-end fashion. The error signals α1 and α2 are as fol-
+lows:
+
+α2 = σ(cid:48)(h(x))α1,
+
+(4)
+
+2.1. Deep Deformable Registration Framework
+
+and
+
+Throughout this paper the moving image is represented as
+M (x) and the ﬁxed (or reference) image is represented as
+F (x). The output of the fully convolutional neural network
+is represented as h(x). T (x) represents the deformation pro-
+duced by a registration algorithm. The complete DDR frame-
+work is shown in Fig. 1.
+
+α1 = ∇hm CU = F (x) + hm(x) − M (T (x)).
+
+(5)
+
+Thus, the DDR framework enhances the space of optimiza-
+tion parameters from T to a joint space of T and h (or hm).
+So, when the registration optimizer is stuck at a local mini-
+mum of T , the alternating coordinate descent ﬁnds a better
+minimum for h in the joint space, and the registration pro-
+ceeds because of the upper bound property of the cost func-
+tion. The decrease of UB-SSD and SSD is shown in Fig. 2
+over iterations of the coordinate descent for a registration ex-
+ample.
+
+Fig. 1. Deep deformable registration framework.
+
+In DDR, we have considered SSD as the registration cost
+between the moving and the ﬁxed image. For simplicity, we
+omit any regularization term here. Hence, the SSD registra-
+tion cost is as follows:
+
+[F (x) − M (T (x))]2dx.
+
+(1)
+
+Fig. 2. Original cost and UB-cost vs iterations.
+
+(cid:90)
+
+C =
+
+1
+2
+
+(cid:90)
+
+CU =
+
+1
+2
+
+In DDR, the FCNN is followed by a non-linear function σ
+as shown in Fig. 1. A suitable design of σ ensures the upper
+bound of the original cost (UB-SSD):
+
+[F (x) + hm(x) − M (T (x))]2dx.
+
+(2)
+
+σ(h(x))[σ(h(x)) + 2(F (x) − M (T (x)))]dx ≥ 0.
+
+(6)
+
+In DDR, (2) serves as an upper bound to (1). Using this con-
+dition, we obtain:
+
+(cid:90)
+
+2.2. Tight UB-SSD
+
+In order to minimize the UB-SSD given in (2), back-
+propagation is applied. α1 is error that back-propagates from
+registration module and α2 is the error of the non-linear mod-
+ule. The output of the FCNN is the heatmap h(x), which is
+modiﬁed by the non-linearity function σ to hm(x):
+
+hm(x) = σ(h(x)).
+
+(3)
+
+This modiﬁed heat map is added pixel-wise with the ﬁxed
+image F (x) as a distortion.
+
+In DDR, the registration module minimizes the UB-SSD,
+which will ensure minimization of the original SSD cost.
+
+We ensure condition (6) by realizing σ as a soft thresholding
+function with threshold t:
+
+z − t,
+
+0,
+z + t,
+
+σ(z) =
+
+if t ≥ z
+if − t ≤ z ≤ +t
+if z ≤ −t.
+
+(7)
+
+(cid:90)
+
+Note that σ is applied pixel-wise on the heatmap h(x). For
+
+a tight UB-SSD condition (6) can be restated as follows:
+ ≥
+
+[σ(h(x))[σ(h(x)) + 2(F (x) − M (T (x)))]dx ≥ 0,
+(8)
+
+where  is a small positive number. The following simple
+algorithm makes sure that with a soft thresholding function
+σ, condition (8) is met. Fig. 2 demonstrates UB-SSD is quite
+tight on the SSD cost.
+
+Algorithm 1 Soft thresholding algorithm
+1: t ← 0
+2: Set stepsize to a very small number
+3: loop:
+4: if Condition (8) is not met then
+5: t ← t + stepsize
+6: goto loop.
+
+2.3. FCNN Architecture
+
+We have used VGG-net [12] to serve as FCNN. This network
+contains both convolutional and deconvolutional layers.
+In
+the VGG-net we decapitated the ﬁnal classiﬁer layer and con-
+vert all fully connected layers to convolutional layers. This
+is followed by multiple deconvolutional layers to bi-linearly
+up-sample the coarse outputs to pixel dense outputs. The con-
+volutional part consist of multiple convolutional layers, ReLU
+layers and max-pooling layers. The deconvolutional part con-
+sists of deconvolutional layers. We have skipped multiple
+layers and fused them with the deconvolved layers to intro-
+duce local appearance information. A typical skip architec-
+ture used in our module is shown in details in Fig. 3.
+
+2.4. Registration module
+
+In order to register the moving image with the modiﬁed ref-
+erence image we have used the demons [2, 3] method. To
+ﬁnd the optimum transformation T, we optimize the follow-
+ing cost:
+
+(cid:90)
+
+1
+2
+
+E(T ) =
+
+[f (x) + hm(x)− M (T (x))]2 +(cid:107)∇T (x)(cid:107)2]dx.
+(9)
+Due to the large number of transformation parameters in
+the transformation ﬁeld T , we use limited memory BFGS
+(LBFGS) algorithm to ﬁnd the optimum transformation ﬁeld.
+This algorithm is computationally less extensive than BFGS
+when the number of optimization parameters are large. While
+calculating the step length and direction, LBFGS store the
+hessian matrix for the last few iterations and use them to cal-
+culate the direction and step length instead of updating and
+storing the hessian matrix in each iteration. After ﬁnding the
+optimum transformation ﬁeld, the error is back-propagated
+through the pipeline which helps the FCNN in ﬁnding the nec-
+essary distortion required to reduce the energy further down.
+
+Fig. 3. FCNN with skip architecture.
+
+3. RESULTS
+
+3.1. Registration Algorithms
+
+To establish the usefulness of DDR, the following two de-
+formable registration algorithms, each with and without
+DDR, are used:
+
+1. DDR + Diffeomorphic demon
+
+2. Diffeomorphic demon
+
+3. DDR + Log-demon
+
+4. Log-demon.
+
+           3x3 conv, 128 3x3 conv, 128 3x3 conv, 64 3x3 conv, 64  3x3 conv, 256 3x3 conv, 256 Max-pool 3x3 conv, 64 Max-pool 3x3 conv, 128 3x3 conv, 256 Max-pool 3x3 conv, 512 3x3 conv, 512 Max-pool 3x3 conv, 512 3x3 conv, 512 3x3 conv, 512 Max-pool 7x7 conv, 4096 1x1 conv, 4096 1x1 conv, 1 Up-2, Deconv Output image – 96x96x64 4         Input image – 192x192 Output image – 48x48x128 Output image – 24x24x256 Output image – 12x12x512 Output image – 6x6x512 Output image – 6x6x1 + Up-2, Deconv + Output image – 12x12x1 Up-2, Deconv + Output image – 24x24x1 Up-4, Deconv Output image – 48x48x1          Heat map – 192x192 In our setup, to register images using DDR + diffeomorphic
+demons, we have used FCNN-16s network [8] and for reg-
+istration using DDR + log-demon, we have used FCNN-32s
+architecture for the FCNN.
+
+3.2. Registration Evaluation Metrics
+
+For performance measures, we have used structural similar-
+ity index (SSIM) [13], Peak signal to noise ratio (PSNR) and
+the SSD error. SSIM can capture local differences between
+the images, whereas SSD and PSNR can capture global dif-
+ferences.
+
+3.3. Experiments with IXI Dataset
+
+dataset
+
+(http://biomedic.doc.ic.ac.
+
+IXI
+uk/brain-development/index.php?n=Main.
+Datasets) consists of 30 subjects, which are all 3D volu-
+metric data. Among them, we have randomly chosen one as
+our reference volume and we have registered the others using
+the aforementioned four algorithms.
+
+The improvements in SSIM, PSNR and SSD error with dif-
+feomorphic demon are provided in Fig. 4. The improvement
+in registration with log-demon is shown in Fig. 5. These re-
+sults are summarized in Table 1 where we show average per-
+centage improvements in 3D volume registration. From these
+results we observe signiﬁcant improvements gained by using
+DDR, especially in reducing the SSD cost, because the op-
+timization has targeted SSD. However, other measures such
+as SSIM and PSNR have also decreased signiﬁcantly. Fig. 8
+shows a residual image (difference image) for the log-demon
+method with and without using DDR. Signiﬁcant reduction in
+residual image intensity is observed when DDR is used.
+
+Table 1. Improvement in registration for IXI dataset: average
+percentage
+
+DDR with diffeomorphic demons DDR with log-demons
+SSIM PSNR SSD
+SSIM PSNR
+9.2
+11.0
+21.0
+
+SSD
+19.0
+
+5.0
+
+5.3
+
+3.4. Experiments with ADNI Dataset
+
+In these experiments, we have randomly selected 20 MR 3D
+volumes from the ADNI dataset (http://adni.loni.
+ucla.edu/). Among them, one is randomly selected to be
+the template, and the rest are registered with it using Diffeo-
+morphic Demons and Log-Domain Diffeomorphic Demons
+algorithm. The SSIM, PSNR and SSD values are calculated
+and plotted in Fig.7 and Fig. 6. These improvements are
+
+Fig. 4. Results on IXI Dataset with diffeomorphic demons.
+Top : SSIM vs no. of Subjects, Middle: PSNR value vs no.
+of subjects, Bottom: Mean SSD value vs no. of subjects.
+
+summarized in summarized in Table 2. Once again, we ob-
+serve signiﬁcant gains in registration metrics using the pro-
+posed DDR.
+
+Fig. 5. Results on IXI Dataset using log-demon. Top : SSIM
+vs no. of Subjects, Middle: PSNR value vs no. of subjects,
+Bottom: Mean SSD value vs no. of subjects.
+
+Fig. 6. Results on ADNI Dataset. Top : SSIM vs no. of
+Subjects, Middle: PSNR value vs no. of subjects, Bottom:
+Mean SSD value vs no. of subjects.
+
+4. CONCLUSIONS AND FUTURE WORK
+
+We have proposed a novel method for improving deformable
+registration using fully convolutional neural network. While
+
+previous studies have focused on learning features, here we
+have utilized FCNN to help optimize registration algorithm
+better. On two publicly available datasets, we show that im-
+provements in registration metrics are signiﬁcant. In the fu-
+ture, we intend to work with other diffeomorphic registration
+algorithms, such HAMMER [14].
+
+Table 2. Improvement in registration for ADNI dataset: aver-
+age percentage
+
+DDR with diffeomorphic demons DDR with log-demons
+SSIM PSNR SSD
+SSIM PSNR
+13.6
+4.3
+12.6
+
+SSD
+19.9
+
+6.2
+
+3
+
+Fig. 8. Top-left: Registered image using log-demon; top-
+right: DDR+log-demon result. Bottom-left: Residual image
+from log-demon. Bottom-right: Residual using DDR+log-
+demon.
+
+5. REFERENCES
+
+[1] R. Liao, L. Zhang, Y. Sun, S. Miao, and C. Chefd’Hotel,
+“A review of recent advances in registration techniques
+applied to minimally invasive therapy,” IEEE Transac-
+tions on Multimedia, vol. 15, no. 5, pp. 983–1000, Aug
+2013.
+
+[2] T. Vercauteren, X. Pennec, A. Perchant, and N. Ayache,
+“Efﬁcient non-parametric image registration,” NeuroIm-
+age, vol. 45, no. 1, Supplement 1, pp. S61–S72, Mar
+2009.
+
+[3] Herve Lombaert, L. Grady, X. Pennec, N. Ayache, and
+F. Cheriet, “Spectral log-demons: Diffeomorphic im-
+age registration with very large deformations,” Interna-
+tional Journal of Computer Vision, vol. 107, pp. 254–
+271, 2014.
+
+Fig. 7. Results on ADNI Dataset. Top : SSIM index vs no.
+of Subjects, Middle: PSNR value vs no. of subjects, Bottom:
+Mean SSD value vs no. of subjects.
+
+Acknowledgments
+
+Authors acknowledge support from MITACS Globallink and
+Computing Science, University of Alberta.
+
+[4] A. Sotiras, C. Davatzikos, and N. Paragios,
+
+“De-
+formable medical image registration: A survey,,” IEEE
+Transactions on Medical Imaging, vol. 2, no. 7, pp.
+1153–1190, 2013.
+
+[5] R.K. Sharma and M. Pavel, “Multisensor image reg-
+istration,” Proceedings of the Society for Information
+Display, vol. XXVIII, pp. 951–954, 1997.
+
+[6] H.S. Sawhney and R. Kumar, “True multi-image align-
+ment and its applications to mosaicing and lens distor-
+tion correction,” IEEE Transactions on Pattern Analysis
+and Machine Intellingece, vol. 21, pp. 235–243, 1999.
+
+[7] P. Thevenaz, U.E. Ruttimann, and M. Unser, “Iterative
+multiscale registration without landmarks,” Proceedings
+of the IEEE International Confernece on Image Pro-
+cessing, pp. 228–231, 1995.
+
+[8] Jonathan Long, Evan Shelhamer, and Trevor Darrell,
+“Fully convolutional networks for semantic segmenta-
+tion,” Conference on Computer Vision and Pattern
+Recognition, 2015.
+
+[9] Krizhevsky, Alex, Ilya Sutskever, and Geoffrey E. Hin-
+ton, “Imagenet classiﬁcation with deep convolutional
+neural networks,” in Advances in neural information
+processing systems, 2012, pp. 1097–1105.
+
+[10] Leon A. Gatys, Alexander S. Ecker, and Matthias
+“A neural algorithm of artistic style,”
+
+Bethge,
+arXiv:1508.06576, 2015.
+
+[11] Guorong Wu, Minjeong Kim, Qian Wang, Yaozong
+Gao, Shu Liao, and Dinggang Shen, Unsupervised Deep
+Feature Learning for Deformable Registration of MR
+Brain Images, pp. 649–656, 2013.
+
+[12] K. Simonyan and A. Zisserman,
+
+“Very deep convo-
+lutional networks for large-scale image recognition,”
+ICLR, 2015.
+
+[13] Zhou Wang, A. C. Bovik, H. R. Sheikh, and E. P. Simon-
+celli, “Image quality assessment: From error visibility
+to structural similarity,” IEEE Transactions on Image
+Processing, vol. 13, no. 4, pp. 228–231, 2004.
+
+[14] Shen DG, “Image registration by local histogram match-
+
+ing,” Pattern Recognition, pp. 1161–1172, 2007.
+
+

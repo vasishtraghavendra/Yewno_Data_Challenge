@@ -1,0 +1,620 @@
+GEFCOM 2014 - Probabilistic Electricity Price
+
+Forecasting
+
+Gergo Barta1, Gyula Borbely, Gabor Nagy1, Sandor Kazi1, and Tamas Henk
+
+PhD.1
+
+Department of Telecommunications and Media Informatics, Budapest University of
+
+Technology and Economics, Magyar tudosok krt. 2. H-1117 Budapest, Hungary
+
+{barta,nagyg,kazi,henk}@tmit.bme.hu
+
+http://www.tmit.bme.hu
+
+Abstract. Energy price forecasting is a relevant yet hard task in the
+ﬁeld of multi-step time series forecasting. In this paper we compare a well-
+known and established method, ARMA with exogenous variables with a
+relatively new technique Gradient Boosting Regression. The method was
+tested on data from Global Energy Forecasting Competition 2014 with a
+year long rolling window forecast. The results from the experiment reveal
+that a multi-model approach is signiﬁcantly better performing in terms
+of error metrics. Gradient Boosting can deal with seasonality and auto-
+correlation out-of-the box and achieve lower rate of normalized mean
+absolute error on real-world data.
+
+Keywords: time series, forecasting, gradient boosting regression trees,
+ensemble models, ARMA, competition, GEFCOM
+
+1
+
+Introduction
+
+Forecasting electricity prices is a diﬃcult task as they reﬂect the actions of var-
+ious participants both inside and outside the market. Both producers and con-
+sumers use day-ahead price forecasts to derive their unique strategies and make
+informed decisions in their respective businesses and on the electricity market.
+High precision short-term price forecasting models are beneﬁcial in maximizing
+their proﬁts and conducting cost-eﬃcient business. Day-ahead market forecasts
+also help system operators to match the bids of both generating companies and
+consumers and to allocate signiﬁcant energy amounts ahead of time.
+
+The methodology of the current research paper originates from the GEF-
+COM 2014 forecasting contest. In last year’s contest our team achieved a high
+ranking position by ensembling multiple regressors using the Gradient Boosted
+Regression Trees paradigm. Promising results encouraged us to further explore
+potential of the initial approach and establish a framework to compare results
+with one of the most popular forecasting methods; ARMAX.
+
+Global Energy Forecasting Competition is a well-established competition ﬁrst
+announced in 2012 [1] with worldwide success. The 2014 edition [2] put focus
+on renewal energy sources and probabilistic forecasting. The GEFCOM 2014
+
+5
+1
+0
+2
+
+ 
+
+n
+u
+J
+ 
+
+3
+2
+
+ 
+ 
+]
+L
+M
+
+.
+t
+a
+t
+s
+[
+ 
+ 
+
+1
+v
+2
+7
+9
+6
+0
+
+.
+
+6
+0
+5
+1
+:
+v
+i
+X
+r
+a
+
+2
+
+GEFCOM 2014 - Probabilistic Electricity Price Forecasting
+
+Probabilistic Electricity Price Forecasting Track oﬀered a unique approach to
+forecasting energy price outputs, since competition participants needed to fore-
+cast not a single value but a probability distribution of the forecasted variables.
+This methodological diﬀerence oﬀers more information to stakeholders in the
+industry to incorporate into their daily work. As a side eﬀect new methods had
+to be used to produce probabilistic forecasts.
+
+The report contains ﬁve sections:
+
+1. Methods show the underlying models in detail with references.
+2. Data description provides some statistics and description about the target
+
+variables and the features used in research.
+
+3. Experiment Methodology summarizes the training and testing environment
+
+and evaluation scheme the research was conducted on.
+
+4. Results are presented in a the corresponding section.
+5. Conclusions are drawn at the end.
+
+2 Methods
+
+Previous experience showed us that oftentimes multiple regressors are better
+than one[4]. Therefore we used an ensemble method that was successful in vari-
+ous other competitions: Gradient Boosted Regression Trees[5,6,7]. Experimental
+results were benchmarked using ARMAX; a model widely used for time series re-
+gression. GBR implementation was provided by Python’s Scikit-learn[8] library
+and ARMAX by Statsmodels[9].
+
+2.1 ARMAX
+
+We used ARMAX to benchmark our methods because it is a widely applied
+methodology for time series regression [10,11,12,13,14]. This method expands
+the ARMA model with (a linear combination of) exogenic inputs (X). ARMA
+is an abbreviation of auto-regression (AR) and moving-average (MA). ARMA
+models were originally designed to describe stationary stochastic processes in
+terms of AR and MA to support hypothesis testing in time series analysis [15].
+As the forecasting task in question has exogenic inputs by speciﬁcation therefore
+ARMAX is a reasonable candidate to be used as a modeler.
+
+Using the ARMAX model (considering a linear model wrt. the exogenous
+input) the following relation is assumed and modeled in terms of Xt which is the
+variable in question at the time denoted by t. According to this the value of Xt
+is a combination of AR(p) (auto-regression of order p), MA(q) (moving average
+of order q) and a linear combination of the exogenic input.
+
+p(cid:88)
+
+q(cid:88)
+garded as Gaussian noise around zero).(cid:80)p
+
+ϕiXt−i +
+
+Xt = εt +
+
+i=1
+
+i=1
+
+b(cid:88)
+
+i=0
+
+θiεt−i +
+
+ηidt (i)
+
+(1)
+
+The symbol εt in the formula above represents an error term (generally re-
+i=1 ϕiXt−i represents the autoregres-
+sion submodel with the order of p: ϕi is the i-th parameter to weight a previous
+
+value. The elements of the sum(cid:80)q
+
+GEFCOM 2014 - Probabilistic Electricity Price Forecasting
+
+3
+
+i=1 θiεt−i are the weighted error terms of the
+moving average submodel with the order of q. The last part of the formula is
+the linear combination of exogenic input dt.
+
+Usually p and q are chosen to be as small as they can with an acceptable error.
+After choosing the values of p and q the ARMAX model can be trained using
+least squares regression to ﬁnd a suitable parameter setting which minimizes the
+error.
+
+2.2 Gradient Boosting Decision Trees
+
+Gradient boosting is another ensemble method responsible for combining weak
+learners for higher model accuracy, as suggested by Friedman in 2000 [16]. The
+predictor generated in gradient boosting is a linear combination of weak learners,
+again we use tree models for this purpose. We iteratively build a sequence of
+models, and our ﬁnal predictor will be the weighted average of these predictors.
+Boosting generally results in an additive prediction function:
+
+f∗(X) = β0 + f1(X1) + . . . + fp(Xp)
+
+(2)
+
+In each turn of the iteration the ensemble calculates two set of weights:
+
+1. one for the current tree in the ensemble
+2. one for each observation in the training dataset
+
+The rows in the training set are iteratively reweighted by upweighting previ-
+
+ously misclassiﬁed observations.
+
+The general idea is to compute a sequence of simple trees, where each suc-
+cessive tree is built for the prediction residuals of the preceding tree. Each new
+base-learner is chosen to be maximally correlated with the negative gradient of
+the loss function, associated with the whole ensemble. This way the subsequent
+stages will work harder on ﬁtting these examples and the resulting predictor is
+a linear combination of weak learners.
+
+Utilizing boosting has many beneﬁcial properties; various risk functions are
+applicable, intrinsic variable selection is carried out, also resolves multicollinear-
+ity issues, and works well with large number of features without overﬁtting.
+
+3 Data description
+
+The original competition goal was to predict hourly electricity prices for every
+hour on a given day. The provided dataset contained information about the
+prices on hourly resolution for a roughly 3 year long period between 2011 and
+2013 for an unknown zone. Beside the prices two additional variables were in
+the dataset. One was the Forecasted Zonal Load ((cid:48)z(cid:48)) and the other was the
+Forecasted Total Load ((cid:48)t(cid:48)). The ﬁrst attribute is a forecasted electricity load
+value for the same zone where the price data came from. The second attribute
+contains the forecasted total electricity load in the provider network. The unit
+
+4
+
+GEFCOM 2014 - Probabilistic Electricity Price Forecasting
+
+of measurement for these variables remain unknown, as is the precision of the
+forecasted values. Also, no additional data sources were allowed to be used for
+this competition.
+
+Table 1. Descriptive statistics for the input variables and the target
+
+Price Forecasted Total Load Forecasted Zonal Load
+
+count
+25944
+mean 48.146034
+std
+26.142308
+min 12.520000
+25% 33.467500
+50% 42.860000
+54.24
+75%
+max
+363.8
+
+25944
+18164.103299
+3454.036495
+11544
+15618
+18067
+19853
+33449
+
+25944
+6105.566181
+1309.785562
+3395
+5131
+6075
+6713.25
+11441
+
+In Table 1 we can see the descriptive statistic values for the original variables
+and the target. The histogram of the target variable (Figure 1) is a bit skewed to
+the left with a long tail on the right and some unusual high values. Due to this
+characteristic we decided to take the natural log value of the target and build
+models on that value. The model performance was better indeed when they were
+trained on this transformed target.
+
+Fig. 1. Price histogram
+
+The distribution of the other two descriptive variables are far from normal
+as we can see on Figure 2. As we can see the shapes are very similar for these
+variables with the peak, the left plateau and the tail on the right. They are also
+highly correlated with a correlation value of ~0.97, but not so much with the
+target itself (~0.5-0.58).
+
+GEFCOM 2014 - Probabilistic Electricity Price Forecasting
+
+5
+
+Fig. 2. Forecasted Total Load and Forecasted Zonal Load histograms
+
+Table 2. Correlation matrix of input variables
+
+Price Forecasted Zonal Load Forecasted Total Load
+
+Price
+1.0
+Forecasted Zonal Load 0.501915
+Forecasted Total Load 0.582029
+
+0.501915
+1.0
+0.972629
+
+0.582029
+0.972629
+1.0
+
+Beside the variables of Table 1 we also calculated additional attributes based
+on them: several variables derived from the two exogenous variable (cid:48)z(cid:48) and (cid:48)t(cid:48),
+also date and time related attributes were extracted from the timestamps (see
+Table 3 for details).
+
+During the analysis we observed from the autocorrelation plots that some
+variables value have stronger correlation with its +/- 1 hour value, so we also
+calculated these values for every row. Figure 3 shows 3 selected variables to be
+shifted as the autocorrelation values are extremely high when a lagging window
+of less than 2 hours is used.
+
+Fig. 3. Autocorrelation of tzdif, zdif and y M24 variables
+
+6
+
+GEFCOM 2014 - Probabilistic Electricity Price Forecasting
+
+Table 3. Descriptive features used throughout the competition
+
+Variable name Description
+
+dow
+doy
+day
+woy
+hour
+month
+t M24
+t M48
+z M24
+z M48
+tzdif
+tdif
+zdif
+
+Day of the week, integer, between 0 and 6
+Day of the year, integer, between 0 and 365
+Day of the month, integer, between 1 and 31
+Week of the year, integer, between 1 and 52
+Hour of the day, integer, 0-23
+Month of the year, integer, 1-12
+t value from 24 hours earlier
+t value from 48 hours earlier
+z value from 24 hours earlier
+z value from 48 hours earlier
+The diﬀerence between t and z
+The diﬀerence between t and t M24
+The diﬀerence between z and z M24
+
+In Figure 4 ﬁgure we can see an autocorrelation plot of price values in spe-
+ciﬁc hours and they are shifted in days (24 hours). It is clearly seen that the
+autocorrelation values for the early and late hours are much higher than for
+the afternoon hours. That means it is worth to include shifted variables in the
+models as we did. Not surprisingly the errors at the early and late hours were
+much lower than midday and afternoon.
+
+Fig. 4. Autocorrelation of price values at speciﬁc hours, shifted in days
+
+Gradient Boosting Regression Trees also provided intrinsic variable impor-
+tance measures. Table 4 shows that (apart from the original input variables) the
+
+GEFCOM 2014 - Probabilistic Electricity Price Forecasting
+
+7
+
+calculated diﬀerences were found to be important. The relatively high impor-
+tance of the hour of day suggests strong within-day periodicity.
+
+Table 4. Attribute importances provided by GBR
+
+Attribute GBR variable importance
+
+tzdif
+tdif
+zdif
+z
+hour
+t
+z M48
+t M48
+t M24
+z M24
+doy
+day
+dow
+month
+
+0.118451
+0.092485
+0.090757
+0.090276
+0.085597
+0.078957
+0.078718
+0.076352
+0.069791
+0.069072
+0.067103
+0.056018
+0.024973
+0.001449
+
+4 Experiment Methodology
+
+In our research framework we abandoned the idea of probabilistic forecasting as
+this is a fairly new approach and our goal was to gain comparable results with
+well-established conventional forecasting methods; ARMAX in this case.
+
+We used all data from 2013 as a validation set in our research methodology
+(unlike in the competition where speciﬁc dates were marked for evaluation in
+each task). To be on a par with ARMAX we decided to use a rolling window
+of 30 days to train GBR. This means much less training data (a substantial
+drawback for the GBR model), but yields comparable results between the two
+methods.
+
+The target variable is known until 2013-12-17, leaving us with 350 days for
+testing. For each day the training set consisted of the previous 1 month period,
+and the subsequent day was used for testing the 24 hourly forecasts. On some
+days the ARMAX model did not converge leaving us with 347 days in total to
+be used to assess model performance. The forecasts are compared to the known
+target variable, we provide 2 metrics to compare the two methods: Mean Abso-
+lute Error (MAE) and Root Mean Squared Error (RMSE). Gradient Boosting
+and ARMAX optimizes Mean Squared Error directly meaning that one should
+focus more on RMSE than MAE.
+
+8
+
+GEFCOM 2014 - Probabilistic Electricity Price Forecasting
+
+5 Results
+
+Figure 5 compares the model outputs with actual prices for a single day. While
+Table 5 shows the descriptive statistics of the error metrics: mae p armax,
+rmse p armax, mae p gbr and rmse p gbr are the Mean Absolute Errors and
+Root Mean Squared Errors of ARMAX and GBR models respectively. The av-
+erage of the 24 forecasted observations are used for each day, and the average
+of daily means are depicted for all the 347 days. In terms of both RMSE and
+MAE the average and median error is signiﬁcantly lower for the GBR model;
+surpassing ARMAX by approx. 20% on average.
+
+During the evaluation we came across several days that had very big error
+measures, ﬁltering out these outliers represented by the top and bottom 5% of
+the observed errors we have taken a t-test to conﬁrm that the diﬀerence between
+the two models is indeed signiﬁcant (t = 2.3187, p = 0.0208 for RMSE).
+
+Table 5. Descriptive statistics for the error metrics
+
+mae p armax rmse p armax mae p gbr rmse p gbr
+
+count
+mean
+std
+min
+5.0%
+50%
+95%
+max
+
+347
+8.640447
+11.809438
+1.223160
+2.083880
+5.152181
+27.049138
+101.081747
+
+347
+7.126920
+
+1.781158
+2.673257
+6.088650
+
+347
+347
+10.395176
+8.496357
+13.822071 10.396122 11.627084
+1.302484
+1.785432
+4.144649
+31.339932 27.171626 31.122828
+106.317998 77.819519 83.958518
+
+1.020160
+1.439134
+3.520733
+
+6 Conclusions and future work
+
+The GEFCOM competition oﬀered a novel way of forecasting; probabilistic fore-
+casts oﬀer more information to stakeholders and is an approach worth investi-
+gating in energy price forecasting. Our eﬀorts in the contest were focused on
+developing accurate forecasts with the help of well-established estimators in
+the literature used in a fairly diﬀerent context. This approach was capable of
+achieving roughly 10th place in the GEFCOM 2014 competition Price Track and
+performs surprisingly well when compared to the conventional and widespread
+benchmarking method ARMAX overperforming it by roughly 20%.
+
+The methodology used in this paper can be easily applied in other domains of
+forecasting as well. Applying the framework and observing model performance
+on a wider range of datasets yields more robust results and shall be covered in
+future work.
+
+During the competition we ﬁltered the GBR training set to better represent
+the characteristics of the day to be forecasted, which greatly improved model
+
+GEFCOM 2014 - Probabilistic Electricity Price Forecasting
+
+9
+
+Fig. 5. Within-day price forecasts for 2013-02-19
+
+performance. Automating this process is also a promising and chief goal of on-
+going research.
+
+References
+
+1. Tao Hong, Pierre Pinson and Shu Fan, ”Global Energy Forecasting Competition
+2012”, International Journal of Forecasting, vol.30, no.2., pp 357-363, April - June,
+2014
+
+2. Tao Hong, ”Energy Forecasting: Past, Present and Future”, Foresight: The Inter-
+
+national Journal of Applied Forecasting, issue 32, pp. 43-48, Winter 2014.
+
+3. R. Weron, ”Electricity price forecasting: A review of the state-of-the-art,” Interna-
+
+tional Journal of Forecasting, vol. 30, pp. 1030-1081, 2014.
+
+4. L. Rokach, ”Ensemble-based classiﬁers,” Artiﬁcial Intelligence Review, vol. 33, pp.
+
+1-39, 2010.
+
+5. S. a. S. L. Aggarwal, ”Solar energy prediction using linear and non-linear regular-
+ization models: A study on AMS (American Meteorological Society) 2013–14 Solar
+Energy Prediction Contest,” Energy, 2014.
+
+6. H. B. e. a. McMahan, ”Ad click prediction: a view from the trenches.,” Proceedings
+of the 19th ACM SIGKDD international conference on Knowledge discovery and
+data mining, pp. 1222-1230, 2013.
+
+7. T. e. a. Graepel, ”Web-scale bayesian click-through rate prediction for sponsored
+search advertising in microsoft’s bing search engine.,” Proceedings of the 27th In-
+ternational Conference on Machine Learning, pp. 13-20, 2010.
+
+8. Pedregosa, Fabian, et al. ”Scikit-learn: Machine learning in Python.” The Journal
+
+of Machine Learning Research 12 (2011): 2825-2830.
+
+9. Seabold, Skipper, and Josef Perktold. ”Statsmodels: Econometric and statistical
+modeling with python.” Proceedings of the 9th Python in Science Conference. 2010.
+10. Ian K. T. Tan, Poo Kuan Hoong, and Chee Yik Keong. 2010. Towards
+Forecasting Low Network Traﬃc for Software Patch Downloads: An ARMA
+
+10
+
+GEFCOM 2014 - Probabilistic Electricity Price Forecasting
+
+Model Forecast Using CRONOS. In Proceedings of the 2010 Second Interna-
+tional Conference on Computer and Network Technology (ICCNT ’10). IEEE
+Computer Society, Washington, DC, USA, 88-92. DOI=10.1109/ICCNT.2010.35
+http://dx.doi.org/10.1109/ICCNT.2010.35
+
+11. Gao Feng. 2010. Liaoning Province Economic Increasing Forecast and Anal-
+ysis Based on ARMA Model. In Proceedings of the 2010 Third International
+Conference on Intelligent Networks and Intelligent Systems (ICINIS ’10). IEEE
+Computer Society, Washington, DC, USA, 346-348. DOI=10.1109/ICINIS.2010.107
+http://dx.doi.org/10.1109/ICINIS.2010.107
+
+12. Yajun Hou. 2010. Forecast on Consumption Gap Between Cities and Countries
+in China Based on ARMA Model. In Proceedings of the 2010 Third International
+Conference on Intelligent Networks and Intelligent Systems (ICINIS ’10). IEEE
+Computer Society, Washington, DC, USA, 342-345. DOI=10.1109/ICINIS.2010.137
+http://dx.doi.org/10.1109/ICINIS.2010.137
+
+13. ShuXia Yang. 2009. The Forecast of Power Demand Cycle Turning Points
+Based on ARMA.
+In Proceedings of the 2009 Second International Work-
+shop on Knowledge Discovery and Data Mining (WKDD ’09). IEEE Com-
+puter Society, Washington, DC, USA, 308-311. DOI=10.1109/WKDD.2009.140
+http://dx.doi.org/10.1109/WKDD.2009.140
+
+14. Hong-Tzer, Y. (1996). Identiﬁcation of ARMAX model for short term load fore-
+
+casting: an evolutionary programming approach
+
+15. Whittle, P. (1951). Hypothesis testing in time series analysis. Uppsala: Almqvist
+
+& Wiksells boktr.
+
+16. J. H. Friedman, ”Greedy function approximation: a gradient boosting machine,”
+
+Annals of Statistics, pp. 1189-1232, 2001.
+
+

@@ -1,0 +1,1203 @@
+5
+1
+0
+2
+
+ 
+
+v
+o
+N
+5
+2
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+5
+2
+4
+6
+0
+
+.
+
+1
+1
+5
+1
+:
+v
+i
+X
+r
+a
+
+Under review as a conference paper at ICLR 2016
+
+FIRST STEP TOWARD
+MODEL-FREE, ANONYMOUS OBJECT TRACKING
+WITH RECURRENT NEURAL NETWORKS
+
+Quan Gan(cid:63)(cid:5)
+
+Qipeng Guo(cid:63)(cid:5)
+
+Zheng Zhang•∗
+
+Kyunghyun Cho•◦
+
+ABSTRACT
+
+In this paper, we propose and study a novel visual object tracking approach based
+on convolutional networks and recurrent networks. The proposed approach is dis-
+tinct from the existing approaches to visual object tracking, such as ﬁltering-based
+ones and tracking-by-detection ones, in the sense that the tracking system is ex-
+plicitly trained off-line to track anonymous objects in a noisy environment. The
+proposed visual tracking model is end-to-end trainable, minimizing any adversar-
+ial effect from mismatches in object representation and between the true under-
+lying dynamics and learning dynamics. We empirically show that the proposed
+tracking approach works well in various scenarios by generating artiﬁcial video
+sequences with varying conditions; the number of objects, amount of noise and
+the match between the training shapes and test shapes.
+
+1
+
+INTRODUCTION
+
+Visual object tracking is a problem of building a computational model that is able to predict the
+location of a designated object from a video clip consisting of many consecutive video frames.
+Using deep learning techniques, we attack this problem with a model-free statistical approach.
+Our goal in this paper is to build a model that can track an anonymous object in an image sequence.
+This task ﬁnds immediate applications in important scenarios such as self-driving cars. As safety
+is ﬁrst-order consideration, identifying what class the object belongs to is much less critical than
+identifying their whereabouts to avoid a collision. It is also an important step towards dramatically
+improving the generalizability of a tracking system, since real-world objects far exceeds labelled
+categories.
+Our model integrates convolutional network with recurrent network, and deploys attention at mul-
+tiple representation layers. The recurrent network outputs a bounding box prediction of the target
+object. It fuses past predictions along with their corresponding visual features produced by the con-
+volutional network. Finally, the prediction can optionally emphasizes attention areas in the input
+before feeding it into convolutional network. The entire model is end-to-end trained off-line. We
+use synthesized data set that simulates changing trajectory and acceleration of the target, various de-
+gree of foreground occlusions, and distraction of background clutter and other targets. Experimental
+results show that our model delivers robust performance.
+The rest of the paper is organized as follows. We start by reviewing two important categories of
+conventional visual object tracking in Sec. 2, which are ﬁltering-based tracking and tracking-by-
+detection. In Sec. 3, we describe a novel recurrent tracking model we propose in this paper, followed
+by discussing related works in Sec. 3.4. The settings for experiments are extensively described in
+Sec. 4–5, which is followed by the results and analysis in Sec. 6. We ﬁnalize this article with
+potential future research directions in Sec. 7.
+
+(cid:63) Equal contribution
+(cid:5) Fudan University, Shanghai
+qgan11@fudan.edu.cn,guoqipeng831@gmail.com
+• Courant Institute of Mathematical Sciences, New York University {zz,kyunghyun.cho}@nyu.edu
+∗ NYU Shanghai
+◦ Center for Data Science, New York University
+
+1
+
+Under review as a conference paper at ICLR 2016
+
+2 BACKGROUND: VISUAL OBJECT TRACKING AND LIMITATIONS
+
+A system for visual object tracking often comprises two main components; object detection and
+object tracking. Object detection refers to the process by which a designated object in each video
+frame is detected, while object tracking refers to the process of continually predicting the location
+of the detected object.
+The goal of object detection is to extract a feature vector φ (x) of an object which often encodes both
+the object’s shape and location, given each video frame x. The speciﬁcs of the feature vector heavily
+depend on the choice of object representation. For instance, if an object is represented as a point,
+the feature vector of the detected object is a two-dimensional coordinate vector corresponding to the
+center of gravity of the object in each frame.
+Object detection is followed by object tracking. There are many approaches proposed over a num-
+ber of decades (see, e.g., Yilmaz et al. (2006),) and we are interested in this proposal a statistical
+approach. A statistical approach assumes that the feature vector φ (x) from the object detection stage
+is a noisy observation of the true, underlying state (location) of the object which is not observed.
+The goal is to infer the underlying state for each video frame, given a sequence of observations, i.e.,
+features vectors.
+
+Filtering-based Visual Object Tracking In ﬁltering-based object tracking, it is natural to estab-
+lish a probabilistic graphical model, or often referred to as a state-space model, by deﬁning
+
+• Observation model: p(φ (xt )|zt )
+• Transition model: p(zt|zt−1),
+
+where φ (xt ) and zt are the observation and the latent state at time t.
+One of the most well known ﬁltering-based tracking model is so called Kalman ﬁlter (Broida &
+Chellappa, 1986). Kalman ﬁlter assume that both the observation and transition models are Gaussian
+distributions such that
+
+φ (xt )|zt ∼ N (Wxzt ,Cx), zt|zt−1 ∼ N (Wzzt−1,Cz),
+
+where N (µ,C) is a Gaussian distribution with its mean µ and covariance matrix C.
+Once the model is deﬁned, the goal is to infer the following posterior distribution:
+
+p(zt|φ (x1),φ (x2), . . .φ (xt )).
+
+(1)
+In other words, we try to ﬁnd the distribution over the potential object location in the t-th video
+frame given all the detected objects (represented by the feature vectors) up to the (t − 1)-th frame.
+See Fig. 1 (a) for the graphical illustration.
+In this scheme, object detection and tracking are largely considered separate from each other. This
+means that the object tracking stage is designed to work while being blind to the object representa-
+tion or feature vectors from the object detection stage. However, this is not to say that there is no
+effect of the choice of object and/or feature representation, as mismatch between the model deﬁni-
+tion in object tracking and the distribution based on the selected feature representation will lead to
+suboptimal tracking result.
+
+Tracking-by-Detection An approach more relevant to our proposal is tracking-by-detection (see,
+e.g., Li et al. (2013).) This approach is more holistic than the previous approach, because a single
+model is trained online to track an object in interest. In other words, tracking-by-detection builds a
+discriminative model that directly approximates the posterior distribution over the underlying loca-
+tion/state of the object in Eq. (1). See Fig. 1 (b) for the graphical illustration.
+Often, tracking-by-detection is done not as regression but as classiﬁcation of regions of a video
+frame. The classiﬁer is initialized to work well on the ﬁrst few frames where a separate object
+detector or human expert has classiﬁed each region of the frames as either foreground or background.
+This classiﬁer is used to detect/track the object in the next frame of which ground-truth labeling is
+not available. Once each region in the next frame is classiﬁed, the classiﬁer is further ﬁne-tuned with
+these new examples. This continues until the video clip reaches its end or the object disappears (all
+regions are classiﬁed negative.)
+
+2
+
+Under review as a conference paper at ICLR 2016
+
+(a) Filtering-based Tracking
+
+(b) Tracking-by-Detection
+
+Figure 1: Graphical illustration of the ﬁltering-based tracking and tracking-by-detection.
+
+This approach of tracking-by-detection has a number of limitations, of which the most severe ones
+are drifting (accumulation of error over multiple frames) and inability to handle occlusion easily.
+We notice that both of these issues arise from the fact that this approach effectively assumes Markov
+property over the posterior distribution in Eq. (1), meaning
+
+p(zt|φ (x1),φ (x2), . . .φ (xt ))) ≈ p(zt|φ (xt−1)).
+
+Because the tracking model considers only two consecutive frames (or more precisely concentrates
+heavily on a latest pair of consecutive frames only), it is not possible for the model to adjust for
+accumulated error over many subsequent frames. If the model has access to the whole history of
+frames and its own prediction of the object’s locations, it will be possible for the model to take the
+errors made throughout the video clip and address the issue of drifting.
+The tracking model’s lack of access to the history of the previous frames makes it nearly impossible
+for the model to handle occlusion. On the other hand, if the tracking model has the history of its
+previous observations and predictions of the object’s location, it can more easily infer that the object
+has not disappeared totally from the view but moved behind some other background objects. The
+tracking model may even be able to infer the object’s location even while it is being hidden from the
+view by understanding its motion based on the history the object’s locations.
+
+Limitations We have noticed three limitations in these conventional approaches. First, object
+representation is designed independently from the rest of the tracking pipeline, and any suboptimal
+choice of object representation may negatively impact the subsequent stages. Second, the ﬁltering-
+based approach is not robust to a mismatch between the underlying model description and the reality.
+Third, the lack of access to the history of all the previous video frames makes tracking-by-detection
+sensitive to complex motions and structured noise such as occlusion. Lastly, tracking-by-detection
+requires a classiﬁer, or a regressor, to be tuned at each frame, making it less suitable to be applied
+in real-time applications.
+
+3 VISUAL OBJECT TRACKING WITH DEEP NEURAL NETWORKS
+
+Here we describe a novel approach to visual anonymous object tracking by using techniques from
+deep learning (LeCun et al., 2015). Our aim in introducing a novel approach is to build a system that
+avoids the four limitations of the conventional visual tracking systems we discussed in the earlier
+section.
+The proposed model is a deep recurrent network that takes as input raw video frames of pixel in-
+tensities and returns the coordinates of a bounding box of an object being tracked for each frame.
+Mathematically, this is equivalent to saying that the proposed model factorizes the full tracking
+probability into
+
+p(z1,z2, . . . ,zT|x1,x2, . . . ,xT ) =
+
+p(zt|z<t ,x≤t ),
+
+T
+
+∏
+
+t=1
+
+where zt and xt are the location of an object and an input frame, respectively, at time t. z<t is a
+history of all previous locations before time t, and x≤t is a history of all input frames up to time t.
+
+3
+
+Under review as a conference paper at ICLR 2016
+
+3.1 MODEL DESCRIPTION
+
+At each time step t, an input frame xt is ﬁrst
+processed by a convolutional network, which
+has recently become a de facto standard in han-
+dling visual input (see, e.g., LeCun et al., 1998;
+Krizhevsky et al., 2012). This results in a feature
+vector φ (xt ) of the input frame xt:
+
+φ (xt ) = convθ c(m(xt , ˜zt−1)),
+
+(2)
+where convθ c(·) is a convolutional network with
+its parameters θ c, and m(·,·) is a preprocessing
+routine for the raw frame. We will discuss this
+preprocessing routine at the end of this section.
+˜zt−1 is the predicted location of an object from
+the previous frame xt−1, which we describe in
+more detail below.
+This feature vector of the input frame is fed into a recurrent neural network. The recurrent neural
+network updates its internal memory vector ht based on the previous memory vector ht−1, previous
+location of an object ˜zt−1 and the current frame φ (xt ):
+
+Figure 2: Graphical illustration of the visual
+tracking system proposed here.
+
+ht = recθ r (ht−1, ˜zt−1,φ (xt )),
+
+(3)
+is a recurrent activation function such as gated recurrent units Cho et al. (2014),
+where recθ r
+long short-term memory units Hochreiter & Schmidhuber (1997) or a simple logistic function,
+parametrized with the parameters θ r. This formulation lets the recurrent neural network to sum-
+marize the history of predicted locations z<t and input frames x≤t up to time step t.
+With the newly updated memory state ht, the recurrent neural network computes the predictive
+distribution over the object’s location (see Eq. (1). This is done again by a deep neural network
+outθ o Pascanu et al. (2014):
+
+(4)
+where θ o is a set of parameters deﬁning the output neural network. We take the mean of this
+predictive distribution as a predicted location ˜zt at time t:
+˜zt = E [z|z<t ,x≤t ] .
+
+(5)
+
+p(zt|z<t ,x≤t ) = outθ o(ht ),
+
+This whole process (Eqs. (2)–(5)) is iteratively applied as a stream of new frames arrives. This is
+graphically illustrated in Fig. 2.
+
+Preprocessing Input Frame xt We considered a number of possible strategies for building a pre-
+processing routine m(·,·) from Eq. (2). The most obvious and straightforward choice is to simply
+have an identity function, equivalent to simply passing a raw frame into the convolutional network
+convθ c. In this case, we use an identity function to preprocess each input frame xt:
+
+m(xt , ˜zt−1) = xt ,
+
+(6)
+where ˜zt−1 is ignored. This is equivalent to simply letting the tracker have a full, unadjusted view of
+the whole frame.
+On the other hand, we can design a preprocessing function m such that it will facilitate tracking.
+One possible choice is to weight each pixel of the raw frame xt such that a region surrounding
+the predicted location of an object in the previous frame is given higher weights. This will help
+the subsequent layers, i.e., convθ c, recθ r and outθ o, to focus more on that region. We refer to this
+preprocessing routine as an attentive weight scheme.
+In this model, the recurrent network outputs the coordinates of (1) top-left corner (x0,y0), (2)
+bottom-right corner (x1,y1), (3) log-scale s, (4) log-ratio r between the stride and the image size, and
+(5) log-amplitude a. Given these output, we weight each pixel using a mixture of N × N Gaussians.
+Each Gaussian (i, j) is centered at
+
+(cid:19)
+
+(cid:19)
+
+j− N
+2
+
+− 0.5
+
+exp (r)K
+
+,
+
+(cid:18) x0 + x1
+
++
+
+2
+
+(cid:18)
+i− N
+2
+
+(cid:19)
+
+− 0.5
+
+(cid:18)
+
+exp (r)K,
+
+y0 + y1
+
+2
+
++
+
+4
+
+Under review as a conference paper at ICLR 2016
+
+and has the standard deviation of exp (s) K
+Gaussians are used to form a mask G(zt−1) which is used as
+m(xt ,zt−1) = xt · G(zt−1)
+
+2 . K corresponds to the width or height of a frame. These
+
+(7)
+
+We emphasize that we only weight the pixels of each frame and do not extract a patch, as was done
+by Gregor et al. (2015) and Kahou et al. (2015), because this approach of ignoring an out-of-patch
+region may lose too much information needed for tracking.
+
+3.2 TRAINING
+
+Unlike the existing approaches to visual object tracking, described in Sec. 2, we take an off-line
+training strategy. This means that the trained model is used as is in test time.
+An obvious advantage to this approach is that there is no overhead in ﬁnetuning the model on-the-ﬂy
+during test time. On the other hand, there is an obvious disadvantage that the model must be able
+to track an object whose shape or texture information was not available during training time. We
+propose here a training strategy that aims at overcoming this disadvantage.
+We were motivated from recent observations from many research groups that a deep convolutional
+network, pretrained on a large image dataset of generic, natural images, is useful for subsequent
+vision tasks which may not necessarily involve the same types of objects (see, e.g., Sermanet et al.,
+2013; Bar et al., 2015). As the model we propose here consists of a convolutional network and
+recurrent network, we expect a similar beneﬁt by training the whole model with generic shapes,
+which may not appear during test time.
+As usual when training a deep neural network, we use stochastic gradient descent (SGD). At each
+SGD update, we generate a minibatch of examples by the following steps:
+
+1. Select a random background image from a large set of image.
+2. Randomly choose a shape of an object from a predeﬁned set of generic shapes.
+3. Create a sequence of frames by randomly moving the selected object with cluttered back-
+
+4. (Optional) Add various types of noise, including motion and scale change of both object
+
+ground and foreground.
+
+and clutters.
+
+1), . . . , (xT ,z∗
+
+After these steps, each training example is a pair of a video clip, which contains a ran-
+domly chosen background and a moving shape, and a sequence of ground-truth locations, i.e.,
+((x1,z∗
+We use this minibatch of N generated examples to compute the gradient of the minibatch log-
+likelihood L , where
+
+T )).
+
+L (θ c,θ r,θ o) =
+
+1
+N
+
+N
+
+∑
+
+n=1
+
+T
+
+∑
+
+t=k+1
+
+log p(zn
+
+t = z∗,n
+
+t
+
+|z∗,n
+<t ,xn≤t ).
+
+As this is an anonymous object tracking system, the model is given the ground-truth locations of the
+object for the ﬁrst k frames.
+Another training criterion is possible, if our prediction ˜zt as each step t is a differentiable function.
+In this case, we let the model freely track an object given a training video sequence and maximize
+the log-probability of the ground-truth location only at the last frame:
+
+L (θ c,θ r,θ o) =
+
+1
+N
+
+N
+
+∑
+
+n=1
+
+log p(zn
+
+T = z∗,n
+
+T |˜zn
+
+<T ,xn≤T ).
+
+(8)
+
+According to our preliminary experiments, we use this second strategy throughout this paper.
+Of course, in this case, there is no guarantee that any intermediate prediction made by the model
+correspond to the correct object location. To avoid this issue, we add the following auxiliary cost to
+
+We can use, for instance, ImageNet Data from http://www.image-net.org/, or create one with
+random clutters as in MNIST cluttered from https://github.com/deepmind/mnist-cluttered.
+
+5
+
+Under review as a conference paper at ICLR 2016
+
+the new cost above:
+
+˜L (θ c,θ r,θ o) =
+
+1
+N
+
+N
+
+∑
+
+n=1
+
+T
+
+∑
+
+t=k+1
+
+log p(zn
+
+t = z∗,n
+
+t
+
+|˜zn
+<t ,xn≤t ).
+
+(9)
+
+Minimizing this auxiliary cost encourages the model to following the object in the intermediate
+frames.
+In our case, the model predicts two points zt = [x0,y0,x1,y0] in the input frame which corresponds
+to the top-left (x0,y0) and bottom-right (x1,y1) corners of a bounding box. We use a Gaussian
+distribution with an ﬁxed, identity covariance matrix, whose mean is computed from ht (see Eq. (3).)
+In order to reduce variance, we do not sample from this distribution, but simply take the mean as the
+prediction:
+
+˜zt = E [zt|˜z<T ,x≤T ] .
+
+This effectively reduces the auxiliary cost in Eq. (9) as well as the main cost in Eq. (8) to a mean-
+squared error.
+In the case of using the modiﬁed selective attention model to preprocess the input frame, there are
+two additional output elements which are the standard deviation σ and the stride δ . As we consider
+both of these as real values, this simply makes the predictive distribution to be a six-dimensional
+vector, i.e., dim(zt ) = 4.
+
+3.3 CHARACTERISTICS
+
+There are three main characteristics that set the proposed approach apart from the previous works
+on visual object tracking.
+First, the proposed model is trained end-to-end, including object representation extraction, object
+detection and object tracking. The model works directly on the raw pixel intensities of each frame.
+This is unlike conventional object tracking systems, in which appearance modeling is considered
+largely separate from the actual tracking system (see, e.g., Li et al., 2013). This largely prevents
+potential performance degradation from having suboptimal, hand-engineered object representation
+and detector.
+Second, the proposed model works with anonymous objects by design. As we train a model with
+a large set of generic-shaped objects ofﬂine, the model learns to detect a generic object that was
+pointed out initially rather than to detect a certain, predeﬁned set of objects. As the proposed model
+is a recurrent neural network which can maintain the history of the object’s trajectory, it implicitly
+learns to ﬁnd a region in an input frame which has a similar activation pattern from the previous
+frames. In fact, human babies are known to be able to track objects even before having an ability to
+classify it into one of the object categories (Ruff & Rothbart, 2001).
+Lastly, training is done fully off-line. We note ﬁrst that this is both an advantage and disadvantage
+of the proposed approach. This off-line training strategy is advantageous in test time, as there is
+no need to re-tune any part of the system. As the model parameters are ﬁxed during test time, it
+will be more straightforward to implement the trained model on a hardware, achieving a desirable
+level of power consumption and speed (Farabet et al., 2011). On the other hand, this implies that the
+proposed system lacks the adaptability to novel objects that are novel w.r.t. the shapes used during
+training, which is exactly a property fully exploited by any existing tracking-by-detection visual
+tracking system.
+
+3.4 RELATED WORK
+
+As we were preparing this work, Kahou et al. (2015) independently proposed a similar visual object
+tracker based on a recurrent neural network. Here let us describe the similarities and differences
+between their recurrent attentive tracking model (RATM) with the proposed tracking approach.
+A major common feature between these two approaches is that both of these use a recurrent neural
+network as a main component. A major difference between the RATM and the proposed approach
+is in training. Both the RATM and the model proposed in this paper use the intermediate locations
+of an object as an auxiliary target (see Eq. (9).) Kahou et al. (2015) report that this use of auxiliary
+
+6
+
+Under review as a conference paper at ICLR 2016
+
+cost stabilized the tracking quality, which is further conﬁrmed by our experiments presented later in
+this paper.
+A major difference is that Kahou et al. (2015) used a classiﬁcation error, averaged over all the
+frames, as a ﬁnal cost, while we propose to use the ﬁnal localization error. Furthermore, they use
+the selective attention mechanism from (Gregor et al., 2015), allowing the RATM only a small sub-
+region of the whole canvas at each frame. This is contrary to the recurrent visual tracker proposed
+in this paper which has access to the full frame every time.
+Earlier, Denil et al. (2012) proposed a visual object tracking system based on deep neural net-
+works. Their model can be considered as an intermediate step away from the conventional tracking
+approaches toward the one proposed here and by Kahou et al. (2015). They used a restricted Boltz-
+mann machine (Smolensky, 1986) as an object detection model together in a ﬁltering-based visual
+tracking (state-space model with particle ﬁltering for inference.)
+Although they are not speciﬁcally for visual object tracking, two recent works on image/video de-
+scription generation tasks have shown that a recurrent network, together with a convolutional net-
+work, is able to attend (detect and localize) to objects in both an image and a video clip (Xu et al.,
+2015; Yao et al., 2015). Similarly, Mnih et al. (2014) and Ba et al. (2014) showed that a recurrent
+network tracks an object if it were trained to classify an object, or multiple objects, in an image.
+
+4 DATA GENERATION
+
+We evaluate the proposed approach of visual anonymous object tracking on artiﬁcially generated
+datasets. We vary the conﬁgurations of generating these datasets to make sure that the following
+empirical evaluations support our claim and conjectures about the proposed model.
+All the datasets are based on the cluttered MNIST. Each video sequence used for training consists
+of 20 frames, and each frame is 100× 100 large. The cluttered MNIST was chosen as a basis of
+generating further datasets, as one of the most important criterion we aim to check with the proposed
+approach is the robustness to noise. In order to make sure that these clutters acts as both background
+noise and as objects hindering the sight of the models, we put some clutters in a background layer
+and the others in a foreground layer (overshadowing the target object.) Furthermore, the clutters
+move rather than stay in the initial positions to make it more realistic.
+The target has a random initial velocity (vx0,vy0) and position (x0,y0). At each time frame, the
+position is changed by (∆xt ,∆yt ) = (kvx,t−1,kvy,t−1) where k is a hyper-parameter (0.1 in our exper-
+iments) correlated to the frame rate. We change the velocity by (∆vx,t ,∆vy,t ) ∼ N (0,v(cid:48)I), where
+v(cid:48) = 0.1 is a hyper-parameter controlling the scale of velocity changes. This change in the velocity
+introduces acceleration, making it more difﬁcult for a tracking system.
+To ensure that our dataset is as realistic as possible, we include other transformations. For ex-
+ample, at each time step, the target changes its scale by a random factor f = pexp( ˜f ), where
+˜f ∼ U (−0.5,0.5) and p = 0.1 controls the magnitude of scale change. Finally, the intensities of
+each clutter and the moving MNIST digit are uniform-randomly scaled between 64 and 255 (before
+normalization.)
+
+Multiple Digits We evaluate our model on two different cases. In the ﬁrst case, there is only a
+single digit moving around in each video sequence. Although there are clutters in the background/-
+foreground, this setting is sufﬁciently easy and can be considered as a sanity check. We call this
+dataset MNIST-Single-Same.
+The second dataset, MNIST-Multi-Same, contains frames of which each contains more than one
+digits. More speciﬁcally, we generate each video sequence such that there are two digits simultane-
+ously moving around. In order for the tracking system to work well, the system needs to be able to
+detect the characteristics of the object in interest from the ﬁrst few frames (when the ground-truth
+locations are given) and maintain it throughout the sequence.
+
+Novel Test Digit Classes As our goal is to build an anonymous object tracking system. We eval-
+uate a trained model with sequences containing objects that do not appear during training time.
+
+https://github.com/deepmind/mnist-cluttered
+
+7
+
+Under review as a conference paper at ICLR 2016
+
+More speciﬁcally, we test the models on two sets of sequences containing one or two MNIST-2
+digits, where one MNIST-2 digit is created by randomly overlapping two randomly selected normal
+MNIST digits on top of each other (Wang et al., 2014). We call these datasets MNIST-Single-Diff
+and MNIST-Multi-Diff, respectively.
+
+Generalization to Longer Video Sequence
+In all the cases, we evaluate a trained model on test
+sequences that are longer than the training sequences. This is a necessary check for any model
+based on recurrent neural networks, as some recent ﬁndings suggest that on certain tasks recurrent
+neural networks fail to generalize to longer test sequences (Joulin & Mikolov, 2015; Grefenstette
+et al., 2015). We vary the lengths of test sequences among {20,40,80,160}, while all the models
+are trained with 20-frame-long training sequences.
+
+5 MODELS AND TRAINING
+We test ﬁve models on each of the four cases, MNIST-{Single,Multi}-{Same,Diff}.
+
+Recurrent Visual Object Tracker (RecTracker-X) The ﬁrst model, RecTracker-ID, is the pro-
+posed recurrent visual object tracker (see Sec. 3.1.) The tracker has a full, unadjusted view of the
+whole frame. Alternatively, the tracker with attentive weight scheme imposes weighting mask of
+N ×N Gaussian ﬁlters. In this paper, We evaluate RecTracker-Att-1 and RecTracker-Att-3, where
+N is 1 and 3 respectively.
+
+Convolutional Network Only Tracker (ConvTracker) The third model is a simpler variant of the
+proposed model where the recurrent network is omitted from the proposed recurrent visual tracking
+model.
+Instead, this model considers four frames (three preceding frames + current frame) and
+predict the location of an object at the current frame. We only test the identity preprocessing routine
+in Eq. (6). We call this model ConvTracker. Other than the omission of the recurrent network, all
+the other details are identical to those of RecTracker-ID, RecTracker-Att-1 and RecTracker-Att-3.
+
+Kernelized Correlation Filters based Tracker (KerCorrTracker) Lastly, we use the kernelized
+correlation ﬁlters-based visual tracker proposed by Henriques et al. (2015). This is one of the state-
+of-the-art visual object tracking systems and follows a tracking-by-detection strategy (see Sec. 2.)
+This third model is chosen to highlight the differences between the existing tracking approaches and
+the proposed one.
+
+5.1 NETWORK ARCHITECTURES
+
+We describe the architectures of each network–convolutional and recurrent networks– in Ap-
+pendix A.
+
+5.2 TRAINING
+
+We describe the architectures of each network–convolutional and recurrent networks– in Ap-
+pendix B.
+
+6 RESULT AND ANALYSIS
+
+6.1 EVALUATION METRIC
+
+We use the intersection-over-union (IOU) as an evaluation metric. The IOU is deﬁned as
+
+(cid:12)(cid:12)M∗ ∩ ˜M(cid:12)(cid:12)
+(cid:12)(cid:12)M∗ ∪ ˜M(cid:12)(cid:12) ,
+
+IOU(z∗
+
+t , ˜zt ) =
+
+where M∗ and ˜M are binary masks whose pixels inside a bounding box (either ground-truth ∗ or
+predicted ˜) are 1 and otherwise 0. A higher IOU implies better tracking quality, and it is bounded
+between 0 and 1. For each video sequence, we compute the average IOU across all the frames.
+
+http://home.isr.uc.pt/˜henriques/circulant/
+
+8
+
+Under review as a conference paper at ICLR 2016
+
+6.2 QUANTITATIVE ANALYSIS
+
+ConvTracker
+
+RecTracker-ID
+
+Test Seq. Length
+MNIST-Single-Same
+MNIST-Single-Diff
+MNIST-Multi-Same
+MNIST-Multi-Diff
+
+20
+
+0.36± 0.12
+0.37± 0.13
+0.17± 0.11
+0.17± 0.13
+
+40
+
+0.35± 0.11
+0.35± 0.11
+0.15± 0.09
+0.15± 0.11
+
+80
+
+0.33± 0.10
+0.33± 0.10
+0.14± 0.08
+0.14± 0.10
+
+160
+
+0.29± 0.10
+0.29± 0.10
+0.13± 0.08
+0.13± 0.10
+
+20
+
+0.61± 0.11
+0.48± 0.08
+0.36± 0.20
+0.33± 0.14
+
+40
+
+0.61± 0.11
+0.49± 0.09
+0.31± 0.19
+0.29± 0.14
+
+80
+
+0.58± 0.12
+0.48± 0.08
+0.28± 0.18
+0.26± 0.13
+
+160
+
+0.53± 0.13
+0.46± 0.10
+0.26± 0.17
+0.24± 0.12
+
+Table 1: Average and standard deviation of IOU’s computed over 500 test sequences using the Con-
+vTracker and RecTracker-ID with different datasets and different lengths of test sequences. From
+this table, it is clear that the RecTracker-ID performs better than the ConvTracker which does not
+have a recurrent network unlike the RecTracker-ID.
+
+Importance of Recurrent Network First, we compare the ConvTracker and RecTracker-ID.
+They both use the identity preprocessing routine, and the only difference is that the latter has a
+recurrent network while the former does not. The results, in terms of the average IOU, are presented
+in Table 1.
+In this table, the importance of having a recurrent layer is clearly demonstrated. Across all the cases–
+different data conﬁgurations and test sequence lengths– the RecTracker-ID signiﬁcantly outperforms
+the ConvTracker. Also, we notice that the tracking quality degrades as the length of test sequences
+increases (up to 8 folds.)
+
+RecTracker-ID
+
+Test Seq. Length
+MNIST-Single-Same
+MNIST-Single-Diff
+MNIST-Multi-Same
+MNIST-Multi-Diff
+
+20
+
+0.61± 0.11
+0.48± 0.08
+0.36± 0.20
+0.33± 0.14
+
+40
+
+0.61± 0.11
+0.49± 0.09
+0.31± 0.19
+0.29± 0.14
+
+80
+
+0.58± 0.12
+0.48± 0.08
+0.28± 0.18
+0.26± 0.13
+
+160
+
+0.53± 0.13
+0.46± 0.10
+0.26± 0.17
+0.24± 0.12
+
+20
+
+0.59± 0.14
+0.64± 0.06
+0.37± 0.22
+0.41± 0.19
+
+RecTracker-Att-1
+80
+40
+
+0.58± 0.14
+0.64± 0.06
+0.35± 0.22
+0.35± 0.18
+
+0.54± 0.14
+0.61± 0.07
+0.29± 0.22
+0.31± 0.17
+
+160
+
+0.48± 0.15
+0.56± 0.09
+0.25± 0.20
+0.28± 0.16
+
+Table 2: Average and standard deviation of IOU’s computed over 500 test sequences using the
+RecTracker-ID and RecTracker-Att-1. The results by RecTracker-ID are identical to those in Ta-
+ble 1.
+
+Effect of Attentive Weight Scheme Next, we evaluate the effect of the attentive weight scheme
+(see Eq. (7) and surrounding text) against the simple identity preprocessing scheme (see Eq. (6)
+and surrounding text.) From Table 2, we notice an interesting pattern. When the training and test
+shapes are of the same classes (similar shapes), it is better to use the identity preprocessing scheme
+(RecTracker-ID). On the other hand, RecTracker-Att-1 outperforms the simpler one, when the
+shapes are different between training and test.
+
+Test Seq. Length
+MNIST-Single-Same
+MNIST-Multi-Same
+MNIST-Single-Diff
+MNIST-Multi-Diff
+
+20
+
+0.59± 0.14
+0.37± 0.22
+0.64± 0.06
+0.41± 0.19
+
+RecTracker-Att-1
+40
+80
+
+0.58± 0.14
+0.35± 0.22
+0.64± 0.06
+0.35± 0.18
+
+0.54± 0.14
+0.29± 0.22
+0.61± 0.07
+0.31± 0.17
+
+160
+
+0.48± 0.15
+0.25± 0.20
+0.56± 0.09
+0.28± 0.16
+
+20
+
+0.57± 0.14
+0.36± 0.22
+0.61± 0.06
+0.38± 0.17
+
+RecTracker-Att-3
+40
+80
+
+0.55± 0.14
+0.32± 0.21
+0.61± 0.06
+0.33± 0.17
+
+0.53± 0.15
+0.27± 0.21
+0.59± 0.06
+0.30± 0.16
+
+160
+
+0.47± 0.15
+0.24± 0.19
+0.56± 0.10
+0.27± 0.16
+
+Table 3: Average and standard deviation of IOU’s computed over 500 test sequences using the
+RecTracker-Att-1 and RecTracker-Att-3
+
+Comparison between different N We then compare RecTracker-Att-1 with RecTracker-Att-3.
+As shown in Table 3, the performance between the two models did not differ that much. As it turns
+out, as long as the center Gaussian ﬁlter focuses on the target, the model has not motivation to adjust
+the other ones. Manual inspection reveal these “outer” ﬁlters are often placed outside the canvas.
+In Fig. 3, we show the attention weights computed by RecTracker-Att-1 and RecTracker-Att-1.
+Evidently, only one Gaussian is being used.
+
+Comparison against Tracking-by-Detection Table 4 compares the tracking quality between the
+proposed recurrent tracking model RecTracker-Att-1 and the kernelized correlation ﬁlters based
+one KerCorrTracker by Henriques et al. (2015). We observe that RecTracker-Att-1 outperforms
+the KerCorrTracker when there’s only a single object in a test sequence. However, when there are
+
+9
+
+Under review as a conference paper at ICLR 2016
+
+(a)
+
+(b)
+
+Figure 3: (a) RecTracker-Att-1 and (b) RecTracker-Att-3. Image sequence, label and prediction
+shown at the top row, while the masks are shown at middle, and the masked images are shown at
+bottom. The mask patterns look alike between models.
+
+Test Seq. Length
+MNIST-Single-Same
+MNIST-Multi-Same
+MNIST-Single-Diff
+MNIST-Multi-Diff
+
+20
+
+0.59± 0.14
+0.37± 0.22
+0.64± 0.06
+0.41± 0.19
+
+RecTracker-Att-1
+40
+80
+
+0.58± 0.14
+0.35± 0.22
+0.64± 0.06
+0.35± 0.18
+
+0.54± 0.14
+0.29± 0.22
+0.61± 0.07
+0.31± 0.17
+
+KerCorrTracker
+
+160
+
+0.48± 0.15
+0.25± 0.20
+0.56± 0.09
+0.28± 0.16
+
+20
+
+0.37± 0.28
+0.41± 0.26
+0.54± 0.27
+0.55± 0.27
+
+40
+
+0.29± 0.26
+0.32± 0.26
+0.47± 0.28
+0.46± 0.27
+
+80
+
+0.20± 0.22
+0.24± 0.23
+0.36± 0.26
+0.34± 0.24
+
+160
+
+0.13± 0.15
+0.16± 0.17
+0.25± 0.22
+0.23± 0.20
+
+Table 4: Average and standard deviation of IOU’s computed over 500 test sequences using the
+RecTracker-Att-1 and KerCorrTracker with MNIST-1 and MNIST-2 test sets and different lengths
+of test sequences.
+
+two objects in a sequence and the model was asked to track only one of them, the RecTracker-Att-1
+and KerCorrTracker perform comparably, but only do so with shorter sequences. Tracking-by-
+detection focuses exclusively on local region and get less distracted. However, longer sequences
+have higher probability of distraction (by either clutter or another digit). Consequently, retaining
+longer history allows our model to steer towards our target better. Finally, one noticeable difference
+is that standard deviation of RecTracker-Att-1 is one order of magnitude smaller, indicating a much
+tighter tracking.
+Putting these results together, we note the followings. The under-performing ConvTracker clearly
+demonstrates that it is important for a tracking model to be capable of capturing temporal dynamics.
+Among the proposed recurrent tracking models, the RecTracker-ID performs better when the same
+types of objects are used both during training and test, but in the other case the RecTracker-Att-1
+does better. This is similar to the observation we made when these models were tracking a single
+object.
+We however remind readers that these results should be taken with a grain of salt. It is unclear how
+the proposed tracking model can be extended to track arbitrarily many objects. Also, a more accurate
+comparison between the proposed models and tracking-by-detection needs to involve natural scenes,
+real objects and dynamics. Under such scenarios, many extensions are called for in order to make
+the model robust. We leave this as future research.
+
+6.3 VISUALIZATION OF TRACKING
+
+We have prepared video clips of tracking results by all the tested models at http://barclayii.
+github.io/tracking-with-rnn. See Fig. 4 for one such example.
+Our visual inspection reveals that
+
+1. In most cases ConvTracker fail at tracking an anonymous object. This suggests the im-
+
+portance of having an explicit memory which is lacking from the ConvTracker.
+
+2. Although the quantitative analysis based on IOU, RecTracker-ID almost always underper-
+forms compared to RecTracker-Att-N’s, the qualitative analysis reveals that it still tracks
+an object fairly well. This suggests that the IOU may not be the optimal measure of tracking
+quality.
+
+10
+
+Under review as a conference paper at ICLR 2016
+
+(a)
+
+(c)
+
+(b)
+
+(d)
+
+Figure 4: (a) ConvTracker, (b) RecTracker-ID, (c) RecTracker-Att-1 and (d) KerCorrTracker
+
+3. RecTracker-Att-N’s often confuse the object being tracked, and this happens especially
+when another brighter object passes nearby. This may be due to the fact that the masking
+with Gaussian attentive is too simplistic: it penalizes darker pixels more than brighter ones,
+making a brighter object stand out more.
+
+7 CONCLUSION
+
+In this paper, we proposed an end-to-end trainable visual object tracking model based on convo-
+lutional and recurrent neural networks. Unlike conventional tracking approaches, the full pipeline
+of visual tracking–object representation, object extraction and location prediction– is jointly tuned
+to maximize the tracking quality. The proposed tracking model combines many recent advances in
+deep learning and was found to well perform on challenging, artiﬁcially generated sequences.
+We consider this work as a ﬁrst step toward building a full end-to-end trainable visual object tracking
+system. There are a number of issues to be investigated and resolved in the future. First, the proposed
+models must be evaluated on natural scenes with real objects and their dynamics. Second, there
+needs to be research on algorithms to adapt a pre-trained model online. Third, we need to ﬁnd a
+network architecture that can track an arbitrary number of objects without a predeﬁned upper limit.
+
+REFERENCES
+Ba, Jimmy, Mnih, Volodymyr, and Kavukcuoglu, Koray. Multiple object recognition with visual
+
+attention. arXiv preprint arXiv:1412.7755, 2014.
+
+Bar, Yaniv, Diamant, Idit, Wolf, Lior, and Greenspan, Hayit. Deep learning with non-medical
+training used for chest pathology identiﬁcation. In SPIE Medical Imaging, pp. 94140V–94140V.
+International Society for Optics and Photonics, 2015.
+
+Broida, Ted J and Chellappa, Rama. Estimation of object motion parameters from noisy images.
+
+Pattern Analysis and Machine Intelligence, IEEE Transactions on, (1):90–99, 1986.
+
+Cho, Kyunghyun, Van Merri¨enboer, Bart, Gulcehre, Caglar, Bahdanau, Dzmitry, Bougares, Fethi,
+Schwenk, Holger, and Bengio, Yoshua. Learning phrase representations using rnn encoder-
+decoder for statistical machine translation. arXiv preprint arXiv:1406.1078, 2014.
+
+Denil, Misha, Bazzani, Loris, Larochelle, Hugo, and de Freitas, Nando. Learning where to attend
+
+with deep architectures for image tracking. Neural computation, 24(8):2151–2184, 2012.
+
+Farabet, Cl´ement, LeCun, Yann, Kavukcuoglu, Koray, Culurciello, Eugenio, Martini, Berin, Aksel-
+rod, Polina, and Talay, Selcuk. Large-scale fpga-based convolutional networks. Machine Learning
+on Very Large Data Sets, 1, 2011.
+
+Graves, Alex.
+
+Generating sequences with recurrent neural networks.
+
+arXiv:1308.0850, 2013.
+
+arXiv preprint
+
+Grefenstette, Edward, Hermann, Karl Moritz, Suleyman, Mustafa, and Blunsom, Phil. Learning to
+
+transduce with unbounded memory. arXiv preprint arXiv:1506.02516, 2015.
+
+11
+
+Under review as a conference paper at ICLR 2016
+
+Gregor, Karol, Danihelka, Ivo, Graves, Alex, and Wierstra, Daan. Draw: A recurrent neural network
+
+for image generation. arXiv preprint arXiv:1502.04623, 2015.
+
+Henriques, J. F., Caseiro, R., Martins, P., and Batista, J. High-speed tracking with kernelized cor-
+relation ﬁlters. Pattern Analysis and Machine Intelligence, IEEE Transactions on, 2015. doi:
+10.1109/TPAMI.2014.2345390.
+
+Hochreiter, Sepp and Schmidhuber, J¨urgen. Long short-term memory. Neural computation, 9(8):
+
+1735–1780, 1997.
+
+Joulin, Armand and Mikolov, Tomas. Inferring algorithmic patterns with stack-augmented recurrent
+
+nets. arXiv preprint arXiv:1503.01007, 2015.
+
+Kahou, Samira Ebrahimi, Michalski, Vincent, and Memisevic, Roland. Ratm: Recurrent attentive
+
+tracking model. arXiv preprint arXiv:1510.08660, 2015.
+
+Krizhevsky, Alex, Sutskever, Ilya, and Hinton, Geoffrey E. Imagenet classiﬁcation with deep convo-
+lutional neural networks. In Advances in neural information processing systems, pp. 1097–1105,
+2012.
+
+LeCun, Yann, Bengio, Yoshua, and Hinton, Geoffrey. Deep learning. Nature, 521(7553):436–444,
+
+2015.
+
+LeCun, Yann A, Bottou, L´eon, Orr, Genevieve B, and M¨uller, Klaus-Robert. Efﬁcient backprop. In
+
+Neural networks: Tricks of the trade, pp. 9–48. Springer, 1998.
+
+Li, Xi, Hu, Weiming, Shen, Chunhua, Zhang, Zhongfei, Dick, Anthony, and Hengel, Anton
+Van Den. A survey of appearance models in visual object tracking. ACM transactions on In-
+telligent Systems and Technology (TIST), 4(4):58, 2013.
+
+Mnih, Volodymyr, Heess, Nicolas, Graves, Alex, and Kavukcuoglu, Koray. Recurrent mod-
+els of visual attention.
+In Ghahramani, Z., Welling, M., Cortes, C., Lawrence, N.D.,
+and Weinberger, K.Q. (eds.), Advances in Neural Information Processing Systems 27, pp.
+2204–2212. Curran Associates, Inc., 2014. URL http://papers.nips.cc/paper/
+5542-recurrent-models-of-visual-attention.pdf.
+
+Pascanu, Razvan, Gulcehre, Caglar, Cho, Kyunghyun, and Bengio, Yoshua. How to construct deep
+recurrent neural networks. In International Conference on Learning Representation (ICLR), 2014.
+Ruff, Holly Alliger and Rothbart, Mary Klevjord. Attention in early development: Themes and
+
+variations. Oxford University Press, 2001.
+
+Sermanet, Pierre, Eigen, David, Zhang, Xiang, Mathieu, Micha¨el, Fergus, Rob, and LeCun, Yann.
+Overfeat: Integrated recognition, localization and detection using convolutional networks. arXiv
+preprint arXiv:1312.6229, 2013.
+
+Smolensky, P. Information processing in dynamical systems: foundations of harmony theory. In Par-
+allel distributed processing: explorations in the microstructure of cognition, vol. 1: foundations,
+pp. 194–281. MIT Press, Cambridge, MA, USA, 1986.
+
+Wang, Qian, Zhang, Jiaxing, Song, Sen, and Zhang, Zheng. Attentional neural network: Feature
+selection using cognitive feedback. In Ghahramani, Z., Welling, M., Cortes, C., Lawrence, N.D.,
+and Weinberger, K.Q. (eds.), Advances in Neural Information Processing Systems 27, pp. 2033–
+2041. Curran Associates, Inc., 2014.
+
+Xu, Kelvin, Ba, Jimmy, Kiros, Ryan, Cho, Kyunghyun, Courville, Aaron, Salakhutdinov, Ruslan,
+Zemel, Richard, and Bengio, Yoshua. Show, attend and tell: Neural image caption generation
+with visual attention. In International Conference on Machine Learning, 2015.
+
+Yao, Li, Torabi, Atousa, Cho, Kyunghyun, Ballas, Nicolas, Pal, Christopher, Larochelle, Hugo, and
+Courville, Aaron. Describing videos by exploiting temporal structure. In International Confer-
+ence on Computer Vision, 2015.
+
+Yilmaz, Alper, Javed, Omar, and Shah, Mubarak. Object tracking: A survey. Acm computing surveys
+
+(CSUR), 38(4):13, 2006.
+
+12
+
+Under review as a conference paper at ICLR 2016
+
+A NETWORK ARCHITECTURES
+Convolutional Network We use a single convolutional layer with 32 10× 10 ﬁlters. These ﬁlters
+are applied with stride 5 to the input frame. As it is important to maintain as much spatial informa-
+tion as possible for tracking to work well, we do not use any pooling. This convolutional layer is
+immediately followed by an element-wise tanh.
+In the case of ConvTracker, a fully-connected layer with 200 tanh units follows the convolutional
+layer. This fully-connected layer also receives as the input the predicted locations of the four pre-
+ceding frames.
+
+Recurrent Network We use 200 gated recurrent units (GRU, Cho et al., 2014) to build a recurrent
+network. At each time step, the activation of the convolutional layer (see above) and the predicted
+object location ˜zt−1 in the previous frame are fed into the recurrent network.
+
+B TRAINING
+
+We train each model up to 50 epochs, or until the training cost stops improving, using a training set
+of 3,200,000 randomly-generated examples. We use RMSProp, which was implemented according
+to (Graves, 2013), with minibatches of size 32 examples.
+
+13
+
+

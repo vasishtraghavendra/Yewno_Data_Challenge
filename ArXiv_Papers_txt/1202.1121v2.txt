@@ -1,0 +1,1186 @@
+4
+1
+0
+2
+
+ 
+
+v
+o
+N
+4
+1
+
+ 
+
+ 
+ 
+]
+
+G
+L
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+1
+2
+1
+1
+
+.
+
+2
+0
+2
+1
+:
+v
+i
+X
+r
+a
+
+rFerns – Random Ferns Method Implementation
+
+for the General-Purpose Machine Learning
+
+Interdisciplinary Centre for Mathematical and Computational Modelling
+
+Miron Bartosz Kursa
+
+University of Warsaw
+
+November 17, 2014
+
+Abstract
+
+Random ferns is a very simple yet powerful classiﬁcation method orig-
+inally introduced for speciﬁc computer vision tasks. In this paper, I show
+that this algorithm may be considered as a constrained decision tree en-
+semble and use this interpretation to introduce a series of modiﬁcations
+allowing one to use Random ferns in a general machine learning prob-
+lems. Moreover, I extend the method with internal error approximation
+and attribute importance measure based on a corresponding features of
+the Random forest algorithm.
+
+I also present the R package rFerns containing an eﬃcient implemen-
+
+tation of such modiﬁed version of Random ferns.
+
+1 Introduction
+
+Random ferns is a machine learning algorithm proposed by [11] for match-
+ing same elements between two images of the same scene, allowing one to
+recognise certain objects or trace them on videos. The original motiva-
+tion behind this method was to create a simple and eﬃcient algorithm
+by extending the Na¨ıve Bayes classiﬁer; still the authors acknowledged its
+strong connection to the decision tree ensembles like the Random forest
+[2] algorithm.
+
+Since introduction, Random ferns have been applied in numerous com-
+puter vision application, like image recognition [1], action recognition [10]
+or augmented reality [14]. However, it has not gathered attention outside
+this ﬁeld; thus, this work aims to bring this algorithm to a much wider
+spectrum of applications.
+In order to do that, I propose a generalised
+version of the algorithm, implemented as an R [13] package rFerns.
+
+The paper is organised as follows. Section 2 brieﬂy recalls the Bayesian
+derivation of the original version of Random ferns, presents the decision
+tree ensemble interpretation of the algorithm and lists modiﬁcations lead-
+ing to the rFerns variant. Next, in the Section 3, I present the rFerns
+package and discuss the Random ferns incarnation of a two important
+
+1
+
+features of the Random forest, internal error approximation and attribute
+importance measure. Section 4 contains the assessment of rFerns in a
+several well known machine learning problems. The results and compu-
+tational performance of the algorithm are compared with Random forest
+implementation contained in the randomForest package [8]. The paper is
+concluded in the Section 5.
+
+2 Random ferns algorithm
+
+Following the original derivation, let’s consider a classiﬁcation problem
+based on an dataset (Xi,j, Yi) with p binary attributes X·,j and n objects
+Xi,· equally distributed over C disjoint classes (those assumptions will be
+relaxed in the further part the paper). The generic Maximum a Posteriori
+(MAP) Bayes classiﬁer classiﬁes the object Xi,· as
+
+Y p
+i = arg max
+
+y
+
+P (Yi = y|Xi,1, Xi,2, . . . , Xi,p);
+
+according to the Bayes theorem, it is equal to
+
+Y p
+i = arg max
+
+y
+
+P (Xi,1, Xi,2, . . . , Xi,p|Yi = y).
+
+(1)
+
+(2)
+
+Although this formula is strict, it is not practically usable due to a huge
+(2p) number of possible Xi,· value combinations, most likely much larger
+than available number of training objects n and thus making reliable es-
+timation of probability impossible.
+
+The simplest solution to this problem is to assume complete indepen-
+dence of the attributes, what brings us to the Na¨ıve Bayes classiﬁcation
+where
+
+Y p
+i = arg max
+
+y
+
+P (Xi,j|Yi = y).
+
+(3)
+
+(cid:89)
+
+j
+
+(cid:89)
+
+k
+
+The original Random ferns classiﬁer [11] is an in-between solution
+deﬁning a series of K random selections of D features ((cid:126)jk ∈ {1..P}D,
+k = 1, . . . , K) treated using a corresponding series of simple exact clas-
+siﬁers (ferns), which predictions are assumed independent and thus com-
+bined in a na¨ıve way, i.e.,
+
+Y p
+i = arg max
+
+y
+
+P (Xi,(cid:126)jk
+
+|Yi = y),
+
+(4)
+
+denotes Xi,j1
+
+where Xi,(cid:126)jk
+. This way one can still rep-
+resent more complex interactions in the data, possibly achieving better
+accuracy than in purely na¨ıve case. On the other hand, such deﬁned fern
+is still very simple and manageable for a range of D values.
+
+, . . . , Xi,jD
+
+k
+
+, Xi,j2
+
+k
+
+k
+
+The training of the Random ferns classiﬁer is performed through es-
+|Yi = y) with empirical probabilities calcu-
+timating probabilities P (Xi,(cid:126)jk
+i ) of a size nt × p. Namely, one uses
+lated from a training dataset (X t
+frequencies of each class in each subspace of the attribute space deﬁned
+by (cid:126)jk assuming a Dirichlet prior, i.e.,
+
+i,j, Y t
+
+(cid:0)1 + #(cid:8)m ∈ Li,(cid:126)jk
+
+m = y(cid:9)(cid:1) ,
+
+: Y t
+
+(5)
+
+(cid:98)P (Xi,(cid:126)jk
+
+|Yi = y) =
+
+1
+#Li,(cid:126)jk
+
++ C
+
+2
+
+Figure 1: D = 3 fern shown in a form of a decision tree (left) and an example
+of a general decision tree (right). Consecutive letters mark diﬀerent splitting
+criteria.
+
+where # denotes the number of elements in a set and
+
+Li,(cid:126)jk
+
+=
+
+l ∈ {1..nt} : ∀d∈1..DX t
+
+l,jd
+k
+
+= Xi,jd
+
+k
+
+(cid:110)
+
+(cid:111)
+
+(6)
+
+is the set of training objects in the same leaf of fern k as object i.
+
+2.1 Ensemble of decision trees interpretation
+
+A fern implements a partition of feature space into regions corresponding
+to all possible combinations of values of attributes (cid:126)jk. This way it is
+equivalent to a binary decision tree of a depth D for which all splitting
+criteria on a tree level d are identical and split according to an attribute of
+index jd, as shown on the Figure 1. Consequently, because the attribute
+subsets (cid:126)jk are generated randomly, the whole Random ferns classiﬁer is
+equivalent to a random subspace [6] ensemble of K constrained decision
+trees.
+
+Most ensemble classiﬁers combine predictions of its members through
+majority voting; it is also the case for Random ferns when one consideres
+scores Si,(cid:126)jk
+
+(y) deﬁned as
+
+|Yi = y) + log C.
+
+(7)
+
+Si,(cid:126)jk
+
+(y) = log(cid:98)P (Xi,(cid:126)jk
+(cid:88)
+
+Y p
+i = arg max
+
+y
+
+k
+
+This mapping eﬀectively converts the MAP rule into majority voting
+
+Si,(cid:126)jk
+
+(y).
+
+(8)
+
+Addition of log C causes that a fern that has no knowledge about the
+probability of classes for some object will give it a vector of scores equal
+zero.
+
+2.2 Introduction of bagging
+
+Using the ensemble of trees interpretation, in the rFerns implementation
+I was able to additionally combine random subspace with bagging, as
+
+3
+
+it was shown to improve the accuracy of a similar ensemble classiﬁers
+[3, 2, 12]. This method restricts training of each fern to bag, a collection
+of objects selected randomly by sampling with replacement nt objects
+from an original training dataset, thus changing Equation 6 into
+
+(cid:110)
+
+Li,(cid:126)jk
+
+=
+
+l ∈ Bk : ∀d∈1..DX t
+
+(cid:111)
+
+l,jd
+k
+
+= Xi,jd
+
+k
+
+(9)
+
+where Bk is a vector of indexes of the objects in the k-th fern’s bag.
+In such a set-up, the probability that a certain object won’t be included
+in a bag is (1−1/nt)nt
+, thus each fern has a set of on average nt(1−1/nt)nt
+(nte−1 ≈ 0.368nt for a large nt) objects which were not used to build it.
+They form out-of-bag (OOB) subsets which will be denoted here as B∗
+k.
+
+2.3 Generalisation beyond binary attributes
+
+As the original version of the Random ferns algorithm was formulated
+for datasets containing only binary attributes, the rFerns implementa-
+tion had to introduce a way to also cope with continuous and categorical
+ones. In the Bayesian classiﬁcation view, this issue should be resolved by
+postulating and ﬁtting some probability distribution over each attribute.
+However, this approach introduces additional assumptions and possible
+problems connected to the reliability of ﬁtting.
+
+In the decision tree ensemble view, each non-terminal tree node maps
+certain attribute to a binary split using some criterion function, which is
+usually a greater-than comparison with some threshold value ξ in case of
+continuous attributes (i.e., fξ : x → (x > ξ)) and test whether it belongs
+to some subset of possible categories Ξ in case of categorical attributes
+(i.e., fΞ : x → (x ∈ Ξ)).
+
+In most Classiﬁcation And Regression Trees (CART) and CART-based
+algorithms (including Random forest) the ξ and Ξ parameters of those
+functions are greedily optimised based on the training data to maximise
+the ‘eﬀectiveness’ of the split, usually measured by the information gain
+in decision it provides. However, in order to retain the stochastic nature
+of Random ferns the rFerns implementation generates them at random,
+similar to the Extra-trees algorithm by [4]. Namely, when a continuous
+attribute is selected for creation of a fern level a threshold ξ is generated
+as a mean of two randomly selected values of it. Correspondingly, for a
+categorical attribute Ξ is set to a random one of all possible subsets of all
+categories of this attribute, except of two containing respectively all and
+none of the categories.
+
+Obviously, completely random generation of splits can be less eﬀective
+than optimising them in terms of the accuracy of a ﬁnal classiﬁer; the
+gains in computational eﬃciency may also by minor due to a fact that
+it does not change the complexity of the split building. However, this
+way the classiﬁer can escape certain overﬁtting scenarios and unveil more
+subtle interaction. This and the more even usage of attributes may be
+beneﬁcial both for the robustness of the model and the accuracy of the
+importance measure it provides.
+
+While in this generalisation the scores depend on thresholds ξ and
+Ξ, from now on I will denote them as Si,Fk where Fk contains (cid:126)jk and
+
+4
+
+necessary thresholds.
+
+2.4 Unbalanced classes case
+
+When the distribution of the classes in the training decision vector be-
+comes less uniform, its contribution to the ﬁnal predictions of a Bayes clas-
+siﬁer increases, biasing learning towards the recognition of larger classes.
+Moreover, the imbalance may reach the point where it prevails the impact
+of attributes, making the whole classiﬁer always vote on a largest class.
+
+The original Random ferns algorithm was developed under assumption
+that the classes are equal, however such a case is very rare in a general
+machine learning and so the rFerns implementation has to cope with that
+problem as well. Thus, it is internally enforcing balance of class’ impacts
+by dividing the counts of objects of a certain class in a current leaf by
+the fraction of objects of that class in the bag of the current fern — this
+is equivalent to a standard procedure of oversampling under-represented
+classes so that the amounts of objects of each class are equal within bag.
+Obviously there exist exceptional use cases when such a heuristic may
+be undesired, for instance when the cost of misclassiﬁcation is not uniform.
+Then, it might be reversed or replaced with other prior by modifying the
+raw scores before the voting is applied.
+
+3 rFerns package
+
+The training of a Random ferns model is performed by the rFerns func-
+tion; it requires two parameters, the number of ferns K and the depth
+of each one D, which should be passed via ferns and depth arguments
+respectively. If not given, K = 1000 and D = 5 are assumed. The cur-
+rent version of the package supports depths in range 1..15. The training
+set can be given either explicitly by passing predictor data frame and the
+decision vector, or via usual formula interface:
+
+R> model <- rFerns(Species ~ ., data = iris, ferns = 1000, depth = 5)
+R> model <- rFerns(iris[, -5], iris[, 5])
+
+The results is a S3 object of a class rFerns, containing the ferns’ structures
+Fk and ﬁtted scores’ vectors for all leaves.
+
+To classify new data, one should use the predict method of the rFerns
+class. It will pull the dataset down each fern assigning each object with
+score vector from the leaf it ended in, sum the scores over the ensemble
+and ﬁnds the predicted classes.
+
+For instance, let’s set aside the even objects of iris data as a test set
+
+and train the model on the rest:
+
+R> trainSet <- iris[c(TRUE, FALSE), ]
+R> testSet <- iris[c(FALSE, TRUE), ]
+R> model <- rFerns(Species ~ ., data = trainSet)
+
+Then, the confusion matrix of predictions on a test set can be obtained
+by:
+
+R> table(Prediction = predict(model, testSet), Truth = testSet[["Species"]])
+
+5
+
+Truth
+
+Prediction
+
+setosa
+versicolor
+virginica
+
+setosa versicolor virginica
+0
+1
+24
+
+0
+24
+1
+
+25
+0
+0
+
+Adding scores=TRUE to the predict call makes it return raw class scores.
+The following code will extract scores of ﬁrst three objects of each class
+in the test set:
+
+R> testScores <- predict(model, testSet, scores = TRUE)
+R> cbind(testScores, trueClass = testSet[["Species"]])[c(1:3, 26:28,
++
+
+51:53), ]
+
+0.6083220 -0.8455781 -1.5057431
+0.6672012 -0.9395135 -1.5468613
+0.6255577 -0.9055999 -1.5120577
+
+setosa versicolor virginica trueClass
+setosa
+1
+setosa
+2
+3
+setosa
+26 -1.3485694 0.2708711 -0.2595879 versicolor
+27 -1.0709297 0.5555988 -0.7916823 versicolor
+28 -1.2142952 0.4807975 -0.6461870 versicolor
+51 -1.5922738 -0.1043981 0.3300516 virginica
+52 -1.7083186 -0.2710267 0.4467801 virginica
+53 -1.6010488 -0.6833165 0.6618151 virginica
+
+3.1 Error estimate
+
+By design, machine learning methods usually produce a highly biased re-
+sults when tested on the training data; to this end, one needs to perform
+external validation to reliably assess its accuracy. However, in a bagging
+ensemble we can perform a sort of internal cross-validation in which each
+train set object prediction is built by voting of only those of base classiﬁers
+which did not used this object for their training, i.e., which had it in their
+OOB subsets. This idea has been originally used in the Random forest
+algorithm, and can be trivially transferred on any bagging ensemble, in-
+cluding rFerns version of Random ferns. In this case the OOB predictions
+Y ∗
+i will be given by
+
+Y
+
+∗
+i = arg max
+
+y
+
+Si,Fk (y)
+
+(10)
+
+(cid:88)
+
+k:i∈B∗
+
+k
+
+and can be compared with the true classes Yi to calculate the OOB ap-
+proximation of the overall error.
+
+On the R level, OOB predictions are always calculated when training
+an rFerns model; when its corresponding object is printed, the overall
+OOB error and confusion matrix are shown, along with the training pa-
+rameters:
+
+R> print(model)
+
+Forest of 1000 ferns of a depth 5.
+
+OOB error 5.33%; OOB confusion matrix:
+
+6
+
+True
+
+Predicted
+
+setosa
+versicolor
+virginica
+
+setosa versicolor virginica
+0
+3
+22
+
+0
+24
+1
+
+25
+0
+0
+
+One can also access raw OOB predictions and scores by executing the
+predict method without providing new data to be classiﬁed:
+
+R> oobPreds <- predict(model)
+R> oobScores <- predict(model, scores = TRUE)
+R> cbind(oobScores, oobClass = oobPreds, trueClass = trainSet$Species)[c(1:3,
++
+
+26:28, 51:53), ]
+
+setosa versicolor virginica
+277.9060 -407.55145 -602.21266
+268.6165 -386.42968 -542.61370
+304.4445 -451.73002 -648.26384
+
+oobClass trueClass
+setosa
+1
+setosa
+2
+setosa
+3
+63.64338 -71.56243 versicolor versicolor
+26 -425.2157
+27 -573.6673
+45.77139
+24.85006 versicolor versicolor
+28 -553.0338 113.32022 -49.42665 versicolor versicolor
+51 -451.9256 -231.65799 207.49580 virginica virginica
+52 -571.6487 -222.92446 234.47927 virginica virginica
+53 -589.4160 -208.51861 229.84709 virginica virginica
+
+setosa
+setosa
+setosa
+
+Note that for a very small values of K some objects may manage to
+
+appear in every bag and thus get an undeﬁned OOB prediction.
+
+3.2 Importance measure
+
+In addition to the error approximation, Random forest also uses the OOB
+objects to calculate the attribute importance.
+It is deﬁned as a diﬀer-
+ence in the accuracy on the original OOB subset and OOB subset with
+the values of a certain attribute permuted, averaged over all trees in the
+ensemble.
+
+Such a measure can also be grafted on any bagging ensemble, including
+rFerns; moreover, one can make use of scores and replace the diﬀerence
+in accuracy with mean diﬀerence in score of the correct class, this way
+extracting importance information even from the OOB objects that are
+misclassiﬁed. Precisely, such deﬁned Random ferns importance of an at-
+tribute a equals
+
+(cid:88)
+
+1
+
+Ia =
+
+#A(a)
+
+k∈A(a)
+
+1
+#B∗
+
+k
+
+(cid:0)Si,Fk (Yi) − Sp
+
+i,Fk
+
+(Yi)(cid:1) ,
+
+(cid:88)
+
+i∈B∗
+
+k
+
+(11)
+
+where A(a) = {k : a ∈ (cid:126)jk} is a set of ferns that use attribute a and Sp
+i,Fk
+is Si,Fk estimated on a permuted X t in which values of attribute a have
+been shuﬄed.
+
+One should also note that the fully stochastic nature of selecting at-
+tributes for building individual ferns guarantees that the attribute space
+is evenly sampled and thus all, even marginally relevant attributes are
+included in the model for a large enough ensemble.
+
+7
+
+Calculation of the variable importance can be triggered by adding
+importance=TRUE to the call to rFerns; then, the necessary calculations
+will be performed during the training process and the obtained importance
+scores placed into importance element of the rFerns object.
+
+R> model <- rFerns(Species ~ ., data = iris, importance = TRUE)
+R> model[["importance"]]
+
+Sepal.Length
+Sepal.Width
+Petal.Length
+Petal.Width
+
+MeanScoreLoss SdScoreLoss
+0.1748790 0.006270534
+0.1578244 0.005121205
+0.3195912 0.010456676
+0.2796645 0.010555186
+
+4 Assessment
+
+I have tested rFerns on 7 classiﬁcation problems from the R’s mlbench
+[7] package, namely DNA (dna), Ionosphere (ion), Pima Indian Diabetes
+(pim), Satellite (sat), Sonar (son), Vehicle (veh) and Vowel (vow).
+
+4.1 Accuracy
+
+For each of the testing sets, I have built 10 Random ferns models for each
+of the depths in range {1..15} and number of ferns equal to 5000 and
+collected the OOB error approximations.
+
+Next, I have used those results to ﬁnd optimal depths for each set (Db)
+— for simplicity I selected value for which the mean OOB error from all
+iterations was minimal.
+
+Finally, I have veriﬁed the error approximation by running 10-fold
+stochastic cross-validation. Namely, the set was randomly slit into test
+and training subsets, composed respectively of 10% and 90% of objects;
+the classiﬁer was then trained on a training subset and its performance
+was assessed using the test set. Such procedure has been repeated ten
+times.
+
+As a comparison, I have also built and cross-validated 10 Random
+forest models with 5000 trees. The ensemble size was selected so that
+both algorithm would manage to converge for all problems.
+
+The results of those tests are collected in the Table 1. One can see that
+as in case of Random forest, OOB error approximation is a good estimate
+of the ﬁnal classiﬁer error. It is also well serves as an optimisation target
+for the fern depth selection — only in case of the Sonar data the na¨ıve
+selection of the depth giving minimal OOB error led to a suboptimal ﬁnal
+classiﬁer, however one should note that the minimum was not signiﬁcant
+in this case.
+
+Based on the OOB approximations, forest outperforms ferns in all but
+one case; yet the results of cross-validation show that those diﬀerences are
+in practice masked by the natural variability of both classiﬁers. Only in
+case of the Satellite data Random forest clearly achieves almost two times
+smaller error.
+
+8
+
+[
+
+[
+
+V
+C
+
+B
+O
+O
+
+Set
+Set size
+] Ferns 5
+%
+Ferns 10
+Ferns Db
+Forest
+] Ferns 5
+%
+Ferns 10
+Ferns Db
+Forest
+Db
+Set
+Set size
+] Ferns 5
+%
+Ferns 10
+Ferns Db
+Forest
+] Ferns 5
+%
+Ferns 10
+Ferns Db
+Forest
+Db
+
+B
+O
+O
+
+[
+
+V
+C
+
+[
+
+sat
+
+6435 × 36
+18.40 ± 0.13
+15.46 ± 0.06
+14.33 ± 0.05
+7.87 ± 0.06
+18.60 ± 1.32
+15.92 ± 1.30
+14.32 ± 0.88
+7.75 ± 1.54
+
+15
+
+dna
+
+3186 × 180
+6.03 ± 0.18
+6.56 ± 0.11
+6.03 ± 0.18
+4.13 ± 0.09
+6.52 ± 1.66
+6.96 ± 1.30
+5.92 ± 1.41
+4.20 ± 0.99
+
+5
+
+son
+
+208 × 60
+19.71 ± 0.60
+14.18 ± 1.12
+13.13 ± 0.64
+15.38 ± 0.64
+22.38 ± 6.37
+14.29 ± 5.94
+18.10 ± 4.92
+19.52 ± 8.53
+
+ion
+
+351 × 34
+7.32 ± 0.23
+7.35 ± 0.22
+7.07 ± 0.40
+6.55 ± 0.00
+7.78 ± 3.41
+8.61 ± 3.81
+5.00 ± 3.88
+6.11 ± 4.68
+
+3
+
+veh
+
+846 × 18
+31.17 ± 0.49
+29.52 ± 0.23
+28.83 ± 0.49
+25.48 ± 0.18
+32.94 ± 4.15
+29.41 ± 7.48
+28.71 ± 5.69
+22.35 ± 4.33
+
+pim
+392 × 8
+
+24.69 ± 0.48
+27.93 ± 0.30
+23.95 ± 0.31
+21.76 ± 0.36
+24.50 ± 6.75
+29.50 ± 6.10
+24.00 ± 6.99
+21.00 ± 3.94
+
+7
+
+vow
+990 × 10
+13.70 ± 0.52
+4.42 ± 0.26
+2.41 ± 0.19
+2.13 ± 0.11
+17.07 ± 3.10
+5.25 ± 1.64
+2.22 ± 1.77
+2.22 ± 1.70
+
+12
+
+15
+
+15
+
+Table 1: OOB and cross-validation error of the Random ferns classiﬁer for 5000
+ferns of a depth equal to 5, 10 and optimal over {1..15}, Db. Those results are
+compared to the accuracy of a Random forest classiﬁer composed of 5000 trees.
+Prediction errors are given as a mean and standard deviation over 10 repetitions
+of training for OOB and 10 iterations for cross-validation.
+
+4.2 Importance
+
+To test importance measure, I have used two sets for which importance
+of attributes should follow certain pattern.
+
+Each objects in the DNA set [9] represent 60-residue DNA sequence in
+a way so that each consecutive triplet of attributes encodes one residue.
+Some of the sequences contain a boundary between exon and intron (or
+intron and exon1) regions of the sequence — the objective is to recognise
+and classify those sequences. All sequences were aligned in a way that the
+boundary always lies between 30th and 31st residue; while the biological
+process of recognition is local, the most important attributes should be
+those describing residues in the vicinity of the boundary.
+
+Objects in the Sonar set [5] correspond to echoes of a sonar signal
+bounced oﬀ either a rock or a metal cylinder (a model of a mine). They are
+represented as power spectra, thus each next attribute value corresponds
+
+1The direction of a DNA sequence is signiﬁcant, so those are separate classes.
+
+9
+
+Figure 2: Attribute importance for DNA data, generated by Random ferns
+(top) and, for comparison, by Random forest (bottom). Note that the impor-
+tance peaks around 90th attribute, corresponding to an actual splicing site.
+
+to the signal power contained within a consecutive frequency interval.
+This way one may expect that there are frequency bands in which echoes
+signiﬁcantly diﬀer between classes, what would manifest as a set of peaks
+in the importance measure vector.
+
+For both of this sets, I have calculated the importance measure using
+1000 ferns of a depth 10. As a baseline, I have used importance calculated
+using Random forest algorithm with 1000 trees.
+
+The results are presented on Figure 2 and Figure 3. The importance
+measures obtained is both cases are consistent with the expectations based
+on the sets’ structures — for DNA, one can notice a maximum around at-
+tributes 90–96, corresponding the actual cleavage site location. For Sonar,
+the importance scores reveal a band structure which likely corresponds to
+the actual frequency intervals in which the echoes diﬀer between stone
+and metal.
+
+Both results are also qualitatively in agreement with those obtained
+from Random forest models. Quantitative diﬀerence comes form the com-
+pletely diﬀerent formulations of both measures and possibly the higher
+sensitivity of ferns resulting from its fully stochastic construction.
+
+4.3 Computational performance
+
+In order to compare training times of rFerns and randomForest codes, I
+have trained both models on all 7 benchmark sets for 5000 ferns/trees, and,
+in case of ferns, depths 10 and Db. Than I have repeated this procedure,
+
+10
+
+0501001500.00.10.20.3Ferns imp.0501001500.000.04Attribute indexForest imp.Figure 3:
+Importance measure for Sonar data, generated by Random ferns
+(top right) and, for comparison, by Random forest (bottom right). Those two
+measures are compared on a scatterplot (left).
+
+t
+s
+u
+J
+
+i
+
+g
+n
+n
+i
+a
+r
+t
+
+Set Forest [s] Ferns 10 [s]
+dna
+ion
+pim
+sat
+son
+veh
+vow
+e dna
+c
+ion
+n
+a
+t
+pim
+r
+o
+sat
+p
+m
+son
+veh
+vow
+
+30.13
+3.41
+2.45
+136.91
+3.40
+8.00
+93.92
+456.16
+7.34
+3.53
+289.26
+4.83
+17.26
+99.26
+
+1.96
+0.81
+0.97
+4.08
+0.78
+1.67
+4.77
+4.37
+1.46
+1.06
+8.77
+0.93
+2.22
+5.40
+
+i
+
+h
+t
+i
+
+W
+
+Speedup Ferns Db [s]
+
+15.41
+4.21
+2.53
+33.55
+4.37
+4.80
+19.69
+104.38
+
+5.02
+3.34
+32.98
+5.18
+7.77
+18.39
+
+0.65
+0.06
+0.24
+75.55
+2.95
+46.04
+140.26
+1.87
+0.25
+0.35
+82.80
+3.13
+47.00
+141.13
+
+Speedup Db
+5
+3
+7
+15
+12
+15
+15
+5
+3
+7
+15
+12
+15
+15
+
+46.28
+55.35
+10.29
+1.81
+1.15
+0.17
+0.67
+244.31
+29.32
+10.17
+3.49
+1.54
+0.37
+0.70
+
+Table 2: Training times of the rFerns and randomForest models made for 5000
+base classiﬁers, with and without importance calculation. Times are given as a
+mean over 10 repetitions.
+
+11
+
+01020304050600.000.010.020.030.04Ferns imp.01020304050600.0000.0150.030Attribute indexForest imp.llllllllllllllllllllllllllllllllllllllllllllllllllllllllllll0.000.010.020.030.040.0000.0050.0100.0150.0200.0250.030Ferns importanceForest importancethis time making both algorithms calculate importance measure during
+training.
+
+I have repeated both tests 10 times to stabilise the results and collected
+the mean execution times; the results are collected in the Table 2. The
+results show that the usage of rFerns may result is signiﬁcant speedups in
+certain applications; best speedups are achieved for the sets with larger
+number of objects, which is caused by the fact that Random ferns’ training
+time scales linearly with the number of objects, while Random forest’s
+∼ n log n.
+
+Also the importance can be calculated signiﬁcantly faster by rFerns
+
+than by randomForest, and the gain increases with the size of the set.
+
+rFerns is least eﬀective for sets which require large depths of the fern —
+in case of Vowel and Vehicle sets it was even slower than Random forest.
+However, one should note that while the complexity of Random ferns ∼
+2D, its accuracy usually decreases much less dramatically when decreasing
+D from its optimal value — this way one may expect an eﬀective trade-oﬀ
+between speed and accuracy.
+
+5 Conclusions
+
+In this paper, I have presented rFerns, a general-purpose implementation
+of the Random ferns, a fast, ensemble-based classiﬁcation method. Slight
+modiﬁcations of the original algorithm allowed me to additionally imple-
+ment OOB error approximation and attribute importance measure.
+
+Presented benchmarks showed that such algorithm can achieve accu-
+racies comparable to Random forest algorithm while usually being much
+faster, especially for large datasets.
+
+Also the importance measure proposed in this paper can be calculated
+very quickly and proved to behave in a desired way and be in agreement
+with the results of Random forest; however the in-depth assessment of its
+quality and usability for feature selection and similar problems requires
+further research.
+
+Acknowledgements
+
+This work has been ﬁnanced by the National Science Centre, grant 2011/01/N/ST6/07035.
+Computations were performed at ICM, grant G48-6.
+
+References
+
+[1] Anna Bosch, Andrew Zisserman, and Xavier Munoz. Image Classiﬁ-
+cation Using Random Forests and Ferns. In 2007 IEEE 11th Inter-
+national Conference on Computer Vision, pages 1–8. IEEE, 2007.
+
+[2] Leo Breiman. Random Forests. Machine Learning, 45:5–32, 2001.
+
+[3] Jerome H. Friedman. Stochastic Gradient Boosting. Computational
+
+Statistics & Data Analysis, 38(4):367–378, 2002.
+
+12
+
+[4] Pierre Geurts, Damien Ernst, and Louis Wehenkel. Extremely Ran-
+
+domized Trees. Machine Learning, 63(1):3–42, 2006.
+
+[5] Paul R. Gorman and Terrence J. Sejnowski. Analysis of Hidden Units
+in a Layered Network Trained to Classify Sonar Targets. Neural
+Networks, 1:75–89, 1988.
+
+[6] T.K. Ho. The Random Subspace Method for Constructing Decision
+Forests. Pattern Analysis and Machine Intelligence, IEEE Transac-
+tions on, 20(8):832–844, 1998.
+
+[7] Friedrich Leisch and Evgenia Dimitriadou. mlbench: Machine Learn-
+
+ing Benchmark Problems., 2010. R package version 2.1-0.
+
+[8] Andy Liaw and Matthew Wiener. Classiﬁcation and Regression by
+
+randomForest. R News, 2(3):18–22, 2002.
+
+[9] Michiel O. Noordewier, Geoﬀrey G. Towell, and Jude W. Shavlik.
+Training Knowledge-Based Neural Networks to Recognize Genes in
+DNA Sequences. Advances in Neural Information Processing Sys-
+tems, 3, 1991.
+
+[10] Olusegun Oshin, Andrew Gilbert, John Illingworth, and Richard
+Bowden. Action Recognition Using Randomised Ferns.
+In Com-
+puter Vision Workshops (ICCV Workshops), 2009 IEEE 12th Inter-
+national Conference, pages 530–537. IEEE, 2009.
+
+[11] Mustafa ¨Ozuysal, Pascal Fua, and Vincent Lepetit. Fast Keypoint
+Recognition in Ten Lines of Code. 2007 IEEE Conference on Com-
+puter Vision and Pattern Recognition, pages 1–8, June 2007.
+
+[12] P Panov and S Dˇzeroski. Combining Bagging and Random Subspaces
+to Create Better Ensembles. In Proceedings of the 7th international
+conference on Intelligent data analysis, pages 118–129, Berlin, Hei-
+delberg, 2007. Springer-Verlag.
+
+[13] R Development Core Team. R: A Language and Environment for
+
+Statistical Computing., 2010.
+
+[14] Daniel Wagner, Gerhard Reitmayr, Alessandro Mulloni, Tom Drum-
+mond, and Dieter Schmalstieg. Real-time Detection and Tracking for
+Augmented Reality on Mobile Phones. IEEE transactions on visual-
+ization and computer graphics, 16(3):355–68, 2010.
+
+13
+
+

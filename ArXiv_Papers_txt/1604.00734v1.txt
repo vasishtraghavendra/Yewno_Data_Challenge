@@ -1,0 +1,750 @@
+Capturing Semantic Similarity for Entity Linking
+
+with Convolutional Neural Networks
+
+Matthew Francis-Landau, Greg Durrett and Dan Klein
+
+Computer Science Division
+
+University of California, Berkeley
+
+6
+1
+0
+2
+
+ 
+r
+p
+A
+4
+
+ 
+
+ 
+ 
+]
+L
+C
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+4
+3
+7
+0
+0
+
+.
+
+4
+0
+6
+1
+:
+v
+i
+X
+r
+a
+
+{mfl,gdurrett,klein}@cs.berkeley.edu
+
+Abstract
+
+A key challenge in entity linking is making ef-
+fective use of contextual information to dis-
+ambiguate mentions that might refer to differ-
+ent entities in different contexts. We present
+a model that uses convolutional neural net-
+works to capture semantic correspondence be-
+tween a mention’s context and a proposed tar-
+get entity. These convolutional networks oper-
+ate at multiple granularities to exploit various
+kinds of topic information, and their rich pa-
+rameterization gives them the capacity to learn
+which n-grams characterize different topics.
+We combine these networks with a sparse lin-
+ear model to achieve state-of-the-art perfor-
+mance on multiple entity linking datasets, out-
+performing the prior systems of Durrett and
+Klein (2014) and Nguyen et al. (2014).1
+
+Introduction
+
+1
+One of the major challenges of entity linking is re-
+solving contextually polysemous mentions. For ex-
+ample, Germany may refer to a nation, to that na-
+tion’s government, or even to a soccer team. Past
+approaches to such cases have often focused on col-
+lective entity linking: nearby mentions in a docu-
+ment might be expected to link to topically-similar
+entities, which can give us clues about the identity of
+the mention currently being resolved (Ratinov et al.,
+2011; Hoffart et al., 2011; He et al., 2013; Cheng
+and Roth, 2013; Durrett and Klein, 2014). But an
+even simpler approach is to use context information
+from just the words in the source document itself to
+make sure the entity is being resolved sensibly in
+context. In past work, these approaches have typi-
+cally relied on heuristics such as tf-idf (Ratinov et
+
+1Source available at
+
+github.com/matthewfl/nlp-entity-convnet
+
+al., 2011), but such heuristics are hard to calibrate
+and they capture structure in a coarser way than
+learning-based methods.
+
+In this work, we model semantic similarity be-
+tween a mention’s source document context and its
+potential entity targets using convolutional neural
+networks (CNNs). CNNs have been shown to be ef-
+fective for sentence classiﬁcation tasks (Kalchbren-
+ner et al., 2014; Kim, 2014; Iyyer et al., 2015) and
+for capturing similarity in models for entity linking
+(Sun et al., 2015) and other related tasks (Dong et
+al., 2015; Shen et al., 2014), so we expect them to be
+effective at isolating the relevant topic semantics for
+entity linking. We show that convolutions over mul-
+tiple granularities of the input document are useful
+for providing different notions of semantic context.
+Finally, we show how to integrate these networks
+with a preexisting entity linking system (Durrett and
+Klein, 2014). Through a combination of these two
+distinct methods into a single system that leverages
+their complementary strengths, we achieve state-of-
+the-art performance across several datasets.
+2 Model
+Our model focuses on two core ideas: ﬁrst, that topic
+semantics at different granularities in a document
+are helpful in determining the genres of entities for
+entity linking, and second, that CNNs can distill a
+block of text into a meaningful topic vector.
+
+Our entity linking model is a log-linear model
+that places distributions over target entities t given
+a mention x and its containing source document.
+For now, we take P (t|x) ∝ exp w(cid:62)fC(x, t; θ),
+where fC produces a vector of features based on
+CNNs with parameters θ as discussed in Section 2.1.
+Section 2.2 describes how we combine this simple
+model with a full-ﬂedged entity linking system. As
+shown in the middle of Figure 1, each feature in fC
+
+Figure 1: Extraction of convolutional vector space features fC (x, te). Three types of information from the input document and two
+types of information from the proposed title are fed through convolutional networks to produce vectors, which are systematically
+compared with cosine similarity to derive real-valued semantic similarity features.
+
+is a cosine similarity between a topic vector asso-
+ciated with the source document and a topic vector
+associated with the target entity. These vectors are
+computed by distinct CNNs operating over different
+subsets of relevant text.
+
+Figure 1 shows an example of why different kinds
+of context are important for entity linking. In this
+case, we are considering whether Pink Floyd might
+link to the article Gavin Floyd on Wikipedia
+(imagine that Pink Floyd might be a person’s nick-
+name). If we look at the source document, we see
+that the immediate source document context around
+the mention Pink Floyd is referring to rock groups
+(Led Zeppelin, Van Halen) and the target entity’s
+Wikipedia page is primarily about sports (baseball
+starting pitcher). Distilling these texts into succinct
+topic descriptors and then comparing those helps tell
+us that this is an improbable entity link pair.
+In
+this case, the broader source document context actu-
+ally does not help very much, since it contains other
+generic last names like Campbell and Savage that
+might not necessarily indicate the document to be
+in the music genre. However, in general, the whole
+document might provide a more robust topic esti-
+mate than a small context window does.
+
+2.1 Convolutional Semantic Similarity
+
+Figure 1 shows our method for computing topic vec-
+tors and using those to extract features for a potential
+Wikipedia link. For each of three text granularities
+
+in the source document (the mention, that mention’s
+immediate context, and the entire document) and
+two text granularities on the target entity side (title
+and Wikipedia article text), we produce vector rep-
+resentations with CNNs as follows. We ﬁrst embed
+each word into a d-dimensional vector space using
+standard embedding techniques (discussed in Sec-
+tion 3.2), yielding a sequence of vectors w1, . . . , wn.
+We then map those words into a ﬁxed-size vector
+using a convolutional network parameterized with a
+
+ﬁlter bank M ∈ Rk×d(cid:96). We put the result through a
+
+rectiﬁed linear unit (ReLU) and combine the results
+with sum pooling, giving the following formulation:
+
+convg(w1:n) =
+
+n−(cid:96)(cid:88)j=1
+
+max{0, Mgwj:j+(cid:96)}
+
+(1)
+
+where wj:j+(cid:96) is a concatenation of the given word
+vectors and the max is element-wise.2 Each con-
+volution granularity (mention, context, etc.) has a
+distinct set of ﬁlter parameters Mg.
+
+This process produces multiple representative
+topic vectors sment, scontext, and sdoc for the source
+document and ttitle and tdoc for the target entity, as
+shown in Figure 1. All pairs of these vectors be-
+tween the source and the target are then compared
+using cosine similarity, as shown in the middle of
+Figure 1. This yields the vector of features fC(s, te)
+
+2For all experiments, we set (cid:96) = 5 and k = 150.
+
+mdcSource DocumentDocumentContextMentionPink FloydThe others are The Beatles, Led Zeppelin, Pink Floyd and Van Halen.This includes the band members: Cambell, Savage, Elliott, Collen, Allen.  As of 1992, the band consisted of  Elliott (vocals), Collen (guitar) Campbell (guitar), Savage (bass guitar), and Allen (drums).  The band has sold over 65 million albums wordwide, and have two albums with RIAA diamond certification, Pyromania and Hysteria.  History Early years =sdoc=scontext=smentgw1w2w3...wn:=n−(cid:30)(cid:31)j=1max{0,Mwj:j+(cid:30)}:=cosim(s,t)sdocsmentscontextttitle,etdoc,efC(s,te)etTarget Entity LinksEntity TitleEntity ArticleGavin FloydGavin Christopher Floyd (born January 27, 1983) is a professional baseball starting pitcher for the Atlanta Braves of Major League Baseball (MLB). He previously pitched in MLB for the Philadelphia Phillies and Chicago White Sox. Floyd stands 6' 5" tall, weighs 220 pounds, and throws and bats right-handed.  Professional career Draft and Minor Leagues The Philadelphia Phillies selected Floyd with the fourth overall selection of the 2001 draft.  In his first professional season (2002), Floyd pitched for the Class A Lakewood ttitle,e=tdoc,e=which indicate the different types of similarity; this
+vector can then be combined with other sparse fea-
+tures and fed into a ﬁnal logistic regression layer
+(maintaining end-to-end inference and learning of
+the ﬁlters). When trained with backpropagation, the
+convolutional networks should learn to map text into
+vector spaces that are informative about whether the
+document and entity are related or not.
+
+Integrating with a Sparse Model
+
+2.2
+The dense model presented in Section 2.1 is effec-
+tive at capturing semantic topic similarity, but it is
+most effective when combined with other signals
+for entity linking. An important cue for resolving
+a mention is the use of link counts from hyperlinks
+in Wikipedia (Cucerzan, 2007; Milne and Witten,
+2008; Ji and Grishman, 2011), which tell us how
+often a given mention was linked to each article on
+Wikipedia. This information can serve as a useful
+prior, but only if we can leverage it effectively by tar-
+geting the most salient part of a mention. For exam-
+ple, we may have never observed President Barack
+Obama as a linked string on Wikipedia, even though
+we have seen the substring Barack Obama and it un-
+ambiguously indicates the correct answer.
+
+Following Durrett and Klein (2014), we introduce
+a latent variable q to capture which subset of a men-
+tion (known as a query) we resolve. Query gen-
+eration includes potentially removing stop words,
+plural sufﬁxes, punctuation, and leading or tail-
+ing words. This processes generates on average 9
+queries for each mention. Conveniently, this set of
+queries also deﬁnes the set of candidate entities that
+we consider linking a mention to: each query gener-
+ates a set of potential entities based on link counts,
+whose unions are then taken to give on the possible
+entity targets for each mention (including the null
+link). In the example shown in Figure 1, the query
+phrases are Pink Floyd and Floyd, which generate
+Pink Floyd and Gavin Floyd as potential link
+targets (among other options that might be derived
+from the Floyd query).
+
+linear way with three separate components:
+
+Our ﬁnal model has the form P (t|x) =
+(cid:80)q P (t, q|x). We parameterize P (t, q|x) in a log-
+P (t, q|x) ∝ exp(cid:0)w(cid:62)(fQ(x, q) + fE(x, q, t) + fC(x, t; θ))(cid:1)
+
+fQ and fE are both sparse features vectors and are
+
+taken from previous work (Durrett and Klein, 2014).
+fC is as discussed in Section 2.1. Note that fC has
+its own internal parameters θ because it relies on
+CNNs with learned ﬁlters; however, we can compute
+gradients for these parameters with standard back-
+propagation. The whole model is trained to maxi-
+mize the log likelihood of a labeled training corpus
+using Adadelta (Zeiler, 2012).
+
+The indicator features fQ and fE are described in
+more detail in Durrett and Klein (2014). fQ only
+impacts which query is selected and not the disam-
+biguation to a title. It is designed to roughly cap-
+ture the basic shape of a query to measure its de-
+sirability, indicating whether sufﬁxes were removed
+and whether the query captures the capitalized sub-
+sequence of a mention, as well as standard lexical,
+POS, and named entity type features. fE mostly
+captures how likely the selected query is to corre-
+spond to a given entity based on factors like an-
+chor text counts from Wikipedia, string match with
+proposed Wikipedia titles, and discretized cosine
+similarities of tf-idf vectors (Ratinov et al., 2011).
+Adding tf-idf indicators is the only modiﬁcation we
+made to the features of Durrett and Klein (2014).
+
+3 Experimental Results
+We performed experiments on 4 different entity link-
+ing datasets.
+
+• ACE (NIST, 2005; Bentivogli et al., 2010):
+This corpus was used in Fahrni and Strube
+(2014) and Durrett and Klein (2014).
+• CoNLL-YAGO (Hoffart et al., 2011): This cor-
+pus is based on the CoNLL 2003 dataset; the
+test set consists of 231 news articles and con-
+tains a number of rarer entities.
+• WP (Heath and Bizer, 2011): This dataset con-
+sists of short snippets from Wikipedia.
+This
+• Wikipedia (Ratinov et al., 2011):
+dataset consists of 10,000 randomly sampled
+Wikipedia articles, with the task being to re-
+solve the links in each article.3
+
+3We do not compare to Ratinov et al. (2011) on this dataset
+because we do not have access to the original Wikipedia dump
+they used for their work and as a result could not duplicate their
+results or conduct comparable experiments, a problem which
+was also noted by Nguyen et al. (2014).
+
+ACE CoNLL WP Wiki4
+Previous work
+79.6
+—
+—
+84.8
+This work
+83.6
+84.5
+89.9
+
+81.1
+87.7
+90.7
+
+74.9
+81.2
+85.5
+
+—
+—
+
+—
+—
+
+81.5
+75.7
+82.2
+
+DK2014
+AIDA-LIGHT
+
+Sparse features
+CNN features
+Full
+
+Table 2: Performance of the system in this work (Full) com-
+pared to two baselines from prior work and two ablations.
+Our results outperform those of Durrett and Klein (2014) and
+Nguyen et al. (2014). In general, we also see that the convolu-
+tional networks by themselves can outperform the system using
+only sparse features, and in all cases these stack to give substan-
+tial beneﬁt.
+
+We use standard train-test splits for all datasets ex-
+cept for WP, where no standard split is available.
+In this case, we randomly sample a test set. For
+all experiments, we use word vectors computed by
+running word2vec (Mikolov et al., 2013) on all
+Wikipedia, as described in Section 3.2.
+
+Table 2 shows results for two baselines and three
+variants of our system. Our main contribution is
+the combination of indicator features and CNN fea-
+tures (Full). We see that this system outperforms the
+results of Durrett and Klein (2014) and the AIDA-
+LIGHT system of Nguyen et al. (2014). We can
+also compare to two ablations: using just the sparse
+features (a system which is a direct extension of
+Durrett and Klein (2014)) or using just the CNN-
+derived features.5 Our CNN features generally out-
+perform the sparse features and improve even further
+when stacked with them. This reﬂects that they cap-
+ture orthogonal sources of information: for example,
+the sparse features can capture how frequently the
+target document was linked to, whereas the CNNs
+can capture document context in a more nuanced
+way. These CNN features also clearly supersede
+the sparse features based on tf-idf (taken from (Rati-
+nov et al., 2011)), showing that indeed that CNNs
+are better at learning semantic topic similarity than
+heuristics like tf-idf.
+
+4The test set for this dataset is only 40 out of 10,000 docu-
+
+ments and subject to wide variation in performance.
+
+5In this model, the set of possible link targets for each
+mention is still populated using anchor text information from
+Wikipedia (Section 2.2), but note that link counts are not used
+as a feature here.
+
+cosim(sdoc, tdoc)
+cosim(sment, ttitle)
+All CNN pairs
+
+ACE CoNLL WP
+72.93
+77.43
+70.25
+80.19
+84.85
+82.02
+
+79.76
+80.86
+86.91
+
+Table 3: Comparison of using only topic information derived
+from the document and target article, only information derived
+from the mention itself and the target entity title, and the full
+set of information (six features, as shown in Figure 1). Nei-
+ther the ﬁnest nor coarsest convolutional context can give the
+performance of the complete set. Numbers are reported on a
+development set.
+
+In the sparse feature system, the highest weighted
+features are typically those indicating the frequency
+that a page was linked to and those indicating spe-
+ciﬁc lexical items in the choice of the latent query
+variable q. This suggests that the system of Dur-
+rett and Klein (2014) has the power to pick the right
+span of a mention to resolve, but then is left to gener-
+ally pick the most common link target in Wikipedia,
+which is not always correct. By contrast, the full
+system has a greater ability to pick less common
+link targets if the topic indicators distilled from the
+CNNs indicate that it should do so.
+
+3.1 Multiple Granularities of Convolution
+One question we might ask is how much we gain by
+having multiple convolutions on the source and tar-
+get side. Table 3 compares our full suite of CNN
+features, i.e. the six features speciﬁed in Figure 1,
+with two speciﬁc convolutional features in isola-
+tion. Using convolutions over just the source doc-
+ument (sdoc) and target article text (tdoc) gives a
+system6 that performs, in aggregate, comparably to
+using convolutions over just the mention (sment)
+and the entity title (ttitle). These represent two
+extremes of the system: consuming the maximum
+amount of context, which might give the most ro-
+bust representation of topic semantics, and consum-
+ing the minimum amount of context, which gives
+the most focused representation of topics seman-
+tics (and which more generally might allow the sys-
+tem to directly memorize train-test pairs observed
+in training). However, neither performs as well as
+the combination of all CNN features, showing that
+the different granularities capture complementary
+
+6This model is roughly comparable to Model 2 as presented
+
+in Sun et al. (2015).
+
+destroying missiles . spy planes
+and destroying missiles . spy
+by U.N. weapons inspectors .
+inspectors are discovering and destroying
+are discovering and destroying missiles
+an attack using chemical weapons
+discovering and destroying missiles .
+attack munitions or j-dam weapons
+sanctions targeting iraq civilians ,
+its nuclear weapons and missile
+
+has died of his wounds
+vittorio sacerdoti has told his
+his bail hearing , his
+bail hearing , his lawyer
+died of his wounds after
+from scott peterson ’s attorney
+’s murder trial . she
+has told his remarkable tale
+murder trial . she asking
+trial lawyers are driving doctors
+
+him which was more depressing
+a trip and you see
+“ i can see why
+i think so many americans
+his life from the depression
+trip and you see him
+, but dumb liberal could
+i can see why he
+one passage . you cite
+think so many americans are
+
+Table 1: Five-grams representing the maximal activations from different ﬁlters in the convolution over the source document (Mdoc,
+producing sdoc in Figure 1). Some ﬁlters tend towards singular topics as shown in the ﬁrst and second columns, which focus on
+weapons and trials, respectively. Others may have a mix of seemingly unrelated topics, as shown in the third column, which does
+not have a coherent theme. However, such ﬁlters might represent a superposition of ﬁlters for various topics which never cooccur
+and thus never need to be disambiguated between.
+
+aspects of the entity linking task.
+
+Google News
+Wikipedia
+
+ACE CoNLL WP
+83.8
+87.5
+89.5
+85.5
+
+89.6
+90.6
+
+Table 4: Results of the full model (sparse and convolutional
+features) comparing word vectors derived from Google News
+vs. Wikipedia on development sets for each corpus.
+
+3.2 Embedding Vectors
+We also explored two different sources of embed-
+ding vectors for the convolutions. Table 4 shows that
+word vectors trained on Wikipedia outperformed
+Google News word vectors trained on a larger cor-
+pus. Further investigation revealed that the Google
+News vectors had much higher out-of-vocabulary
+rates. For learning the vectors, we use the standard
+word2vec toolkit (Mikolov et al., 2013) with vector
+length set to 300, window set to 21 (larger windows
+produce more semantically-focused vectors (Levy
+and Goldberg, 2014)), 10 negative samples and 10
+iterations through Wikipedia. We do not ﬁne-tune
+word vectors during training of our model, as that
+was not found to improve performance.
+
+3.3 Analysis of Learned Convolutions
+One downside of our system compared to its purely
+indicator-based variant is that its operation is less in-
+terpretable. However, one way we can inspect the
+learned system is by examining what causes high ac-
+tivations of the various convolutional ﬁlters (rows of
+the matrices Mg from Equation 1). Table 1 shows
+the n-grams in the ACE dataset leading to maximal
+
+activations of three of the ﬁlters from Mdoc. Some
+ﬁlters tend to learn to pick up on n-grams character-
+istic of a particular topic. In other cases, a single ﬁl-
+ter might be somewhat inscrutable, as with the third
+column of Table 1. There are a few possible explana-
+tions for this. First, the ﬁlter may generally have low
+activations and therefore have little impact in the ﬁ-
+nal feature computation. Second, the extreme points
+of the ﬁlter may not be characteristic of its overall
+behavior, since the bulk of n-grams will lead to more
+moderate activations. Finally, such a ﬁlter may rep-
+resent the superposition of a few topics that we are
+unlikely to ever need to disambiguate between; in
+a particular context, this ﬁlter will then play a clear
+role, but one which is hard to determine from the
+overall shape of the parameters.
+
+4 Conclusion
+
+In this work, we investigated using convolutional
+networks to capture semantic similarity between
+source documents and potential entity link targets.
+Using multiple granularities of convolutions to eval-
+uate the compatibility of a mention in context and
+several potential link targets gives strong perfor-
+mance on its own; moreover, such features also im-
+prove a pre-existing entity linking system based on
+sparse indicator features, showing that these sources
+of information are complementary.
+
+Acknowledgments
+
+This work was partially supported by NSF Grant
+CNS-1237265 and a Google Faculty Research
+
+Award. Thanks to the anonymous reviewers for their
+helpful comments.
+
+References
+[Bentivogli et al.2010] Luisa Bentivogli, Pamela Forner,
+Claudio Giuliano, Alessandro Marchetti, Emanuele
+Pianta, and Kateryna Tymoshenko. 2010. Extending
+English ACE 2005 Corpus Annotation with Ground-
+truth Links to Wikipedia. In Proceedings of the Work-
+shop on The People’s Web Meets NLP: Collaboratively
+Constructed Semantic Resources.
+
+[Cheng and Roth2013] Xiao Cheng and Dan Roth. 2013.
+Relational Inference for Wikiﬁcation. In Proceedings
+of the Conference on Empirical Methods in Natural
+Language Processing (EMNLP).
+
+[Cucerzan2007] Silviu Cucerzan.
+
+2007. Large-Scale
+Named Entity Disambiguation Based on Wikipedia
+Data. In Proceedings of the Joint Conference on Em-
+pirical Methods in Natural Language Processing and
+Computational Natural Language Learning (EMNLP-
+CoNLL).
+
+[Dong et al.2015] Li Dong, Furu Wei, Ming Zhou, and
+Ke Xu. 2015. Question Answering over Freebase
+with Multi-Column Convolutional Neural Networks.
+In Proceedings of the 53rd Annual Meeting of the As-
+sociation for Computational Linguistics (ACL) and the
+7th International Joint Conference on Natural Lan-
+guage Processing (Volume 1: Long Papers).
+
+[Durrett and Klein2014] Greg Durrett and Dan Klein.
+2014. A Joint Model for Entity Analysis: Coreference,
+Typing, and Linking. In Transactions of the Associa-
+tion for Computational Linguistics (TACL).
+
+[Fahrni and Strube2014] Angela Fahrni
+
+and Michael
+Strube. 2014. A latent variable model for discourse-
+In Gosse
+aware concept and entity disambiguation.
+Bouma and Yannick Parmentier 0001,
+editors,
+Proceedings of
+the Euro-
+pean Chapter of the Association for Computational
+Linguistics, EACL 2014, April 26-30, 2014, Gothen-
+burg, Sweden, pages 491–500. The Association for
+Computer Linguistics.
+
+the 14th Conference of
+
+[He et al.2013] Zhengyan He, Shujie Liu, Yang Song,
+Mu Li, Ming Zhou, and Houfeng Wang. 2013. Ef-
+ﬁcient collective entity linking with stacking.
+In
+EMNLP, pages 426–435. ACL.
+
+[Heath and Bizer2011] Tom Heath and Christian Bizer.
+2011. Linked Data: Evolving the Web into a Global
+Data Space. Morgan & Claypool, 1st edition.
+
+[Hoffart et al.2011] Johannes Hoffart, Mohamed Amir
+Ilaria Bordino, Hagen F¨urstenau, Manfred
+Yosef,
+Pinkal, Marc Spaniol, Bilyana Taneva, Stefan Thater,
+and Gerhard Weikum. 2011. Robust Disambiguation
+
+of Named Entities in Text. In Proceedings of the Con-
+ference on Empirical Methods in Natural Language
+Processing (EMNLP).
+
+[Iyyer et al.2015] Mohit Iyyer, Varun Manjunatha, Jor-
+dan Boyd-Graber, and Hal Daum´e III. 2015. Deep
+Unordered Composition Rivals Syntactic Methods for
+Text Classiﬁcation. In Proceedings of the Association
+for Computational Linguistics (ACL).
+
+[Ji and Grishman2011] Heng Ji and Ralph Grishman.
+2011. Knowledge Base Population: Successful Ap-
+proaches and Challenges. In Proceedings of the Asso-
+ciation for Computational Linguistics (ACL).
+
+[Kalchbrenner et al.2014] Nal Kalchbrenner,
+
+Edward
+Grefenstette, and Phil Blunsom.
+2014. A convo-
+lutional neural network for modelling sentences.
+In Proceedings of the 52nd Annual Meeting of the
+Association for Computational Linguistics (Volume 1:
+Long Papers), pages 655–665, Baltimore, Maryland,
+June. Association for Computational Linguistics.
+
+[Kim2014] Yoon Kim. 2014. Convolutional Neural Net-
+works for Sentence Classiﬁcation. In Proceedings of
+the Conference on Empirical Methods in Natural Lan-
+guage Processing (EMNLP).
+
+[Levy and Goldberg2014] Omer Levy and Yoav Gold-
+berg. 2014. Dependency-Based Word Embeddings.
+In Proceedings of the 52nd Annual Meeting of the As-
+sociation for Computational Linguistics (ACL).
+
+[Mikolov et al.2013] Tomas Mikolov, Ilya Sutskever, Kai
+Chen, Greg S Corrado, and Jeff Dean. 2013. Dis-
+tributed Representations of Words and Phrases and
+their Compositionality. In Advances in Neural Infor-
+mation Processing Systems (NIPS) 26, pages 3111–
+3119.
+
+[Milne and Witten2008] David Milne and Ian H. Witten.
+2008. Learning to Link with Wikipedia. In Proceed-
+ings of the Conference on Information and Knowledge
+Management (CIKM).
+
+[Nguyen et al.2014] Dat Ba Nguyen, Johannes Hoffart,
+Martin Theobald, and Gerhard Weikum. 2014. AIDA-
+light: High-Throughput Named-Entity Disambigua-
+tion. In Proceedings of the Workshop on Linked Data
+on the Web co-located with the 23rd International
+World Wide Web Conference (WWW).
+
+[NIST2005] NIST. 2005. The ACE 2005 Evaluation
+
+Plan. In NIST.
+
+[Ratinov et al.2011] Lev Ratinov, Dan Roth, Doug
+Downey, and Mike Anderson.
+2011. Local and
+Global Algorithms for Disambiguation to Wikipedia.
+In Proceedings of the 49th Annual Meeting of the As-
+sociation for Computational Linguistics (ACL), pages
+1375–1384.
+
+[Shen et al.2014] Yelong Shen, Xiaodong He, Jianfeng
+Gao, Li Deng, and Gr´egoire Mesnil. 2014. Learning
+
+Semantic Representations Using Convolutional Neural
+Networks for Web Search. In Proceedings of the 23rd
+International Conference on World Wide Web (WWW).
+[Sun et al.2015] Yaming Sun, Lei Lin, Duyu Tang, Nan
+Yang, Zhenzhou Ji, and Xiaolong Wang. 2015. Mod-
+eling Mention, Context and Entity with Neural Net-
+In Proceedings of
+works for Entity Disambiguation.
+the International Joint Conference on Artiﬁcial Intelli-
+gence (IJCAI), pages 1333–1339.
+
+[Zeiler2012] Matthew D. Zeiler.
+
+2012.
+
+An Adaptive Learning Rate Method.
+abs/1212.5701.
+
+AdaDelta:
+CoRR,
+
+

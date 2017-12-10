@@ -1,0 +1,1449 @@
+Submodular Optimization for Efﬁcient
+
+Semi-supervised Support Vector Machines
+
+Wael Emara and Mehmed Kantardzic
+
+Computer Engineering and Computer Science Department
+
+University of Louisville, Louisville, Kentucky 40292
+
+Email: waemar01@cardmail.louisville.edu, mmkant01@louisville.edu
+
+1
+1
+0
+2
+
+ 
+
+g
+u
+A
+3
+2
+
+ 
+
+ 
+ 
+]
+
+G
+L
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+6
+3
+2
+5
+
+.
+
+7
+0
+1
+1
+:
+v
+i
+X
+r
+a
+
+Abstract—In this work we present a quadratic programming
+approximation of the Semi-Supervised Support Vector Machine
+(S3VM) problem, namely approximate QP-S3VM, that can be
+efﬁciently solved using off the shelf optimization packages. We
+prove that this approximate formulation establishes a relation
+between the low density separation and the graph-based models
+of semi-supervised learning (SSL) which is important to develop
+a unifying framework for semi-supervised learning methods.
+Furthermore, we propose the novel idea of representing SSL
+problems as submodular set functions and use efﬁcient sub-
+modular optimization algorithms to solve them. Using this new
+idea we develop a representation of the approximate QP-S3VM
+as a maximization of a submodular set function which makes
+it possible to optimize using efﬁcient greedy algorithms. We
+demonstrate that the proposed methods are accurate and provide
+signiﬁcant improvement in time complexity over the state of the
+art in the literature.
+
+I. INTRODUCTION
+
+The recent advances in information technology imposes
+serious challenges on traditional machine learning algorithms
+where classiﬁcation models are trained using labeled samples.
+Data collection and storage nowadays has never been eas-
+ier and therefore using such enormous volumes of data to
+infer reliable classiﬁcation models is of utmost importance.
+Meanwhile,
+labeling entire data sets to train classiﬁcation
+models is no longer a valid option due to the high cost of
+experienced human annotators. Despite the recent efforts to
+make annotation of large data sets cheap and reliable by using
+online workforce, the collected labeled data can never keep up
+with the cheap collection of unlabeled data.
+
+Semi-supervised learning (SSL) handles this issue by uti-
+lizing large amount of unlabeled samples, along with labeled
+samples to build better performing classiﬁers. Two assump-
+tions form the basis for the usefulness of unlabeled samples
+in discriminative SSL methods: the cluster assumptions and
+the smoothness assumption [1]. Although both assumptions
+use the idea that samples that are close under some distance
+metric should assume the same label, they inspire different
+categories of SSL algorithms, namely low density separation
+methods (for the cluster assumption) and graph-based methods
+(for the smoothness assumption). In the low density separation
+methods the unlabeled samples are used to better estimate the
+boundaries or each class. The graph-based methods use labeled
+and unlabeled samples to construct a graph representation of
+the data set where information is then propagated from the
+labeled samples to the unlabeled samples through the dense
+
+regions of the graph, a process known as label propagation
+[2].
+
+The practical success and the theoretical robustness of large
+margin methods in general and specially Support Vector Ma-
+chines (SVM) has drawn a lot of attention to Semi-Supervised
+Support Vector Machines (S3VM) [3]. However the problem is
+challenging due to the non-convexity of the objective function.
+In this paper we propose an approximate-S3VM formulation
+that will result in a standard quadratic programming problem,
+namely approximate QP-S3VM, that can be solved directly
+using off the shelf optimization packages. One important
+aspect of the proposed formulation is that
+it uncovers a
+connection between the S3VM, as a low density separation
+method, and the graph based algorithms which is a helpful
+step towards a unifying framework for SSL [4]. Furthermore,
+we present a new formulation of loss based SSL problems.
+The new formulation represents SSL problems as set functions
+and use the theory of submodular set functions optimization to
+solve them efﬁciently. Speciﬁcally, we present a submodular
+set function that is equivalent to the proposed approximate QP-
+S3VM and solve it efﬁciently using a greedy approach that is
+well established in optimizing submodular functions [5].
+
+Section I-A provides preliminaries of S3VM and the nota-
+tions used throughout the paper. The proposed approximate
+QP-S3VM is detailed in Section II. In Section III we present
+the submodular formulation of the approximate QP-S3VM.
+Experimental results are provided in Section IV, followed by
+the conclusion in Section V.
+
+A. Preliminaries
+
+Semi-supervised learning uses partially labeled data sets L∪
+U where L = {(xi, yi)} and U = {xj}, x ∈ Rn, and yi ∈
+{+1,−1}. Throughout this paper we use i and j as indices
+for labeled and unlabeled samples, respectively.
+
+The major body of work on S3VM is based on the idea
+of solving a standard SVM while treating unknown labels as
+additional variables [3]. The semi-supervised learning problem
+is to ﬁnd the solution of
+J (w, yj) =
+
+(cid:107)w(cid:107)2+C
+
+(cid:96)l(w, (xi, yi))
+
+min
+w,yj
+
+1
+2
+
+(cid:88)
++ C∗(cid:88)
+
+i∈L
+
+j∈U
+
+(1)
+
+(cid:96)u(w, xj)
+
+where the loss functions for unlabeled samples (cid:96)u and labeled
+samples (cid:96)l are deﬁned as follows:
+
+binatorial S3VM problem.
+
+(cid:96)u(w, (xj, yj)) = max
+
+yj∈{−1,+1}
+
+{0, 1 − yj((cid:104)w, xj(cid:105) + b)}
+
+(2)
+
+argmin
+
+P
+
+(cid:96)l(w, (xi, yi)) =max {0, 1 − yi((cid:104)w, xi(cid:105) + b)}
+
+(3)
+
+subject to
+
+min
+
+w
+
+j∈U
+
+(cid:107)w(cid:107)2 + C
+
+J (w, P) =
+
++ C∗(cid:88)
+
+1
+2
+(1 − pj)(cid:96)−
+yi[(cid:104)w, xi(cid:105) + b] ≥ 1 − ζi
+(cid:104)w, xj(cid:105) + b ≥ 1 − (cid:96)+
+−(cid:104)w, xj(cid:105) − b ≥ 1 − (cid:96)−
+ζi ≥ 0, (cid:96)+
+j ≥ 0
+pj = r|U|
+0 ≤ pj ≤ 1,
+
+(cid:88)
+j ≥ 0, (cid:96)−
+
+j
+
+j
+
+j
+
+j∈U
+
+(cid:88)
+
+i∈L
+
+ζi + C∗(cid:88)
+
+j∈U
+
+pj(cid:96)+
+j
+
+(6)
+
+The solution of Eqn.(1) will result in ﬁnding the optimal
+separating hyperplane w and the labels assigned to the unla-
+beled samples yj. The loss over labeled and unlabeled samples
+is controlled by two parameters C and C∗, which reﬂect
+the conﬁdence in the labels yi and the cluster assumption,
+respectively.
+
+Algorithms that solve Eqn.(1) can broadly be divided into
+combinatorial and continuous optimization algorithms. In con-
+tinuous optimization algorithms, for a given ﬁxed w, the opti-
+mal yj are simply obtained by sgn((cid:104)w, xj(cid:105) + b). The problem
+then comes down to a continuous optimization problem in w.
+On the other hand, in combinatorial optimization algorithms,
+for given yj,
+the optimization for w is a standard SVM
+problem. Therefore, if we deﬁne a function I(yj) such that
+
+I(yj) =min
+
+w
+
+J (w, yj)
+
+(4)
+
+the problem will be transformed to minimizing I(yj) over a
+set of binary variables where each evaluation of I(yj) is a
+standard SVM optimization problem [6], [7], [8],
+
+I(yj).
+
+min
+
+yj
+
+(5)
+
+Solving Eqn.(1) may lead to degenerate solutions where all the
+unlabeled samples are assigned to one class. This is usually
+handled in the literature by enforcing a balancing constraint
+which makes sure that a certain ratio r of the unlabeled
+samples are assigned to class +1 [3].
+
+II. QUADRATIC PROGRAMMING APPROXIMATION OF
+
+S3VM (QP-S3VM)
+
+In Eqn.(5) the combinatorial formulation of S3VM opti-
+mizes for the labels yj that minimize the loss associated with
+each unlabeled sample. To overcome the hard combinatorial
+problem, the loss of setting yj = 1, denoted by (cid:96)+
+j , is assigned
+a new variable pj, where 0 ≤ pj ≤ 1. This variable indicates
+the probability that
+the
+loss of setting yj = −1, denoted by (cid:96)−
+(cid:80)
+j , is given by the
+probability 1−pj. The balancing constraint will have the form
+j∈U pj = r|U|. This modiﬁed formulation has the following
+
+the yj = 1 is correct. Similarly,
+
+form [8], [9]:
+
+Problem 1. Continuous optimization formulation of the com-
+
+Now that
+
+the problem has been simpliﬁed from being
+combinatorial in yi, yj ∈ {+1,−1}, to being continuous in
+pj, pj ∈ [0, 1], we proceed to ﬁnd the dual form. Deriving the
+Lagrangian of the continuous formulation in Problem 1 and
+applying the Karush-Kuhn-Tucker conditions to it, the obtained
+dual form is presented in Problem 2.
+Problem 2. Dual form of min
+w
+
+J (w, P) in Problem 1.
+
+IDual
+
+max
+A,B,Γ
+
+(7)
+
+where
+IDual = A(cid:48)1|L| + (Γ + B)(cid:48)1|U| − 1
+2
+
+(A ◦ Y)(cid:48)Kll(A ◦ Y)
+(Γ − B)(cid:48)Kuu(Γ − B) − (A ◦ Y)(cid:48)Klu(Γ − B)
+(8)
+
+− 1
+2
+
+subject to 0 ≤ A ≤ C1|L|
+0 ≤ Γ ≤ C∗P
+0 ≤ B ≤ C∗(1|U| − P)
+
+where
+1|L|: A ones vector of length |L|. Similarly is 1|U|.
+αi:Lagrangian Multiplier of labeled loss constraint ζi.
+γj:Lagrangian Multiplier of unlabeled loss constraint (cid:96)+
+j .
+βj:Lagrangian Multiplier of unlabeled loss constraint (cid:96)−
+j .
+A(cid:48) = [α1, . . . , α|L|], B(cid:48) = [β1, . . . , β|U|], Γ(cid:48) = [γ1, . . . , γ|U|]
+P(cid:48) = [p1, . . . , p|U|], Y(cid:48) = [y1, . . . , y|L|],
+Kll = Ki,i(cid:48) ∀i, i(cid:48) ∈ L, Kuu = Kj,j(cid:48) ∀j, j(cid:48) ∈ U,
+Klu = Ki,j ∀i ∈ L, j ∈ U.
+Using the derived dual form in Problem 2, we propose
+an approximate optimization based on minimizing an upper
+bound of maxA,B,ΓIDual. The proposed upper bound is
+speciﬁed in the following theorem.
+Theorem 1. Proposed upper bound for maxA,B,ΓIDual:
+
+IDual ≤ I(w∗) + C∗|U| + M1 + M2
+
+(9)
+
+max
+A,B,Γ
+
+where I(w∗) =min
+
+w
+
+(cid:107)w(cid:107)2 + C
+
+1
+2
+
+(cid:88)
+
+i∈L
+
+ζi
+
+1
+2
+
+C∗2(1|U| − P)(cid:48)KuuP
+M1 =
+M2 = CC∗Y(cid:48)Klu(1|U| − P)
+
+(10)
+
+Proof: See the appendix.
+
+Examining the upper bound in Theorem 1, I(w∗) is the
+objective function value of optimizing a standard supervised
+SVM on the labeled samples L. Therefore, it is constant as
+well as the term C∗|U|. The rest of the upper bound, M1 +
+M2, is a function of P. The optimal values of P are now
+obtainable through the following optimization problem.
+Problem 3. Quadratic programming approximation of Semi-
+supervised Support Vector Machines (QP-S3VM):
+
+min
+
+P
+
+1
+2
+
+subject to
+
+C∗2(1|U| − P)(cid:48)KuuP + CC∗Y(cid:48)Klu(1|U| − P)
+
+P(cid:48)1|U| = r|U|,
+
+0 ≤ P ≤ 1|U|.
+
+(11)
+
+(12)
+
+P
+
+min
+
+− 1
+2
+
+C∗2P(cid:48)KuuP + (
+
+Note: Equation (11) can be rewritten in the standard quadratic
+programming form as follows:
+1
+2
+
+C∗21|U|Kuu − CC∗Y(cid:48)Klu)P
+(13)
+The proposed approximate formulation is a quadratic pro-
+gramming problem in the variables pj. In order to avoid trivial
+solutions to the problem where all the variables pj are zero.
+We add the constraint P(cid:48)1 = r|U| which makes sure that a
+certain ratio of the unlabeled samples, r, be assigned to class
++1.
+A. QP-S3VM Model Interpretation
+
+In this section we analyze the approximate model obtained
+in Problem 3. This is necessary to ensure that the approximate
+model does not deviate from the original S3VM problem. The
+ﬁrst term in Eqn.(11) can be expanded as follows:
+
+C∗2(1|U| − P)(cid:48)KuuP
+
+1
+2
+
+C∗2 (cid:88)
+C∗2 (cid:88)
+
+j=j(cid:48)
+
+j,j(cid:48)={1,...,|U|}
+
+(cid:123)(cid:122)
+
+=
+
+1
+2
+
+(cid:124)
+
++
+
+j={1,...,|U|−1}
+j(cid:48)={j+1,...,|U|}
+
+1
+2
+
+(cid:124)
+
+(cid:123)(cid:122)
+
+Q2
+
+[Kuu]j,j(cid:48)pj(cid:48)(1 − pj)
+
+(cid:125)
+
+Q1
+[Kuu]j,j(cid:48)(pj + pj(cid:48) − 2pjpj(cid:48))
+
+(14)
+
+(cid:125)
+
+As Q1 is negative quadratic in pj, minimizing Q1 enforces the
+values of pj to be either 0 or 1. In other words, minimizing Q1
+help making clear assignments of the labels to the unlabeled
+samples. To understand the implications of minimizing Q2
+on the solution of Problem 3, we will start by plotting z =
+(pj + pj(cid:48) − 2pjpj(cid:48)), for all pj, pj(cid:48) ∈ [0, 1], as shown in Fig.1.
+
+Fig. 1. Plot of z = (pj + pj(cid:48) − 2pj pj(cid:48) ) for all pj , pj(cid:48) ∈ [0, 1].
+In Fig.1 we see that small values of z, i.e. z (cid:39) 0, means
+that qj (cid:39) qj(cid:48) while large values of z, i.e. z (cid:39) 1, means that
+qjqj(cid:48) (cid:39) 0. To minimize Q2 we assign small z to large valued
+[Kuu]j,j(cid:48). This means that when two unlabeled samples xj
+and xj(cid:48) are close, [Kuu]j,j(cid:48) is large, the assigned small valued
+z will force them to assume the same label, i.e. qj (cid:39) qj(cid:48).
+On the other hand, if [Kuu]j,j(cid:48) is small, we assign a large
+z to it. In other words, if the two unlabeled samples are
+not close, small [Kuu]j,j(cid:48), then they should be assigned to
+different classes, by setting z to be large, i.e. qjqj(cid:48) (cid:39) 0. It is
+easy to see now how minimizing Q2 basically implements the
+clustering assumption of semi-supervised learning algorithms
+where unlabeled samples form clusters and all samples in
+the same cluster have the same label. Notice that during the
+minimization of Q2 a smaller minimum value is achievable
+if all the unlabeled samples are assigned the same label, that
+is when z = 0 and therefore pj = pj(cid:48). However, this is a
+degenerate solution and this is why the balancing constraint is
+important in the approximate formulation in Problem 3
+
+Next we study the second term in Eqn.(11). We start by
+
+rewriting it as follows:
+
+CC∗Y(cid:48)Klu(1|U| − P) = CC∗(cid:88)
+=CC∗(cid:88)
++ CC∗(cid:88)
+(cid:124)
+(cid:124)
+
+[Klu]i,j(1 − pj)
+
+i∈L,j∈U
+yi=+1
+
+i∈L,j∈U
+
+(cid:123)(cid:122)
+
+(cid:125)
+
+i∈L,j∈U
+yi=−1
+
+Q3
+
+(cid:123)(cid:122)
+
+Q4
+
+yi[Klu]i,j(1 − pj)
+
+[Klu]i,j(pj − 1)
+
+(15)
+We split Eqn (15) into terms associated with labeled samples
+with yi = +1, Q3, and those with yi = −1, Q4. This
+is necessary because of the dependence of the interpretation
+on the labels yi. Since pj ∈ [0, 1], minimizing Q3 involves
+assigning small (1 − pj), i.e. pj (cid:39) 1, to [Klu]i,j with large
+values and vice versa, small valued [Klu]i,j are assigned
+large (1 − pj), i.e. pj (cid:39) 0. In other words, if an unlabeled
+sample xj that is close to, i.e. large [Klu]i,j, a labeled sample
+(xi, yi = +1), then this unlabeled sample should have the
+same label as the labeled sample, that is pj (cid:39) 1 and yj = +1.
+On the other hand, if the unlabeled sample xj is far from,
+i.e. small [Klu]i,j, the labeled sample (xi, yi = +1), then
+
+(cid:125)
+
+00.20.40.60.8100.20.40.60.8100.51pjpj’zthis unlabeled sample should have a opposite label to that
+of the labeled sample, that is pj (cid:39) 0 and yj = −1. Once
+again it is notable that if the balancing constraint is not used,
+a smaller value for the minimum of Q3 is achievable if all
+the unlabeled samples are assigned the same label, pj = 1
+and yj = +1. The same argument holds for minimizing
+Q4 where unlabeled samples with large/small similarity to a
+labeled sample (xi, yi = −1) will be assigned small/large
+(pj − 1), i.e. pj (cid:39) 0 and pj (cid:39) 1, respectively.
+The process of jointly minimizing Q2, which implements
+the clustering assumption of semi-supervised learning, and
+Q3 + Q4, where unlabeled samples are assigned labels by
+their similarity to labeled samples, results in a formulation
+that follows the same intuition behind label propagation algo-
+rithms [2] for semi-supervised learning. That is the labeling
+process chooses dense regions to propagate labels through
+the unlabeled samples. Therefore, the provided approximate
+formulation in Problem 3 does not deviate from the general
+paradigm of the semi-supervised learning problem. Meanwhile
+the provided formulation provides an insight into the con-
+nection between the Avoiding Dense Regions semi-supervised
+algorithms, which include S3VM, and the Graph-based algo-
+rithms.
+
+III. SUBMODULAR OPTIMIZATION OF APPROXIMATE
+
+QP-S3VM
+
+The approximate QP-S3VM formulation proposed in Prob-
+lem 3 is simple and intuitive. However, due to the fact that it is
+a quadratic minimization of a concave function, the computa-
+tional complexity of ﬁnding a solution will become a hindering
+issue specially for semi-supervised learning problems which
+are inherently large scale. In this section we use the concepts
+of submodular set functions to provide a simple and efﬁcient
+algorithm for the proposed approximate QP-S3VM problem.
+Submodular set functions play a central role in combina-
+torial optimization [10]. They are considered discrete analog
+of convex functions in continuous optimization in the sense of
+structural properties that can be beneﬁted from algorithmically.
+They also emerge as a natural structural form in classic
+combinatorial problems such as maximum coverage and max-
+imum facility location in location analysis, as well as max-
+cut problems in graphs. More recently submodular set func-
+tions have become key concepts in machine learning where
+problems such as feature selection [11] and active learning
+[12] are solved by maximizing submodular set functions while
+other core problems like clustering and learning structures
+of graphical models have been formulated as submodular set
+function minimization [13].
+
+As discussed in Section II the solution of the approximate
+QP-S3VM provides a value for the variable pj associated
+with each unlabeled sample xj, j ∈ U such that pj = 1 for
+yj = +1 and pj = 0 for yj = −1. In this section we use a
+different perspective of the problem. In this new perspective
+the problem of binary semi-supervised classiﬁcation in general
+is concerned with choosing a subset A from the pool of all
+unlabeled samples U. All the unlabeled samples xj, j ∈ A
+
+should be assigned the label yj = +1 and the rest of them,
+xj, j ∈ U\A, will be assigned the label yj = −1. Each
+possible subset A is assigned a value by a set
+function
+f (A) that has the same optimal solution, in terms of A and
+U\A, as the original semi-supervised classiﬁcation problem.
+What makes the reformulation of semi-supervised learning
+into a set functions interesting is that
+if the set function
+f (A) is monotonic submodular, many algorithms can solve
+the problem efﬁciently [10]. In the following we give some
+background on the concept of submodularity in set functions
+and how we employ it to solve our problem efﬁciently.
+Let f (X) be a set function deﬁned of the set X =
+{x1, x2, . . . , xn}. The monotonicity and submodularity of
+f (X) are deﬁned as follows [10]:
+Deﬁnition 1. For all sets A, B ⊆ X with A ⊆ B, a set
+function f : 2X → R is:
+a) Monotonic if
+
+f (A) ≤ f (B)
+
+b) Submodular if
+
+f (A ∪ {xj}) − f (A) ≥ f (B ∪ {xj}) − f (B)
+
+for all xj /∈ B.
+A well acknowledged result by Nemhauser et al. [5], see
+Theorem 2 below, establishes a lower bound of the perfor-
+mance for the simple greedy algorithm, see Algorithm 1, if
+it is used to maximize a monotone submodular set function
+subject to a cardinality constraint. The simple greedy algo-
+rithms basically works by adding the element that maximally
+increases the objective value and according to Theorem 2 this
+simple procedure is guaranteed to achieve at least a constant
+fraction (1−1/e) of the optimal solution, where e is the natural
+exponential.
+Theorem 2. Given a ﬁnite set X = {x1, x2, . . . , xn} and
+a monotonic submodular function f (A), where A ⊆ X and
+f (∅) = 0. For the following maximization problem,
+
+A∗ = argmax
+|A|≤k
+
+f (A).
+
+The greedy maximization algorithm returns AGreedy such that
+
+f (AGreedy) ≥ (1 − 1
+
+e )f (A∗).
+
+Algorithm 1 :Greedy Algorithm for Submodular Function
+Maximization with Cardinality Constraint [5], [14]
+1. Start with X0 = φ
+2. For i = 1 to k
+
+x∗ := argmaxx f (Xi−1 ∪ {x}) − f (Xi−1)
+Xi := Xi−1 ∪ {x∗}
+
+A. Solving QP-S3VM Using Submodular Optimization
+
+In this section we use the concepts of submodular functions
+maximization to provide an efﬁcient and simple algorithm for
+
+solving the approximate QP-S3VM problem. Towards this goal
+we propose the following submodular maximization problem
+that is equivalent to the approximate QP-S3VM in Problem 3.
+Problem 4. Submodular maximization formulation that
+is
+equivalent to Problem 3:
+
+where
+S(A) = − 1
+2
+
+S(A)
+
+max
+|A|≤r|U|
+
+C∗2(cid:88)
+[Kuu]j,j(cid:48) + CC∗(cid:88)
+C∗2 (cid:88)
+(cid:20)
+(cid:18) 3
+(cid:88)
+
+[Kuu]j,j(cid:48)
+
+j∈A,j(cid:48)∈U
+
+C∗2|U| + CC∗|L|
+
+j,j(cid:48)∈A
+
+δj,j(cid:48)
+
+j∈A,i∈L
+
+2
+
++
+
+1
+2
+
++d
+j,j(cid:48)∈A
+
+(cid:124)
+
+(cid:123)(cid:122)
+
+Q5
+
+(16)
+
+yi [Klu]i,j
+
+(cid:19)
+
+C∗2
+
+− 1
+2
+
+(cid:21)
+(cid:125)
+
+,
+
+(17)
+where S is a submodular set function deﬁned on all subsets
+A ⊂ U of unlabeled samples assigned to the class yj = +1,
+0 ≤ Kij ≤ d, and δj,j(cid:48) = 1 for j = j(cid:48) and 0 otherwise.
+
+Problem 4 basically maximizes the negative of a discrete
+version of the objective function in Eqn.(13). The correspon-
+dence between the ﬁrst three terms in S(A) and Eqn.(13) is
+straightforward. However, the term Q5 is of our design and
+it is added to ensure the monotonicity and submodularity of
+S(A), as shown in Theorem 3. The constant d is the maximum
+value of the kernel matrix. Therefore d = 1 for Radial Basis
+Function (RBF) kernels. If the data is feature-wise normalized,
+a highly recommended practice, with values ∈ [0, 1], then for
+the linear kernel d is equal to the number of dimensions of
+the used data set (for dense data) or the average number of
+non-zero features (for sparse data). Since for a ﬁxed |A| the
+value of Q5 is constant, then the optimal solution obtained by
+optimizing S(A) is not affected by adding Q5. In other words
+Q5 depends on the cardinality of A not its contents.
+Theorem 3. The set function S(A) in Problem 4 is monotone
+(non-decreasing), submodular, and S(∅) = 0.
+
+Proof: See the appendix.
+
+Now that we have shown that S(A) is monotonic, submod-
+ular, and S(∅) = 0 this means that the greedy maximization
+algorithm can used be used to optimize Problem 4 and the
+performance guarantee in Theorem 2 holds true.
+To summarize, the proposed equivalent submodular max-
+imization in Problem 4 is deﬁned on the all subsets A of
+samples belonging to the class labeled yj = +1. The efﬁcient
+greedy algorithm in Algorithm 1 is used to the solve the prob-
+lem efﬁciently. Once the optimum solution A∗ is determined,
+the rest of the unlabeled samples, i.e. U\A∗, will belong to
+class with labels yj = −1. We use the proposed algorithm in
+the transductive setting of semi-supervised learning. However,
+if the inductive setting is needed, a standard supervised SVM
+training can be performed to give the ﬁnal hyperplane w.
+
+IV. EXPERIMENTAL RESULTS
+
+In this section we illustrate the accuracy and efﬁciency
+of the proposed QP-S3VM and its submodular optimization
+(S-QP-S3VM). To this end, we compare the performance of
+QP-S3VM and S-QP-S3VM with three competitive S3VM
+algorithms, namely the Transductive Support Vector Machine
+(TSVM) [7], the Deterministic Annealing for Semi-supervised
+Kernel Machines (DA) [8], and (cid:53)TSVM [15]. All experiments
+are performed on a 2 GHZ Intel Core2 Duo machine with 2 GB
+RAM. The experiments are performed on several real world
+data, see Table I, that are selected so as to achieve diversity
+in terms of dimensionality and distribution properties.
+
+DATA SETS USED IN THE EXPERIMENTS [16], [17].
+
+TABLE I
+
+Data set
+
+Features
+
+Samples
+
+Labeled
+
+C
+
+australian
+w6a
+svmguide1
+a9a
+news20.binary
+real-sim
+KDD-99
+
+14
+300
+4
+123
+
+1,355,191
+
+20,958
+
+122
+
+690
+1,900
+3,089
+15,680
+19,900
+72,309
+
+106
+
+3
+19
+15
+78
+100
+8
+10
+
+0.922
+0.838
+1.055
+0.897
+6.087
+
+1
+1
+
+C∗/C
+10−1
+10−4
+10−3
+10−3
+10−3
+10−4
+10−4
+
+r
+
+0.44
+0.5
+0.65
+0.5
+0.5
+0.31
+0.56
+
+In the accuracy of transductive learning experiment we
+considered a challenging setup where the number of labeled
+samples does not exceed 1% of the available unlabeled data
+and in two data sets the percentage is as low as 0.01%.
+The labeled/unlabeled samples splitting process is repeated 10
+times and the average is reported in Table II. To illustrate
+the value of using unlabeled samples in the semi-supervised
+setting the results of standard SVM trained using only the
+labeled samples are presented. All experiments use the linear
+kernel with feature-wise normalized data. The ratio of positive
+samples in the output r is set to the correct ratio in the
+unlabeled samples. It is clear in Table II that the QP-S3VM
+and S-QP-S3VM are superior in terms of accuracy to TSVM,
+DA, and (cid:53)TSVM.
+In Table III we provide a CPU-time comparison between
+the QP-S3VM, S-QP-S3VM, TSVM, DA, and (cid:53)TSVM. It is
+clear that from the time complexity perspective, S-QP-S3VM
+is far more efﬁcient than its competitors.
+
+TABLE III
+
+CPU TIME (SECONDS) EXPERIMENTS.
+
+Data set
+australian
+w6a
+svmguide1
+a9a
+news20.binary
+real-sim
+KDD-99
+
+TSVM
+11.73
+109.40
+186.59
+206.30
+
+-
+-
+-
+
+DA
+0.786
+0.836
+2.46
+20.78
+653.4
+89.38
+2,740
+
+(cid:53)TSVM QP-S3VM S-QP-S3VM
+0.452
+2.491
+0.803
+18.68
+
+174.82
+6,993.12
+
+-
+-
+-
+-
+-
+
+-
+-
+-
+
+0.013
+0.038
+0.008
+0.335
+3.241
+1.925
+1,620
+
+V. CONCLUSION AND FUTURE WORK
+
+In this paper we propose a quadratic programming approxi-
+mation of the semi-supervised SVM problem (QP-S3VM) that
+
+CLASSIFICATION ACCURACY EXPERIMENTS FOR MEDIUM SIZE DATA SETS.
+
+TABLE II
+
+(cid:53)TSVM QP-S3VM S-QP-S3VM
+56.53
+52.60
+69.71
+64.43
+
+75.57
+72.33
+92.73
+
+-
+-
+-
+
+-
+-
+-
+-
+
+74.49
+70.75
+92.45
+74.90
+71.44
+71.83
+98.46
+
+Data set
+australian
+w6a
+svmguide1
+a9a
+news20.binary
+real-sim
+KDD-99
+
+SVM
+50.029
+67.44
+71.19
+66.91
+63.35
+52.13
+72.12
+
+TSVM
+63.26
+58.73
+77.31
+71.49
+
+-
+-
+-
+
+DA
+60.48
+68.09
+80.98
+72.91
+67.94
+69.23
+97.12
+
+proved to be efﬁcient to solve using standard optimization
+techniques. One major contribution of the proposed QP-S3VM
+is that it establishes a link between the two major paradigms
+of semi-supervised learning, namely low density separation
+methods and graph-based methods. Such link is considered
+a signiﬁcant step towards a unifying framework for semi-
+supervised learning methods. Furthermore, we propose a novel
+formulation of the semi-supervised learning problems in terms
+of submodular set functions which is, up to the authors
+knowledge, is the ﬁrst time such idea is presented. Using this
+new formulation we present a methodology to use submod-
+ular optimization techniques to efﬁciently solve the proposed
+QP-S3VM problem. Finally, our idea of representing semi-
+supervised learning problems as submodular set functions will
+have a great impact on many learning schemes as it will open
+the door for using an arsenal of algorithms that have theoretical
+guarantees and efﬁcient performance. The authors are already
+making progress in extending the presented work to multi-
+class semi-supervised formulations as well as examining the
+relationship between submodular optimization over different
+matroids and its interpretation in terms of semi-supervised
+learning. One last intriguing point about the proposed work is
+that samples are assigned to classes, in our case the positive
+class, sequentially. This opens the door for possible ways to
+estimate the ratio of positive samples r automatically during
+the learning process which is still a problem for most semi-
+supervised techniques specially if there exists a difference in
+the ratio r between the labeled and unlabeled samples.
+
+VI. APPENDIX
+
+A. Proof of Theorem 1
+
+components as follows:
+
+To get an upper bound for IDual we divide it into several
+
+IDual = N1 + N2 + N3
+
+(18)
+
+where N1 = A(cid:48)1|L| − 1
+2
+
+(A ◦ Y)(cid:48)Kll(A ◦ Y)
+
+N2 = (Γ + B)(cid:48)1|U| − 1
+2
+N3 = −(A ◦ Y)(cid:48)Klu(Γ − B).
+
+(Γ − B)(cid:48)Kuu(Γ − B)
+
+Then
+
+max
+A,B,Γ
+
+IDual ≤ max
+
+A
+
+N1+ max
+
+B,Γ
+
+N2+ max
+
+A,B,Γ
+
+N3
+
+(19)
+
+(20)
+
+(cid:88)
+
+N1 is the dual form of a standard supervised SVM
+
+max
+problem using the label data, i.e.
+
+A
+
+N1 =min
+
+w
+
+(cid:107)w(cid:107)2 + C
+
+1
+2
+
+A
+
+max
+
+(21)
+Furthermore, using the value limits of A, B and Γ, i.e. 0 ≤
+A ≤ C1|L|, 0 ≤ B ≤ C∗(1|U| − P) and 0 ≤ Γ ≤ C∗P, we
+can derive the following upper bounds of N2 and N3,
+
+i∈L
+
+ζi
+
+max
+B,Γ
+
+N2 ≤ C∗|U| +
+
+1
+2
+
+C∗2(1|U| − P)(cid:48)KuuP
+
+and
+
+N3 ≤ CC∗Y(cid:48)Klu(1|U| − P).
+
+max
+A,B,Γ
+
+(22)
+
+(23)
+
+Combining the three upper bounds we get the provided bound
+in the theorem.
+B. Proof of Theorem 3
+
+First, S(∅) = 0 follows directly from the deﬁnition in
+Eqn.(17) where all the summations are on elements in the
+set A. Therefore if A = ∅ then S(∅) = 0. For the sake
+of simplicity we consider the special case where d = 1.
+However, the extension to the general values of d is fairly
+straightforward. Next we prove the monotonicity property.
+Using the deﬁnition of S(A), we can show that for any m ∈ U
+and m /∈ A, the increase in the objective value of S due to
+adding m is,
+
+yi [Klu]i,m
+
+i∈L
+
++
+
+1
+2
+
+C∗2|U| + CC∗|L|
+Since we are examining the case where d = 1,
+0 ≤ Ki,j ≤ 1 and Ki,i = 1. Therefore, since
+
+3
+2
+
++
+
+[Kuu]m,j(cid:48) + CC∗(cid:88)
+
+[Kuu]m,j(cid:48) − C∗2|A|
+
+j(cid:48)∈U
+
+j(cid:48)∈A
+
+(cid:17)
+[Kuu]m,m − 1
+
+S(A ∪ m) − S(A) =
+− 1
+2
+
+C∗2 (cid:88)
++ C∗2 (cid:88)
+C∗2(cid:16)
+C∗2(cid:16)
+C∗2 (cid:88)
+CC∗|L| + CC∗(cid:88)
+C∗2 (cid:88)
+
+(cid:17)
+[Kuu]m,m − 1
+[Kuu]m,j(cid:48) ≥ 0
+
+C∗2|U| ≥ 1
+2
+
+j(cid:48)∈A
+
+i∈L
+
+3
+2
+
+1
+2
+
+j(cid:48)∈U
+
+= 0
+
+yi [Klu]i,m ≥ 0
+
+[Kuu]m,j(cid:48) + C∗2|A|
+
+(24)
+
+then
+
+(25)
+
+then
+
+S(A ∪ m) − S(A) ≥ 0
+
+Thus the monotonicity property of S(A) holds true.
+Now we prove the submodularity of S(A) by assuming the
+set B = {A ∪ q} where q ∈ U. Using the same set element
+m we used earlier, i.e. m ∈ U and m /∈ A, we need to show
+that adding m to the set A has more effect than adding it to
+the set B as stated in Deﬁnition 1-b. Since
+
+S(B) = − 1
+2
+
++
+
+j∈{A∪q},j(cid:48)∈U
+
+C∗2(cid:88)
+C∗2(cid:88)
+(cid:20)
+(cid:88)
+
+1
+2
+
+[Kuu]j,j(cid:48) +CC∗(cid:88)
+(cid:18) 3
+
+[Kuu]j,j(cid:48)
+
+j,j(cid:48)∈{A∪q}
+
+C∗2|U| + CC∗|L|
+
++
+j,j(cid:48)∈{A∪q}
+
+δj,j(cid:48)
+
+2
+
+yi [Klu]i,j
+
+j∈{A∪q},i∈L
+
+(cid:19)
+
+C∗2
+
+− 1
+2
+
+[Kuu]m,j(cid:48) + CC∗(cid:88)
+
+yi [Klu]i,m
+
+i∈L
+
+[Kuu]m,j(cid:48) − C∗2 (|A| + 1)
+
+then
+S(B ∪ m) − S(B) =
+
+− 1
+2
+
+C∗2(cid:88)
++ C∗2 (cid:88)
+C∗2(cid:16)
+
+j(cid:48)∈U
+
++
+
+1
+2
+Therefore
+
+j(cid:48)∈{A∪q}
+
+(cid:17)
+[Kuu]m,m − 1
+
+C∗2(cid:16)
+
+(S(A ∪ m) − S(A)) − (S(B ∪ m) − S(B)) =
+
+1 − [Ku,u]q,m
+Hence the set function S(A) is submodular.
+
+(cid:17) ≥ 0
+
+C∗2|U| + CC∗|L|
+
++
+
+3
+2
+
+[9] J. Wang, X. Shen, and W. Pan, “On efﬁcient large margin semisupervised
+learning: Method and theory,” J. Mach. Learn. Res., vol. 10, pp. 719–
+742, June 2009.
+
+[10] M. Gr¨otschel, L. Lov´asz, and A. Schrijver, Geometric Algorithms and
+Combinatorial Optimization, second corrected edition ed., ser. Algo-
+rithms and Combinatorics. Springer, 1993, vol. 2.
+
+[11] M. Narasimhan and J. Bilmes, “A submodular-supermodular procedure
+with applications to discriminative structure learning,” in Uncertainty in
+Artiﬁcial Intelligence (UAI). Edinburgh, Scotland: Morgan Kaufmann
+Publishers, July 2005.
+
+[12] A. Krause and C. Guestrin, “Nonmyopic active learning of gaussian pro-
+cesses: an exploration-exploitation approach,” in ICML ’07: Proceedings
+of the 24th international conference on Machine learning. New York,
+NY, USA: ACM, 2007, pp. 449–456.
+
+[13] M. Narasimhan, N. Jojic, and J. Bilmes, “Q-clustering,” in Advances in
+Neural Information Processing Systems 18, Y. Weiss, B. Sch¨olkopf, and
+J. Platt, Eds. Cambridge, MA: MIT Press, 2006, pp. 979–986.
+
+[14] M. Sviridenko, “A note on maximizing a submodular set function subject
+to a knapsack constraint,” Operations Research Letters, vol. 32, no. 1,
+pp. 41 – 43, 2004.
+
+[15] O. Chapelle and A. Zien, “Semi-supervised classiﬁcation by low density
+separation,” in Tenth International Workshop on Artiﬁcial Intelligence
+and Statistics, 01 2005, pp. 57–64.
+
+[16] A. Asuncion and D. Newman, “UCI machine learning repository,” 2007.
+[17] C.-W. Hsu, C.-C. Chang, and C.-J. Lin, “A practical guide to support
+vector classiﬁcation,” Department of Computer Science, National Taiwan
+University, Tech. Rep., 2003.
+
+(cid:21)
+
+(26)
+
+(27)
+
+(28)
+
+REFERENCES
+
+[1] X. Zhu, “Semi-supervised learning literature survey,” Computer Sci-
+
+ences, University of Wisconsin-Madison, Tech. Rep. 1530, 2005.
+
+[2] X. Zhu, Z. Ghahramani, and J. Lafferty, “Semi–supervised learning
+using gaussian ﬁelds and harmonic functions,” in Proceedings of the
+International Conference on Machine Learning, 2003.
+
+[3] O. Chapelle, V. Sindhwani, and S. S. Keerthi, “Optimization techniques
+for semi-supervised support vector machines,” Journal of Machine
+Learning Research, vol. 9, pp. 203–233, 02 2008.
+
+[4] H. Narayanan, M. Belkin, and P. Niyogi, “On the relation between low
+density separation, spectral clustering and graph cuts,” in Advances in
+Neural Information Processing Systems 19, B. Sch¨olkopf, J. Platt, and
+T. Hoffman, Eds. Cambridge, MA: MIT Press, 2007.
+
+[5] G. L. Nemhauser, L. A. Wolsey, and M. L. Fisher, “An analysis of ap-
+proximations for maximizing submodular set functionsi,” Mathematical
+Programming, vol. 14, pp. 265–294, 1978.
+
+[6] O. Chapelle, V. Sindhwani, and S. S. Keerthi, “Branch and bound
+for semi-supervised support vector machines,” in Twentieth Annual
+Conference on Neural Information Processing Systems (NIPS 2006),
+Cambridge, MA, USA, 09 2007, pp. 217–224.
+
+[7] T. Joachims, “Transductive inference for text classiﬁcation using support
+vector machines,” in Proceedings of ICML-99, 16th International Con-
+ference on Machine Learning, I. Bratko and S. Dzeroski, Eds. Bled, SL:
+Morgan Kaufmann Publishers, San Francisco, US, 1999, pp. 200–209.
+[8] V. Sindhwani, S. S. Keerthi, and O. Chapelle, “Deterministic annealing
+for semi-supervised kernel machines,” in ICML ’06: Proceedings of the
+23rd international conference on Machine learning, New York, NY,
+USA, 2006, pp. 841–848.
+
+

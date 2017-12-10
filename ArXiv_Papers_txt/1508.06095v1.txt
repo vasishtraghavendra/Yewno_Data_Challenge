@@ -1,0 +1,3021 @@
+5
+1
+0
+2
+
+ 
+
+g
+u
+A
+5
+2
+
+ 
+
+ 
+ 
+]
+E
+N
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+5
+9
+0
+6
+0
+
+.
+
+8
+0
+5
+1
+:
+v
+i
+X
+r
+a
+
+OCReP: An Optimally Conditioned Regularization for
+
+Pseudoinversion Based Neural Training
+
+Rossella Cancellierea, Mario Gaib, Patrick Gallinaric, Luca Rubinia
+
+aUniversity of Turin, Dep. of Computer Sciences, C.so Svizzera 185, 10149 Torino, Italy
+bNational Institute of Astrophysics, Astrophys. Observ. of Torino, Pino T.se (TO), Italy
+
+cLaboratory of Computer Sciences, LIP6, Univ. Pierre et Marie Curie, Paris, France
+
+Abstract
+
+In this paper we consider the training of single hidden layer neural net-
+works by pseudoinversion, which, in spite of its popularity, is sometimes
+aﬀected by numerical instability issues. Regularization is known to be ef-
+fective in such cases, so that we introduce, in the framework of Tikhonov
+regularization, a matricial reformulation of the problem which allows us to
+use the condition number as a diagnostic tool for identiﬁcation of instabil-
+ity. By imposing well-conditioning requirements on the relevant matrices,
+our theoretical analysis allows the identiﬁcation of an optimal value for the
+regularization parameter from the standpoint of stability. We compare with
+the value derived by cross-validation for overﬁtting control and optimisation
+of the generalization performance. We test our method for both regression
+and classiﬁcation tasks. The proposed method is quite eﬀective in terms of
+predictivity, often with some improvement on performance with respect to
+the reference cases considered. This approach, due to analytical determina-
+tion of the regularization parameter, dramatically reduces the computational
+load required by many other techniques.
+
+Keywords: Regularization parameter, Condition number, Pseudoinversion,
+Numerical instability
+
+1. Introduction
+
+In past decades Single Layer Feedforward Neural Networks (SLFN) train-
+ing was mainly accomplished by iterative algorithms involving the repetition
+of learning steps aimed at minimising the error functional over the space of
+
+Preprint submitted to Neural Networks
+
+August 26, 2015
+
+network parameters. These techniques often gave rise to methods slow and
+computationally expensive.
+
+Researchers therefore have always been motivated to explore alternative
+algorithms and recently some new techniques based on matrix inversion have
+been developed. In the literature, they were initially employed to train radial
+basis function neural networks (Poggio and Girosi, 1990a): the idea of using
+them also for diﬀerent neural architectures was suggested for instance in
+(Cancelliere, 2001).
+
+The work by Huang et al. (see for instance (Huang et al., 2006)) gave rise
+to a great interest in neural network community: they presented the tech-
+nique of Extreme Learning Machine (ELM) for which SLFNs with randomly
+chosen input weights and hidden layer biases can learn sets of observations
+with a desired precision, provided that activation functions in the hidden
+layer are inﬁnitely diﬀerentiable. Besides, because of the use of linear output
+neurons, output weights determination can be brought back to linear systems
+solution, obtained via Moore-Penrose generalised inverse (or pseudoinverse)
+of the hidden layer output matrix; so doing iterative training is no more
+required.
+
+Such techniques appear anyway to require more hidden units with respect
+to conventional neural network training algorithms to achieve comparable
+accuracy, as discussed in Yu and Deng (Yu and Deng, 2012).
+
+Many application-oriented studies in the last years have been devoted
+to the use of these single-pass techniques, easy to implement and computa-
+tionally fast; some are described e.g.
+in (Nguyen et al., 2010; Kohno et al.,
+2010; Ajorloo et al., 2007). A yearly conference is currently being held on the
+subject, the International Conference on Extreme Learning Machines, and
+the method is currently dealt with in some journal special issue, e.g. Soft
+Computing (Wang et al., 2012) and the International Journal of Uncertainty,
+Fuzziness and Knowledge-Based Systems (Wang, 2013).
+
+Because of the possible presence of singular and almost singular matrices,
+pseudoinversion is known to be a powerful but numerically unstable method:
+nonetheless in the neural network community it is often used without singu-
+larity checks and evaluated through approximated methods.
+
+In this paper we improve on the theoretical framework using singular
+value analysis to detect the occurrence of instability. Building on Tikhonov
+regularization, which is known to be eﬀective in this context (Golub et al.,
+1999), we present a technique, named Optimally Conditioned Regularization
+for Pseudoinversion (OCReP), that replaces unstable, ill-posed problems with
+
+2
+
+well-posed ones.
+
+Our approach is based on the formal deﬁnition of a new matricial for-
+mulation that allows the use of condition number as diagnostic tool.
+In
+this context an optimal value for the regularization parameter is analytically
+derived by imposing well-conditioning requirements on the relevant matrices.
+The issue of regularization parameter choice has often been identiﬁed as
+crucial in literature, and dealt with in a number of historical contributions: a
+conservative guess might put its published estimates at several dozens. Some
+of the most relevant works are mentioned in section 2, where the related
+theoretical background is recalled.
+
+Its determination, mainly aimed at overﬁtting control, has often been
+done either experimentally via cross-validation, requiring heavy computa-
+tional training procedures, or analytically under speciﬁc conditions on the
+matrices involved, sometimes hardly applicable to real datasets, as discussed
+in section 2.
+
+In section 3 we present the basic concepts concerning input and output
+weights setting, and we recall the main ideas on ill-posedness, regularization
+and condition number.
+
+In section 4 our matricial framework is introduced, and constraints on
+condition number are imposed in order to derive the optimal value for the
+regularization parameter.
+
+In section 5 our diagnosis and control tool is tested on some applica-
+tions selected from the UCI database and validated by comparison with the
+framework regularized via cross-validation and with the unregularized one.
+The same datasets are used in section 6 to test the technique eﬀective-
+ness: our performance is compared with those obtained in other regularized
+frameworks, originated in both statistical and neural domains.
+
+2. Recap on ordinary least-square and ridge regression estimators
+
+As stated in the introduction, pseudoinversion based neural training brings
+back output weights determination to linear systems solution: in this section
+we recall some general ideas on this issue, that in next sections will be spe-
+cialized to deal with SLFN training.
+
+The estimate of β through ordinary least-squares (OLS) technique is a
+
+classical tool for solving the problem
+
+Y = Xβ + ǫ ,
+
+(1)
+
+3
+
+where Y and ǫ are column n-vectors, β is a column p-vector and X is an
+n × p matrix; ǫ is random, with expectation value zero and variance σ2.
+In (Hoerl, 1962) and (Hoerl and Kennard, 1970) the role of ordinary ridge
+regression (ORR) estimator ˆβ(λ) as an alternative to the OLS estimator
+in the presence of multicollinearity is deeply analized. In statistics, multi-
+collinearity (also collinearity) is a phenomenon in which two or more predictor
+variables in a multiple regression model are highly correlated, meaning that
+one can be linearly predicted from the others with a non-trivial degree of ac-
+curacy. In this situation, the coeﬃcient estimates of the multiple regression
+may change erratically in response to small changes in the model or the data.
+It is known in literature that there exist estimates of β with smaller
+mean square error (MSE) than the unbiased, or Gauss-Markov, estimate
+(Golub et al., 1979; Berger, 1976)
+
+ˆβ(0) = (X T X)−1X T Y .
+
+(2)
+
+Allowing for some bias may result in a signiﬁcant variance reduction:
+(Tibshirani, 1996;
+this is known as the bias-variance dilemma (see e.g.
+Geman et al., 1992), whose eﬀects on output weights determination will be
+deepened in section 3.2.
+
+Hereafter we focus on the one parameter family of ridge estimates ˆβ(λ)
+
+given by
+
+(3)
+It can be shown that ˆβ(λ) is also the solution to the problem of ﬁnding
+
+ˆβ(λ) = (X T X + nλI)−1X T Y .
+
+the minimum over β of
+
+1
+n||Y − Xβ||2
+
+2 + λ||β||2
+2 ,
+
+(4)
+
+which is known as the method of regularization in the approximation theory
+literature (Golub et al., 1979); basing on it we will develop the theoretical
+framework for our work in the next sections.
+
+There has always been a substantial amount of interest in estimating a
+good value of λ from the data:
+in addition to those already cited in this
+section a non-exhaustive list of well known or more recent papers is e.g
+(Hoerl and Kennard, 1976; Lawless and Wang, 1976; McDonald and Galarneau,
+1975; Nordberg, 1982; Saleh and Kibria, 1993; Kibria, 2003; Khalaf and Shukur,
+2005; Mardikyan and Cetin, 2008).
+
+4
+
+A meaningful review of these formulations is provided in (Dorugade and Kashid,
+
+2010). They ﬁrst deﬁne the matrix T such that T T X T XT = Λ (Λ =
+diag(λ1, λ2,· · · λp) contains the eigen values of the matrix X T X ); then they
+set Z = XT and α = T T β, and show that a great amount of diﬀerent
+methods require the OLS estimates of α and σ
+
+ˆα = (Z T Z)−1Z T Y ,
+
+ˆσ2 =
+
+Y T Y − ˆαT Z T Y
+
+n − p − 1
+
+.
+
+(5)
+
+(6)
+
+to deﬁne eﬀective ridge parameter values. It is important to note that often
+speciﬁc conditions on data are needed to evaluate these estimators.
+
+In particular this applies to the expressions of the ridge parameter pro-
+posed by (Kibria, 2003) and (Hoerl and Kennard, 1970), that share the char-
+acteristic of being functions of the ratio between ˆσ2 and a function of ˆα; they
+will be used for comparison with our proposed method in section 6.
+
+The alternative technique of generalised cross-validation (GCV) proposed
+by (Golub et al., 1979) provides a good estimate of λ from the data as the
+minimizer of
+
+V (λ) =
+
+where
+
+1
+n
+
+||I − A(λ)Y ||2
+n Trace(I − A(λ))(cid:3)2
+(cid:2) 1
+
+2
+
+,
+
+2
+
+(7)
+
+(8)
+
+A(λ) = X(X T X + nλI)−1X T .
+
+This solution is particularly interesting, since it does not require an es-
+timate of σ2: because of this, it will be one term of comparison with our
+experimental results in section 6.
+
+In the next section we will show how the problem of ﬁnding a good so-
+lution to (1) applies to the context of pseudoinversion based neural training,
+specializing the involved relevant matricies to deal with this issue.
+
+3. Main ideas on regularization and condition number theory
+
+3.1. Generalised inverse matrix for weights setting
+
+We deal with a standard SLFN with L input neurons, M hidden neurons
+and Q output neurons, non-linear activation functions φ in the hidden layer
+and linear activation functions in the output layer.
+
+5
+
+Considering a dataset of N distinct training samples (xj, tj), where xj ∈
+RL and tj ∈ RQ, the learning process for a SLFN aims at producing the
+matrix of desired outputs T ∈ RN×Q when the matrix of all input instances
+X ∈ RN×L is presented as input.
+As stated in the introduction, in the pseudoinverse approach the matrix
+of input weights and hidden layer biases is randomly chosen and no longer
+modiﬁed: we name it C. After having ﬁxed C, the hidden layer output matrix
+H = φ(XC) is completely determined; we underline that since H ∈ RN×M ,
+it is not invertible.
+The use of linear output neurons allows to determine the output weight
+matrix W ∗ in terms of the OLS solution to the problem T = H W + ǫ, in
+analogy with eq.(1). Therefore from eq.(2), we have
+
+W ∗ = (H T H)−1H T T
+
+According to (Penrose and Todd, 1956; Bishop, 2006)
+
+W ∗ = H +T .
+
+(9)
+
+(10)
+
+H + is the Moore-Penrose pseudoinverse (or generalized inverse) of matrix
+
+H, and it minimises the cost functional
+
+ED = ||HW − T||2
+
+2
+
+(11)
+
+Singular value decomposition (SVD) is a computationally simple and ac-
+
+curate way to compute the pseudoinverse (see for instance (Golub and Van Loan,
+1996)), as follows.
+
+Every matrix H ∈ RN×M can be expressed as
+
+H = UΣV T ,
+
+(12)
+
+where U ∈ RN×N and V ∈ RM×M are orthogonal matrices and Σ ∈ RN×M
+is a rectangular diagonal matrix (i.e. a matrix with σih = 0 if i 6= h);
+its elements σii = σi, called singular values, are non-negative. A common
+convention is to list the singular values in descending order, i.e.
+
+σ1 ≥ σ2 ≥ · · · ≥ σp > 0
+
+(13)
+
+where p = min {N, M}, so that Σ is uniquely determined.
+
+The SVD of H is then used to obtain the pseudoinverse matrix H +:
+
+6
+
+H + = V Σ+U T ,
+
+(14)
+where Σ+ ∈ RM×N is again a rectangular diagonal matrix whose elements
+σ+
+i are obtained by taking the reciprocal of each corresponding element:
+σ+
+i = 1/σi (see also (Rao and Mitra, 1971)). From eq.(9) we than have:
+
+W ∗ = V Σ+U T T,
+
+(15)
+
+Remark
+An interesting case occurs when only k < p elements in eq.(13) are non-zero,
+i.e. σk+1 = · · · = σp = 0; in this case the rank of matrix H is k and Σ+ is
+deﬁned as:
+
+Σ+ = diag(1/σ1,· · · , 1/σk, 0,· · · , 0) ∈ RM×N ,
+
+(16)
+
+as shown for instance in (Golub and Van Loan, 1996).
+
+This is also often done in practice, for computational reasons, for ele-
+ments smaller than a predeﬁned threshold, thus actually computing an ap-
+proximated version of the pseudoinverse matrix H +.
+
+This approach is for example used by default for pseudoinverse evaluation
+by means of the Matlab pinv function 1, because the tool is widely used by
+many scientists for example in ELM context, each time that it is applied
+blindly, i.e. without having decided at what threshold to zero the small σi,
+an approximation a priori uncontrolled is introduced in H + evaluation.
+
+3.2. Stability and generalization properties of regularization algorithms
+
+A key property for any learning algorithm is stability: the learned map-
+ping has to suﬀer only small changes in presence of small perturbations (for
+instance the deletion of one example in the training set).
+
+Another important property is generalization: the performance on the
+training examples (empirical error) must be a good indicator of the perfor-
+mance on future examples (expected error), that is, the diﬀerence between
+the two must be small. An algorithm that guarantees good generalization
+predicts well if its empirical error is small.
+
+1http://www.mathworks.com/help/matlab/ref/pinv.html.
+
+7
+
+Many studies in literature dealt with the connection between stability and
+generalization: the notion of stability has been investigated by several au-
+thors, e.g. by Devroye and Wagner (Devroye and Wagner, 1979) and Kearns
+and Ron (Kearns and Ron, 1999).
+
+Poggio et al.
+
+in (Mukherjee et al., 2003) introduced a statistical form
+of leave-one-out stability, named CV EEEloo, building on a cross-validation
+leave-one-out stability endowed with conditions on stability of both expected
+and empirical errors; they demonstrated that this condition is necessary and
+suﬃcient for generalization and consistency of the class of empirical risk min-
+imization (ERM) learning algorithms, and that it is also a suﬃcient condition
+for generalisation for not ERM algorithms (see also (Poggio et al., 2004)).
+
+To turn an original instable, ill-posed problem into a well-posed one, reg-
+ularization methods of the form (4) are often used (Badeva and Morozov,
+1991) and among them, Tikhonov regularization is one of the most com-
+mon (Tikhonov and Arsenin, 1977; Tikhonov, 1963). It minimises the error
+functional
+
+E ≡ ED + ER = ||HW − T||2
+
+2 + ||ΓW||2
+2,
+
+(17)
+
+obtained adding to the cost functional ED in eq.(11) a penalty term ER
+that depends on a suitably chosen Tikhonov matrix Γ. This issue has been
+discussed in its applications to neural networks in (Poggio and Girosi, 1990b),
+and surveyed in (Girosi et al., 1995; Haykin, 1999).
+
+Besides, Bousquet and Elisseeﬀ (Bousquet and Elisseeﬀ, 2002) proposed
+the notion of uniform stability to characterize the generalization properties
+of an algorithm. Their results state that Tikhonov regularization algorithms
+are uniformly stable and that uniform stability implies good generalization
+(Mukherjee et al., 2006).
+
+Regularization thus introduces a penalty function that not only improves
+on stability, making the problem less sensitive to initial conditions, but it is
+also important to contain model complexity avoiding overﬁtting.
+
+The idea of penalizing by a square function of weights is also well known
+in neural literature as weight decay: a wide amount of articles have been
+devoted to this argument, and more generally to the advantage of regulariza-
+tion for the control of overﬁtting. Among them we recall (Hastie et al., 2009;
+Tibshirani, 1996; Bishop, 2006; Girosi et al., 1995; Fu, 1998; Gallinari and Cibas,
+1999).
+
+A frequent choice is Γ = √γI, to give preference to solutions with smaller
+
+8
+
+norm (Bishop, 2006), so eq. (17) can be rewritten as
+
+E ≡ ED + ER = ||HW − T||2
+
+2 + γ||W||2
+2.
+
+(18)
+
+We deﬁne ˆW = minW (E) the regularized solution of (18): it belongs to
+
+the family of ridge estimates described by eq.(3) and can be expressed as
+
+ˆW = (H T H + γI)−1H T T
+
+or, as shohw in ((Fuhry and Reichel, 2012)) as
+
+ˆW = V DU T T.
+
+(19)
+
+(20)
+
+V and U are from the singular value decomposition of H (eq.(12)) and
+D ∈ RM×N is a rectangular diagonal matrix whose elements, built using the
+singular values σi of matrix Σ, are:
+
+Di =
+
+σi
+σ2
+i + γ
+
+.
+
+(21)
+
+We remark on the diﬀerence between the minima of the regularized and
+unregularized error functionals. Increasing values of the regularization pa-
+rameter γ induce larger and larger departure of the former (eq. (19)) from
+the latter (eq. (9)). Thus, the regularization process increases the bias of
+the approximating solution and reduces its variance, as discussed about the
+bias-variance dilemma in section 2.
+
+A suitable value for the Tikhonov parameter γ has therefore to derive from
+a compromise between having it suﬃciently large to control the approaching
+to zero of σi in eq.(21), while avoiding an excess of the penalty term in
+eq.(18). Its tuning is therefore crucial.
+
+3.3. Condition number as a measure of ill-posedness
+
+as
+
+The condition number of a matrix A ∈ RN×M is the number µ(A) deﬁned
+(22)
+where k·k is any matrix norm. If the columns (rows) of A are linearly inde-
+pendent, e.g. in case of experimental data matrices, then A+ is a left (right)
+inverse of A, i.e. A+A = IN (AA+ = IM ). The Cauchy-Schwarz inequality
+in this case then provides µ(A) ≥ 1; besides, µ(A) ≡ µ(A+) .
+
+µ(A) = ||A|| ||A+||
+
+Matrices are said to be ill-conditioned if µ(A) ≫ 1.
+
+9
+
+If k·k2 norm is used, then
+
+µ(A) =
+
+σ1(A)
+σp(A)
+
+,
+
+(23)
+
+where σ1 and σp are the largest and smallest singular values of A respectively.
+From eq.(23) we can easily understand that large condition numbers µ(A)
+suggest the presence of very small singular values (i.e. of almost singular
+matrices), whose numerical inversion, required to evaluate Σ+ and the un-
+regularized solution W ∗, is a cause of instability.
+
+From numeric linear algebra we also know that if the condition number
+is large the problem of ﬁnding least-squares solutions to the correspond-
+ing system of linear equations is ill-posed, i.e. even a small perturbation
+in the data can lead to huge perturbations in the entries of solution (see
+(Golub and Van Loan, 1996)).
+
+According to (Mukherjee et al., 2006) the stability of Tikhonov regular-
+ization algorithms can also be characterized using the classical notion of con-
+dition number: our proposed regularization method ﬁts within this context.
+We will see that it speciﬁcally aims at analitically determining the value of
+the γ parameter that minimizes the conditioning of the regularized hidden
+layer output matrix so that the solution ˆW is stable in the sense of eq.(2.9)
+of (Mukherjee et al., 2006).
+
+In the next section, we will derive the optimal value of the regulariza-
+tion parameter γ according to this stability criterion (minimum condition
+number).
+
+The experimental results presented in sections 5 and 6 will evidence that
+our quest for stable solutions allows us to also achieve good generalization and
+predictivity. A comparison will be made to this purpose with the performance
+obtained when γ is determined via the standard cross-validation approach,
+aimed at overﬁtting control and generalization performance optimization.
+
+4. Conditioning of the regularized matricial framework
+
+For convenient implementation of our diagnostics, and building on eq.(20),
+we propose an original matricial framework in which to develop our study
+tool with the following deﬁnition.
+
+Deﬁnition 1. We deﬁne the matrix
+
+H reg ≡ V DU T
+
+10
+
+(24)
+
+as the regularized hidden layer output matrix of the neural network.
+
+This allows us to rewrite eq.(20) as
+
+ˆW = H regT ,
+
+(25)
+
+for similarity with eq.(9).
+
+By construction, H reg is decomposed in three matrices according to the
+SVD framework, and its singular values are provided by eq.(21) as a function
+of the singular values σi of H.
+
+This new regularized matricial framework makes easier the comparison of
+the properties of H reg with those of the corresponding unregularized matrix
+H +. In fact, when unregularized pseudoinversion is used, nothing prevents
+the occurrence of very small singular values that make numerically instable
+the evaluation of H + (see eq. 14). On the contrary, even in presence of very
+small values σi of the original unregularized problem, a careful choice of the
+parameter γ allows to tune the singular values Di of the regularized matrix
+H reg, preventing numerical instability.
+
+4.1. Condition number deﬁnition
+
+According to eq. (23), we deﬁne the condition number of H reg as:
+
+µ(H reg) =
+
+Dmax
+Dmin
+
+.
+
+(26)
+
+where Dmax and Dmin are the largest and smallest singular values of H reg.
+
+The shape of the functional relation σ/(σ2 + γ) that links regularized and
+unregularized singular values, deﬁned through eq. (21), is shown in Fig.1 for
+three diﬀerent values of γ.
+one maximum, with coordinates (√γ;
+
+The curves are non-negative, because σ > 0 and γ > 0, and have only
+
+1
+
+2√γ ).
+
+A few pairs of corresponding values (Di, σi) are marked by dots on each
+
+curve.
+
+For the sake of the determination of µ(H reg) we are interested in evalu-
+ating Dmax and Dmin of H reg over the ﬁnite, discrete range [σ1, σ2, . . . , σp].
+The value Dmax is reached in correspondence to a given singular value of
+
+H, a priori not known, that we label σmax, so that:
+
+Dmax =
+
+σmax
+max + γ
+σ2
+
+.
+
+11
+
+(27)
+
+)
+γ
+ 
++
+2
+σ
+(
+ 
+/
+ 
+
+ 
+
+ 
+
+σ
+
+σ
+
+Figure 1: Example of regularized/unregularized singular values relationship via eq. (21)
+
+The variation of γ has the eﬀect of changing the curve and shifting its
+maximum point within the interval [σ1, σp]. Therefore, σmax can coincide
+with any singular value of H from eq. (13), including the extreme ones.
+
+Conversely, we now demonstrate that Dmin can only be reached in corre-
+
+spondence to σ1 or σp (or both when coincident).
+
+Theorem 3.1
+The minimum singular value Dmin of matrix H reg can only be reached
+in correspondence to the largest singular value σ1 or to the smallest singular
+value σp of the unregularized matrix H (or both).
+
+Proof. Without loss of generality, we can express γ as a function of σ1σp, i.e.
+γ = βσ1σp, where β is a real positive value. By replacement in eq. (21), we
+get
+
+D1 =
+
+,
+
+Dp =
+
+1
+
+σ1 + βσp
+
+1
+
+σp + βσ1
+
+To establish their ordering, we evaluate the diﬀerence ∆ of their inverses:
+
+∆ =
+
+1
+D1 −
+
+1
+Dp
+
+= (σ1 + βσp) − (σp + βσ1) = (1 − β)(σ1 − σp) .
+
+12
+
+Recalling that σ1 − σp > 0, we can distinguish three cases:
+
+Case 1, β > 1 (γ > σ1σp) → ∆ < 0 → D1 > Dp
+
+Because of the Di distribution shape, Dp is also the minimum among
+all values Di, so that Dmin ≡ Dp.
+
+Case 2, β < 1 (γ < σ1σp) → ∆ > 0 → D1 < Dp
+
+Then, D1 is also the minimum among all values Di, so that Dmin ≡ D1.
+
+Case 3, β = 1 (γ = σ1σp) → ∆ = 0 → D1 = Dp
+
+Thus, D1 and Dp are both minima, so that Dmin ≡ D1 = Dp.
+
+4.2. Condition number evaluation
+
+The result by Theorem 3.1 allows us to ﬁnd, according to eq. (26), the
+
+following expressions for µ(H reg) :
+Case 1, β > 1:
+
+µ(H reg) =
+
+Dmax
+Dp
+
+=
+
+σmax(σp + βσ1)
+σ2
+max + βσ1σp
+
+µ(H reg) =
+
+Dmax
+D1
+
+=
+
+σmax(σ1 + βσp)
+σ2
+max + βσ1σp
+
+Case 2, β < 1:
+
+Case 3, β = 1:
+
+µ(H reg) =
+
+Dmax
+Dp
+
+=
+
+Dmax
+D1
+
+=
+
+σmax(σp + σ1)
+σ2
+max + σ1σp
+
+Bearing in mind that well-conditioned problems are characterized by
+small condition numbers, we now will look for the β parameter values which,
+in the three cases above, make the regularized condition number smaller.
+
+In Case 1, µ(H reg) is an increasing function of β, so that in its domain,
+i.e. (1,∞), its minimum value is reached when β → 1+. On the contrary,
+in Case 2, µ(H reg) is a decreasing function of β, so that in its domain, i.e.
+(0, 1), the minimum is reached when β → 1−.
+
+Fig.2 shows the function behaviour over the whole domain.
+Both cases have a common limit:
+
+13
+
+)
+
+g
+e
+r
+H
+(
+µ
+
+1
+
+β
+
+Figure 2: Regularized condition number vs. β
+
+lim
+β→1+
+
+µ(H reg) = lim
+β→1−
+
+µ(H reg) =
+
+σmax(σp + σ1)
+σ2
+max + σ1σp
+
+(28)
+
+Such value is just that provided by Case 3, which can therefore be considered
+the best possible choice to minimize the condition number.
+
+Thus our quest for the best possible conditioning for the matrix H reg
+
+identiﬁes an explicit optimal value for the regularization parameter γ:
+
+γ = σ1σp
+
+(29)
+
+5. Simulation and Discussion
+
+For the numerical experimentation, we use eight benchmark datasets from
+the UCI repository (Bache and Lichman, 2013) listed in Table 1. All simu-
+lations are carried out in Matlab 7.3 environment.
+
+The performance is assessed by statistics over a set of 50 diﬀerent extrac-
+tions of input weigths, computing either the average RMSE (for regression
+tasks) or the average percentage of misclassiﬁcation rate (for classiﬁcation
+tasks) on the test set. Either quantity is labeled “Err” in the tables sum-
+marising our results. The error standard deviation (labeled “Std”) is also
+computed to evidence the dispersion of experimental results.
+
+14
+
+Dataset
+
+Type
+
+N. Instances N. Attributes N. Classes
+
+4177
+Regression
+Abalone
+209
+Regression
+Machine Cpu
+7129
+Delta Ailerons Regression
+Regression
+Housing
+506
+Classiﬁcation 150
+Iris
+Diabetes
+Classiﬁcation 768
+Classiﬁcation 178
+Wine
+Segment
+Classiﬁcation 2310
+
+8
+6
+5
+13
+4
+8
+13
+19
+
+-
+-
+-
+-
+3
+2
+3
+7
+
+Table 1: The UCI datasets and their characteristics
+
+Our regularization strategy, labeled Optimally Conditioned Regulariza-
+tion for Pseudoinversion (OCReP), is veriﬁed by simulation against the com-
+mon approach in which cross-validation is used i) to determine the regular-
+ization parameter γ at a ﬁxed high number of hidden neurons and ii) to
+perform also hidden neurons number optimization, respectively in sec. 5.1
+and 5.2.
+
+A discussion of the eﬀectiveness of OCReP in terms of minimization of
+
+the condition number of the involved matricies is done in sec. 5.3.
+
+5.1. OCReP performance assessment: ﬁxed number of hidden units
+
+In this section we compare OCReP with a regularization approach in
+which γ is selected by a cross-validation scheme, which is typically used
+for control of under/overﬁtting and optimization of the model generalization
+performance. A 70%/30% split between training and test set is applied; then,
+a three-fold cross-validation search on the training set identiﬁes the best γ
+by best performance on the validation set, over the set of 50 values of γ
+[10−25, 10−24,· · · 1025].
+For the sake of comparison, a ﬁxed, high number of hidden units M is
+used, selected according to dimension and complexity of the datasets. For
+the three datasets Machine Cpu, Iris and Wine the simulation is performed
+for 50 and 100 hidden neurons; for Abalone, Delta Ailerons, Housing and
+Diabetes, we use 50, 100, 200 and 300 neurons; for Segment, we use 1000
+and 1500 units.
+
+Figures 3 and 4 (respectively for regression and classiﬁcation datasets)
+show average test errors as a function of the sampled values of γ (red dots);
+
+15
+
+Abalone (M=300)
+
+10−5
+
+γ
+
+100
+
+Machine Cpu (M=100)
+
+3.5
+
+3
+
+2.5
+
+E
+S
+M
+R
+
+2
+10−10
+
+700
+
+600
+
+500
+
+400
+
+300
+
+200
+
+100
+
+E
+S
+M
+R
+
+0
+10−10
+
+10−5
+
+γ
+
+100
+
+x 10−4
+
+Delta Ailerons (M=300)
+
+2.8
+
+2.6
+
+2.4
+
+2.2
+
+2
+
+1.8
+
+1.6
+
+E
+S
+M
+R
+
+1.4
+10−10
+
+45
+
+40
+
+35
+
+30
+
+25
+
+20
+
+15
+
+10
+
+5
+
+E
+S
+M
+R
+
+0
+10−10
+
+10−5
+
+γ
+
+100
+
+Housing (M=300)
+
+10−5
+
+γ
+
+100
+
+Figure 3: Test error trends for regression datasets as a function of the values of γ over
+the selected cross-validation range (red dots): the cross-validation selected γ is the black
+square; the proposed γ from OCReP is the blue circle.
+
+the standard deviation is shown as an error bar. Our proposed optimal γ is
+evidenced as a blue circle, whereas the value of γ selected by cross-validation
+is shown as a black square. The results are in each case related to the highest
+number of neurons experimented.
+
+The horizontal axis has been zoomed in onto the region of interest, i.e.
+
+[10−10, 105].
+
+It may be noted that the performance from OCReP and cross-validation
+are comparable, and also close to the experimental minimum. This may be
+interpreted as good predictivity for both algorithms.
+
+Also, we remark that the error bars, i.e. experimental result dispersion,
+
+16
+
+]
+
+%
+
+[
+ 
+.
+r
+r
+
+E
+
+i
+
+ 
+.
+l
+c
+s
+M
+n
+a
+e
+M
+
+ 
+
+]
+
+%
+
+[
+ 
+.
+r
+r
+
+E
+
+i
+
+ 
+.
+l
+c
+s
+M
+n
+a
+e
+M
+
+ 
+
+30
+
+25
+
+20
+
+15
+
+10
+
+5
+
+0
+10−10
+
+34
+
+32
+
+30
+
+28
+
+26
+
+24
+
+22
+10−10
+
+Iris (M=100)
+
+Wine (M=100)
+
+]
+
+%
+
+[
+ 
+.
+r
+r
+
+E
+
+i
+
+ 
+.
+l
+c
+s
+M
+n
+a
+e
+M
+
+ 
+
+10−5
+
+γ
+
+Diabetes (M=300)
+
+100
+
+]
+
+%
+
+[
+ 
+.
+r
+r
+
+E
+
+i
+
+ 
+.
+l
+c
+s
+M
+n
+a
+e
+M
+
+ 
+
+10−5
+
+γ
+
+100
+
+18
+
+16
+
+14
+
+12
+
+10
+
+8
+
+6
+
+4
+
+2
+
+0
+10−10
+
+35
+
+30
+
+25
+
+20
+
+15
+
+10
+
+5
+
+0
+10−10
+
+10−5
+
+γ
+
+Segment (M=1500)
+
+100
+
+10−5
+
+γ
+
+100
+
+Figure 4: Test error trends for classiﬁcation datasets as a function of the values of γ over
+the selected cross-validation range (red dots): the cross-validation selected γ is the black
+square; the proposed γ from OCReP is the blue circle.
+
+17
+
+is large for small values of γ, consistently with expectations on ineﬀective
+regularization.
+
+Table 2: Comparison of OCReP vs. cross-validation at ﬁxed number of hidden neurons
+for small size datasets
+
+M
+
+50
+
+OCReP
+
+cross-val.
+
+100
+
+OCReP
+
+cross-val.
+
+Err.
+Std
+Err.
+Std
+
+Err.
+Std
+Err.
+Std
+
+Iris
+1.51
+1.13
+2.13
+0.77
+
+2.53
+0.77
+2.17
+0.31
+
+Wine Machine Cpu
+2.98
+1.75
+3.37
+2.27
+
+31.21
+1.1
+31.1
+1.02
+
+1.39
+1.19
+1.88
+1.88
+
+34.13
+01.68
+30.94
+0.69
+
+Table 3: Comparison of OCReP vs. cross-validation at ﬁxed number of hidden neurons
+for large size datasets
+
+M
+
+1000
+
+1500
+
+OCReP
+
+cross-val.
+
+OCReP
+
+cross-val.
+
+Err.
+Std
+Err.
+Std
+
+Err.
+Std
+Err.
+Std
+
+Segment
+
+2.53
+0.77
+2.17
+0.31
+
+4.41
+0.45
+3.97
+0.35
+
+The numerical results have been reported in Tab. 2, 3 and 4 according to
+
+the grouping based on dimension and complexity of the datasets.
+
+For each dataset and selected number of hidden neurons M, the best test
+error is evidenced in bold, whenever the diﬀerence is statistically signiﬁcant2.
+
+2The Student’s t-test has been used for assessing the statistical signiﬁcance through
+
+18
+
+Table 4: Comparison of OCReP vs. cross-validation at ﬁxed number of hidden neurons
+for medium size datasets. For Delta Ailerons, average errors and standard deviations have
+to be multiplied by 10−4.
+
+Abalone Delta Ailerons Housing Diabetes
+
+M
+
+50
+
+OCReP
+
+cross-val.
+
+100
+
+200
+
+300
+
+OCReP
+
+cross-val.
+
+OCReP
+
+cross-val.
+
+OCReP
+
+cross-val.
+
+Err.
+Std
+Err.
+Std
+
+Err.
+Std
+Err.
+Std
+
+Err.
+Std
+Err.
+Std
+
+Err.
+Std
+Err.
+Std
+
+2.22
+0.16
+2.13
+0.017
+
+2.15
+0.007
+2.11
+0.006
+
+2.12
+0.003
+2.11
+0.003
+
+2.113
+0.03
+2.114
+0.003
+
+1.64
+0.0051
+1.59
+0.0073
+
+1.62
+0.004
+1.58
+0.0036
+
+1.59
+0.0031
+1.61
+0.0096
+
+1.58
+0.0018
+1.60
+0.0042
+
+5.54
+0.12
+4.79
+0.37
+
+5.17
+0.08
+4.49
+0.28
+
+4.62
+0.09
+4.30
+0.27
+
+4.24
+0.13
+4.18
+0.23
+
+26.01
+0.604
+26.79
+0.814
+
+25.66
+0.608
+25.71
+0.608
+
+25.13
+0.445
+25.79
+0.443
+
+24.26
+0.689
+25.66
+0.456
+
+Thus, for example, on Iris the best performance is achieved using 50 neu-
+rons by OCReP, and with 100 neurons by cross-validation. In some cases, e.g.
+Wine (50 neurons), there is no clear winner from statistical considerations,
+i.e. the best results are comparable, within the errors.
+
+From the above results it appears that cross-validation has better test
+error performance on a number of datasets slightly higher, at ﬁxed number
+of hidden neurons. However, it is important to evidence that the use of
+OCReP allows to save the hundreds of pseudoinversion steps required by
+cross-validation, wich is a crucial issue for practical implementation.
+
+determination of the conﬁdence intervals related to 99% conﬁdence level.
+
+19
+
+5.2. OCReP performance assessment: variable number of hidden units
+
+In order to pursue the double aim of performance and hidden units opti-
+mization, a ﬁrst interesting step is to give a look to the variation as a function
+of hidden layer dimension of error trends of unregularized models (i.e. models
+whose output weights are evaluated according to eq.(10)).
+
+A context widely used among researchers using such techniques (see e.g.
+Helmy and Rasheed (2009); Huang et al. (2006)) is to use input weights dis-
+tributed according to a random uniform distribution in the interval (−1, 1),
+and sigmoidal activation functions for hidden neurons: hereafter we name
+this framework Sigm-unreg.
+
+Abalone
+
+Sigm−unreg
+OCReP
+
+x 10−4
+
+ 
+
+Delta Ailerons
+
+Sigm−unreg
+OCReP
+
+ 
+
+E
+S
+M
+R
+
+6.5
+
+6
+
+5.5
+
+5
+
+4.5
+
+4
+
+3.5
+
+3
+
+2.5
+
+2
+ 
+0
+
+900
+
+800
+
+700
+
+600
+
+500
+
+400
+
+300
+
+200
+
+100
+
+E
+S
+M
+R
+
+50
+
+100
+200
+Number of hidden neurons
+
+150
+
+250
+
+300
+
+Machine Cpu
+
+Sigm−unreg
+OCReP
+
+ 
+
+E
+S
+M
+R
+
+E
+S
+M
+R
+
+5
+
+4
+
+3
+
+2
+
+1
+ 
+0
+
+35
+
+30
+
+25
+
+20
+
+15
+
+10
+
+5
+
+0
+ 
+0
+
+50
+
+100
+200
+Number of hidden neurons
+
+150
+
+250
+
+300
+
+Housing
+
+Sigm−unreg
+OCReP
+
+ 
+
+50
+
+100
+200
+Number of hidden neurons
+
+150
+
+250
+
+300
+
+0
+ 
+0
+
+20
+
+40
+
+60
+
+Number of hidden neurons
+
+80
+
+100
+
+Figure 5: Test error trends for regression datasets: OCReP vs. unregularized pseudoin-
+version.
+
+Figures 5 and 6 show, respectively for regression and classiﬁcation datasets,
+
+20
+
+the average test error values, (over 50 diﬀerent input weights selections) for
+both OCReP (blue line) and Sigm-unreg (red line) as a function of the num-
+ber of hidden nodes, which is gradually increased by unity steps. In all cases,
+after an initial decrease the Sigm-unreg test error increases signiﬁcantly.
+
+On the contrary, the OCReP test error curves keep decreasing, albeit at
+slower and slower rate, thus showing also a good capability of overﬁtting
+control of the method.
+
+We aim now at comparing the results obtained when the trade-oﬀ value of
+γ is searched by cross-validation, with the two diﬀerent frameworks discussed
+so far, i.e. OCReP and Sigm-unreg.
+
+A 70%/30% split between training and test set is applied; we then perform
+a three-fold cross-validation for the selection of the number of hidden neurons
+¯M at which the minimum error is recorded in all cases. Test errors are again
+evaluated as the average of 50 diﬀerent random choices of input weights.
+
+The numerical results of the simulation are presented in Tables 5 and
+6, respectively for regression and classiﬁcation tasks, with their standard
+deviations (Std) and ¯M .
+
+Best test errors are evidenced in bold, whenever the diﬀerence between
+
+OCReP and cross-validation is statistically signiﬁcant.
+
+We see that our proposed regularization technique provides, for regres-
+sion datasets, performance comparable with the cross-validation option but
+always a better performance (with statistical signiﬁcance at 99% level) with
+respect to the unregularized case.
+
+For classiﬁcation datatsets in three cases out of four OCReP provides
+a better performance with respect to cross-validation, and always a better
+performance with respect to the Sigm-unreg case.
+In all such cases, the
+statistical signiﬁcance is at the 99% level.
+
+Also, in almost all cases smaller standard deviations are associated with
+the OCReP method, suggesting a lower sensitivity to initial input weights
+conditions.
+
+5.3. Additional considerations
+
+The proposed method OCReP presents in our opinion two features of
+interest: on one side, its computational eﬃciency, and on the other side its
+optimal conditioning.
+
+Our goal of optimal analytic determination of the regularization param-
+eter γ results in a dramatic improvement in the computing requirements
+with respect to experimental tuning by search over a pre-deﬁned large grid
+
+21
+
+70
+
+60
+
+50
+
+40
+
+30
+
+20
+
+10
+
+0
+ 
+0
+
+20
+
+]
+
+%
+
+[
+ 
+.
+r
+r
+
+E
+
+i
+
+ 
+.
+l
+c
+s
+M
+n
+a
+e
+M
+
+ 
+
+]
+
+%
+
+[
+ 
+.
+r
+r
+
+E
+
+i
+
+ 
+.
+l
+c
+s
+M
+ 
+n
+a
+e
+M
+
+Iris
+
+Sigm−unreg
+OCReP
+
+ 
+
+]
+
+%
+
+[
+ 
+.
+r
+r
+
+E
+
+i
+
+ 
+.
+l
+c
+s
+M
+n
+a
+e
+M
+
+ 
+
+Wine
+
+Sigm−unreg
+OCReP
+
+ 
+
+70
+
+60
+
+50
+
+40
+
+30
+
+20
+
+10
+
+80
+
+100
+
+ 
+
+800
+
+1000
+
+40
+
+60
+
+Number of hidden neurons
+
+80
+
+100
+
+0
+ 
+0
+
+20
+
+40
+
+60
+
+Number of hidden neurons
+
+32
+
+30
+
+28
+
+26
+
+24
+
+22
+
+20
+
+18
+ 
+0
+
+Diabetes
+
+Sigm−unreg
+OCReP
+
+ 
+
+]
+
+%
+
+[
+ 
+.
+r
+r
+
+E
+
+i
+
+ 
+.
+l
+c
+s
+M
+n
+a
+e
+M
+
+ 
+
+Segment
+
+Sigm−unreg
+OCReP
+
+40
+
+35
+
+30
+
+25
+
+20
+
+15
+
+10
+
+5
+
+0
+
+50
+
+200
+100
+Number of hidden neurons
+
+150
+
+250
+
+300
+
+ 
+0
+
+200
+
+400
+
+600
+
+Number of hidden neurons
+
+Figure 6: Test error trends for classiﬁcation datasets: OCReP vs. unregularized pseudoin-
+version.
+
+of Nγ tentative values. In the latter case, for each choice of γ over the se-
+lected range, at least a pseudoinversion is required for every output weight
+determination, thus increasing the computational load by a factor Nγ.
+
+Besides, our method is designed explicitly for optimal conditioning. In our
+simulations, we verify that the goal is fulﬁlled by evaluating average condition
+numbers of hidden layer output matrices. The statistics is performed over
+50 diﬀerent conﬁgurations of input weights and a ﬁxed number of hidden
+units, namely the largest used in section 5.1 for each dataset. The results are
+summarised in Tables 7 and 8, respectively for regression and classiﬁcation
+datasets. On the ﬁrst row of each table, we list the ratio of average condition
+numbers of matrices H reg, and H +, associated respectively to OCReP and
+Sigm-unreg, i.e. regularized and unregularized approaches. On the second
+
+22
+
+row, we list the ratio of average condition numbers of matrices H reg and H CV ,
+thus comparing our regularization approach with the more conventional one,
+the latter using cross-validation.
+
+Not surprisingly, our regularization method provides a signiﬁcant im-
+provement on conditioning with respect to the unregularized approach, as
+evidenced by ratio values much smaller than unity. Besides, OCReP also
+provides better conditioned matrices than those derived by selection of γ
+through cross-validation, since the corresponding condition numbers are sys-
+tematically smaller in the former case, sometimes up to an order of magni-
+tude.
+
+Table 5: Hidden layer optimization for regression tasks. For Delta Ailerons, average errors
+and standard deviations have to be multiplied by 10−4.
+
+Abalone Housing Delta Ailerons Machine Cpu
+
+Err.
+Std.
+¯M
+
+Err.
+Std.
+¯M
+
+Err.
+Std.
+¯M
+
+2.12
+0.32
+178
+
+2.11
+0.0097
+
+110
+
+2.14
+0.014
+
+31
+
+OCReP
+1.58
+0.0048
+
+298
+
+Cross-validation
+
+1.58
+0.0036
+
+93
+
+Sigm-unreg
+1.62
+0.57
+74
+
+4.25
+0.13
+255
+
+4.19
+0.25
+250
+
+4.73
+0.20
+76
+
+31.22
+0.78
+63
+
+31.51
+1.25
+70
+
+34.44
+2.89
+15
+
+6. Comparison with other approaches
+
+Since the literature provides a host of diﬀerent recipes for either the choice
+of the regularization parameter, or the actual regularization algorithm, here-
+after we focus on a couple of speciﬁc frameworks.
+
+6.1. Other choices of regularization parameter
+
+Among the approaches mentioned in section 2, we primary select the
+technique of generalised cross-validation (GCV) from (Golub et al., 1979),
+
+23
+
+Table 6: Hidden layer optimization for classiﬁcation tasks.
+
+Iris Wine Diabetes Segment
+
+Err.
+Std.
+¯M
+
+Err.
+Std.
+¯M
+
+Err.
+Std.
+¯M
+
+1.6
+1.10
+67
+
+2.12
+1.26
+14
+
+2.31
+1.48
+67
+
+OCReP
+25.53
+0.51
+291
+
+1.73
+1.25
+91
+Cross-validation
+
+2.10
+2.27
+137
+
+3.20
+2.09
+91
+
+25.2
+1.29
+25
+
+Sigm-unreg
+
+25.92
+1.12
+291
+
+2.50
+0.32
+760
+
+2.65
+0.38
+620
+
+4.45
+0.47
+760
+
+Table 7: Condition number comparison for regression datasets
+
+µ(H reg)/µ(H +)
+µ(H reg)/µ(H CV )
+
+Abalone Housing Delta Ailerons Machine Cpu
+0.0002
+
+0.00007
+
+0.0008
+
+0.0001
+
+0.8
+
+0.3
+
+0.3
+
+0.1
+
+described by eqs. (7) and (8), for comparison with our method. The main
+motivation for our choice is its independence on the estimate of the error vari-
+ance σ2, which is a characteristic shared with our case. For each dataset, we
+select the same ﬁxed numbers of hidden units as in section 5.1: then for each
+case eq. (7) is minimized over the set of 50 values of γ [10−25, 10−24 · · · 1025]
+and for 50 diﬀerent conﬁgurations of input weights.
+We evaluate the mean and standard deviation of the corresponding regu-
+larized test error, reported in Tables 9, 10 and 11. We also remind that the
+tabulated error “Err” is either the average RMSE for regression tasks, or the
+average misclassiﬁcation rate for classiﬁcation tasks; “Std” is the correspond-
+ing standard deviation. The performance comparison is based on statistical
+signiﬁcance at 99% level.
+
+Whenever GCV provides test error values statistically better than OCReP
+
+24
+
+Table 8: Condition number comparison for classiﬁcation datasets
+
+µ(H reg)/µ(H +)
+µ(H reg)/µ(H CV )
+
+0.005
+0.4
+
+0.00002
+
+0.2
+
+Iris Wine Diabetes Segment
+0.000005
+
+0.0007
+
+0.1
+
+0.2
+
+Table 9: GCV results at ﬁxed number of hidden neurons for small datasets
+
+M
+
+50
+
+100
+
+Err.
+Std
+Err.
+Std
+
+Iris
+2.47
+1.06
+3.06
+1.08
+
+Wine Machine Cpu
+3.66
+2.42
+3.77
+2.44
+
+33.03
+1.27
+36.06
+1.13
+
+(listed in Tab. 2, 3 and 4), they are marked in bold.
+
+We remark that in all cases listed in Tab. 2 and 3 OCReP provides sta-
+tistically better results than GCV. The situation of medium size datasets
+evidences a somewhat mixed behaviour: with 50 hidden neurons, GCV wins;
+with 100 neurons, for three out of four datasets (i.e. Abalone, Housing and
+Diabetes) the performance is statistically comparable. In all other cases of
+Tab. 4 OCReP again provides better statistical results than GCV.
+
+We make two other comparisons, using the ridge estimates described in
+eq.(13) and eq.(9) of (Dorugade and Kashid, 2010), and proposed respec-
+tively by (Kibria, 2003) and (Hoerl and Kennard, 1970):
+
+Table 10: GCV results at ﬁxed number of hidden neurons for large size datasets
+
+M
+
+1000
+
+1500
+
+Segment
+
+11.39
+0.75
+14.72
+0.803
+
+Err.
+Std
+Err.
+Std
+
+25
+
+Table 11: GCV results at ﬁxed number of hidden neurons for medium size datasets. For
+Delta Ailerons, average errors and standard deviations have to be multiplied by 10−4.
+
+Abalone Housing Delta Ailerons Diabetes
+
+M
+
+50
+
+100
+
+200
+
+300
+
+Err.
+Std
+Err.
+Std
+Err.
+Std
+Err.
+Std
+
+2.13
+0.017
+2.15
+0.021
+2.32
+0.10
+2.98
+0.42
+
+4.89
+0.45
+5.05
+0.70
+6.78
+2.35
+8.07
+2.89
+
+1.60
+0.0103
+1.63
+0.0297
+1.74
+0.0892
+2.20
+0.4054
+
+25.2
+1.22
+26.66
+1.39
+27.73
+1.27
+27.14
+1.15
+
+γK =
+
+1
+p
+
+p
+
+X
+
+1
+
+ˆσ2
+ˆα2
+i
+
+,
+
+γHK =
+
+ˆσ2
+ˆα2
+
+max
+
+.
+
+(30)
+
+(31)
+
+Our experimentation is made only for regression datasets because the
+theoretical background of (Dorugade and Kashid, 2010), and of most of other
+works referred in section 2, directly applies to the case in which the quantity
+Y in eq.(1) is a one column matrix. In our formulation Y is the desired target
+T and it is a one-column matrix only for regression tasks.
+
+For each dataset we applied both methods described by eq. 30 and 31; we
+select the same ﬁxed numbers of hidden units as in section 5.1 and perform
+50 experiments with diﬀerent conﬁguration of input weights.
+
+Each step of pseudoinversion is regularized for each method with the
+corresponding γ value. We evaluate the mean and standard deviation of the
+regularized test errors, reported respectively in Tables 12 and 13.
+
+Whenever the methods provide test error values statistically better than
+
+OCReP (listed in Tab. 2 and 4), they are marked in bold.
+
+We remark that the method by Kibria obtains a better performance in
+two cases over sixteen, while OCReP in 12 cases over sixteen. Besides, the
+method by Hoerl and Kennard obtains a better performance in three cases
+
+26
+
+Table 12: Kibria estimate of ridge parameter: results at ﬁxed number of hidden neurons
+for regression datasets. For Delta Ailerons, average errors and standard deviations have
+to be multiplied by 10−4.
+
+Abalone Housing Delta Ailerons Machine Cpu
+
+M
+
+50
+
+100
+
+200
+
+300
+
+Err.
+Std
+Err.
+Std
+Err.
+Std
+Err.
+Std
+
+2.32
+0.37
+2.38
+0.90
+2.20
+0.13
+2.34
+1.01
+
+5.72
+0.84
+5.45
+0.86
+5.31
+0.76
+5.46
+1.60
+
+1.63
+0.027
+1.64
+0.08
+1.65
+0.15
+1.62
+0.035
+
+34.28
+4.67
+32.40
+3.72
+
+over sixteen, while OCReP in eight cases over sixteen. For both methods,
+better performance is achieved only for the case of M = 50 neurons.
+
+It may be noted that with respect to processing requirements OCReP has
+clear advantages, since it requires only a SVD step for each determination of
+γ, while the above two methods require full spectral decomposition and an
+additional matrix inversion.
+
+6.2. Alternative regularization methods
+
+A ﬁrst comparison can be done with the work by Huang et al. (Huang et al.,
+
+2012), whose technique Extreme Learning Machine (ELM) uses a cost param-
+eter C that can be considered as related to the inverse of our regularization
+parameter γ. As authors state, in order to achieve good generalization per-
+formance, C needs to be chosen appropriately. They do this by trying 50
+diﬀerent values of this parameter: [2−24, 2−23,· · · 224, 225].
+A fair comparison can be done on our classiﬁcation datasets, using their
+number of hidden neurons, i.e. 1000. Our optimal choice of γ allows to obtain
+a better performance on all datasets (with statistical signiﬁcance assessed at
+the same conﬁdence level that previous experiments).
+
+Deng et al. (Deng et al., 2009) propose a Regularized Extreme Learning
+Machine (hereafter, RELM) in wich the regularization parameter is selected
+[2−50, 2−49,· · · 250]. Be-
+according to a similar criterion among 100 values:
+cause their performance is optimized with respect to the number of hidden
+
+27
+
+Table 13: H-K estimate of ridge parameter: results at ﬁxed number of hidden neurons for
+regression datasets. For Delta Ailerons, average errors and standard deviations have to be
+multiplied by 10−4.
+
+Abalone Housing Delta Ailerons Machine Cpu
+
+M
+
+50
+
+100
+
+200
+
+300
+
+Err.
+Std
+Err.
+Std
+Err.
+Std
+Err.
+Std
+
+2.13
+0.016
+2.14
+0.90
+2.33
+0.10
+2.95
+0.41
+
+4.87
+0.44
+4.98
+0.67
+8.101
+2.83
+29.06
+9.26
+
+1.60
+0.01
+1.62
+0.029
+1.73
+0.08
+2.21
+0.41
+
+34.28
+2.37
+37.39
+3.18
+
+Table 14: Comparison between OCReP and ELM
+
+OCReP
+
+ELM
+
+Err.
+Std.
+Err.
+Std
+
+Iris
+2.22
+0.21
+2.4
+2.29
+
+Wine Diabetes Segment
+1.28
+0.88
+1.53
+1.81
+
+21.06
+0.65
+22.05
+2.18
+
+3.40
+0.25
+3.93
+0.69
+
+neurons, for the sake of comparison we use OCReP values from table 6.
+We obtain a statistically signiﬁcant better performance on dataset Segment,
+while for Diabetes the method RELM performs better (see table 15).
+
+Comparing our results on the common regression datasets with the alter-
+native method TROP-ELM proposed by Miche et al. (Miche et al., 2011),
+we note that OCReP achieves always lower RMSE values 3 (with statistical
+signiﬁcance), as can be seen from table 16.
+
+Besides, in our opinion our method is simpler, in the sense that it uses a
+
+single step of regularization rather than two.
+
+In (Martinez-Martinez et al., 2011), an algorithm is proposed for pruning
+
+3In that work, performance and related statistics are expressed in terms of MSE; we
+
+only derived the corresponding RMSE for comparison with our results.
+
+28
+
+Table 15: Comparison between OCReP and RELM
+
+OCReP
+
+RELM
+
+Diabetes Segment
+
+Err.
+Std.
+¯M
+Err.
+Std.
+¯M
+
+25.53
+0.51
+291
+
+21.81
+2.55
+15
+
+2.50
+0.32
+760
+4.49
+0.0074
+
+200
+
+Table 16: Comparison between OCReP and TROP-ELM. For Delta Ailerons, average
+errors and standard deviations have to be multiplied by 10−4.
+
+Abalone Delta Ailerons Machine Cpu Housing
+
+OCReP
+
+TROP-ELM
+
+Err.
+Std.
+¯M
+Err.
+¯M
+
+2.12
+0.32
+178
+2.19
+42
+
+1.58
+0.0048
+
+298
+1.64
+80
+
+31.22
+0.78
+63
+
+264.03
+
+28
+
+4.25
+0.13
+255
+34.35
+
+59
+
+ELM networks by using regularized regression methods: the crucial step
+of regularization parameter determination is solved by creating K diﬀerent
+models, each one based on a diﬀerent value of this parameter, among which
+the best one is selected using a Bayesian information criterion. Authors
+state that a typical value for K is 100, thus an heavy computational load is
+required, and the method is focused on regression tasks.
+
+7. Conclusions
+
+In the context of regularization techniques for single hidden layer neural
+networks trained by pseudoinversion, we provide an optimal value of the reg-
+ularization parameter γ by analytic derivation. This is achieved by deﬁning
+a convenient regularized matricial formulation in the framework of Singular
+Value Decomposition, in which the regularization parameter is derived un-
+der the constraint of condition number minimization. The OCReP method
+
+29
+
+has been tested on UCI datasets for both regression and classiﬁcation tasks.
+For all cases, regularization implemented using the analytically derived γ is
+proven to be very eﬀective in terms of predictivity, as evidenced by compari-
+son with implementations of other approaches from the literature, including
+cross-validation. OCReP avoids hundreds of pseudoinversions usually needed
+by most other methods, i.e. it is quite computationally attractive.
+
+Acknowledgements
+
+The activity has been partially carried on in the context of the Visiting
+Professor Program of the Gruppo Nazionale per il Calcolo Scientiﬁco (GNCS)
+of the Italian Istituto Nazionale di Alta Matematica (INdAM). This work
+has been partially supported by ASI contracts (Gaia Mission - The Italian
+Participation to DPAC) I/058/10/0-1 and 2014-025-R.0.
+
+References
+
+Ajorloo, H., Manzuri-Shalmani, M. T., and Lakdashti, A. (2007). Restoration
+of damaged slices in images using matrix pseudo inversion. In Proceedings
+of the 22nd International symposium on computer and information sci-
+ences, pages 1–6.
+
+Bache, K. and Lichman, M. (2013). UCI machine learning repository.
+
+Badeva, V. and Morozov, V. (1991). Probl`emes incorrectement pos´es:
+Th´eorie et applications en identiﬁcation , ﬁltrage optimal, contrˆole op-
+timal, analyse et synth`ese de syst`emes, reconnaissance d’images. S´erie
+Automatique. Masson.
+
+Berger, J. (1976). Minimax estimation of a multivariate normal mean under
+
+arbitrary quadratic loss. J. Multivariate Analysis, 6, 256–264.
+
+Bishop, C. M. (2006). Pattern Recognition and Machine Learning (Informa-
+tion Science and Statistics). Springer-Verlag New York, Inc., Secaucus,
+NJ, USA.
+
+Bousquet, O. and Elisseeﬀ, A. (2002). Stability and generalization. J. Mach.
+
+Learn. Res., 2, 499–526.
+
+30
+
+Cancelliere, R. (2001). A high parallel procedure to initialize the output
+weights of a radial basis function or bp neural network.
+In Proceedings
+of the 5th International Workshop on Applied Parallel Computing, New
+Paradigms for HPC in Industry and Academia, PARA ’00, pages 384–390,
+London, UK, UK. Springer-Verlag.
+
+Deng, W., Zheng, Q., and Chen, L. (2009). Regularised extreme learning
+machine. In Proceedings of the IEEE Symposium on Computational Intel-
+ligence and Data Mining.
+
+Devroye, L. P. and Wagner, T. (1979). Distribution-free performance bounds
+for potential function rules. Information Theory, IEEE Transactions on,
+25(5), 601–604.
+
+Dorugade, A. and Kashid, D. (2010). Alternative method for choosing ridge
+
+parameter for regression. Applied Mathematical Sciences, 4, 447–456.
+
+Fu, W. (1998). Penalized regressions: the bridge vs. the lasso. Journal of
+
+Computational and Graphical Statistics, 7, 397–416.
+
+Fuhry, M. and Reichel, L. (2012). A new tikhonov regularization method.
+
+Numerical Algorithms, 59(3), 433–445.
+
+Gallinari, P. and Cibas, T. (1999). Practical complexity control in multilayer
+
+perceptrons. Signal Processing, 74, 29–46.
+
+Geman, S., Bienenstock, E., and Doursat, R. (1992). Neural networks and
+
+the bias/variance dilemma. Neural Computation, 4, 1–58.
+
+Girosi, F., Jones, M., and Poggio, T. (1995). Regularization Theory and
+
+Neural Networks Architectures. Neural Computation, 7, 219–269.
+
+Golub, G., heath, M., and Wahba, G. (1979). Generalized cross-validation
+as a method for choosing a good ridge parameter. Technometrics, 21,
+215–223.
+
+Golub, G. H. and Van Loan, C. F. (1996). Matrix computations (3rd ed.).
+
+Johns Hopkins University Press, Baltimore, MD, USA.
+
+Golub, G. H., Hansen, P. C., and O’Leary, D. P. (1999). Tikhonov regu-
+larization and total least squares. SIAM J. Matrix Anal. Appl., 21(1),
+185–194.
+
+31
+
+Hastie, T., Tibshirani, R., and Friedman, J. (2009). The elements of Statisti-
+cal Learning: Data Mining, Inference, and Prediction (2rd ed.). Springer.
+
+Haykin, S. (1999). Neural Networks: A Comprehensive Foundation. Inter-
+
+national edition. Prentice Hall.
+
+Helmy, T. and Rasheed, Z. (2009). Multi-category bioinformatics dataset
+In Proceedings of the
+classiﬁcation using extreme learning machine.
+Eleventh conference on Congress on Evolutionary Computation, CEC’09,
+pages 3234–3240, Piscataway, NJ, USA. IEEE Press.
+
+Hoerl, A. (1962). Application of ridge analysis to regression problems. Chem-
+
+ical Engineering Progress, 58, 54–59.
+
+Hoerl, A. and Kennard, R. (1970). Ridge regression: Biased estimation for
+
+nonorthogonal problems. Technometrics, 12, 55–67.
+
+Hoerl, A. and Kennard, R. (1976). Ridge regression: iterative estimation of
+
+the biasing parameter. Communications in Statistics, A5, 77–88.
+
+Huang, G.-B., Zhu, Q.-Y., and Siew, C.-K. (2006). Extreme learning ma-
+
+chine: theory and applications. Neurocomputing, 70(1), 489–501.
+
+Huang, G.-B., Zhu, Q.-Y., and Siew, C.-K. (2012). Extreme learning machine
+for regression and multiclass classiﬁcation. IEEE Transactions on Systems,
+Man, and Cybernetics–Part B: Cybernetics, 42(2), 513–529.
+
+Kearns, M. and Ron, D. (1999). Algorithmic stability and sanity-check
+bounds for leave-one-out cross-validation. Neural Computation, 11(6),
+1427–1453.
+
+Khalaf, G. and Shukur, G. (2005). Choosing ridge parameter for regression
+problem. Communications in Statistics – Theory and methods, 34, 1177–
+1182.
+
+Kibria, B. (2003). Performance of some new ridge regression estimators.
+Communications in Statistics – Simulation and Computation, 32, 419–
+435.
+
+Kohno, K., Kawamoto, M., and Inouye, Y. (2010). A matrix pseudoinversion
+lemma and its application to block-based adaptive blind deconvolution for
+mimo systems. Trans. Cir. Sys. Part I , 57(7), 1449–1462.
+
+32
+
+Lawless, J. and Wang, P. (1976). A simulation study of ridge and other
+
+regression estimators. Communications in Statistics, A5, 307–324.
+
+Mardikyan, S. and Cetin, E. (2008). Eﬃcient choice of biasing constant
+for ridge regression. International Journal of Contemporary Mathematical
+Sciences, 3, 527–547.
+
+Martinez-Martinez, J., Escandell-Montero, P., Soria-Olivas, E., Martn-
+Guerrero, J., Magdalena-Benedito, R., and Juan, G.-S. (2011). Regularized
+extreme learning machine for regression problems. Neurocomputing, 74,
+3716–3721.
+
+McDonald, G. and Galarneau, D. (1975). A monte carlo evaluation of some
+
+ridge-type estimators. J. Amer. Statist. Assoc., 70, 407–416.
+
+Miche, Y., van Heeswijk, M., Bas, P., Simula, O., and Lendasse, A. (2011).
+Trop-elm: A double-regularized elm using lars and tikhonov regularization.
+Neurocomputing, 74(16), 2413 – 2421.
+
+Mukherjee, S., Niyogi, P., Poggio, T., and Rifkin, R. (2003). Statistical
+learning: stability is suﬃcient for generalization and necessary and suﬃ-
+cient for consistency of empirical risk minimization. CBCL, Paper 223,
+Massachusetts Institute of Technology.
+
+Mukherjee, S., Niyogi, P., Poggio, T., and Rifkin, R. (2006). Learning theory:
+stability is suﬃcient for generalization and necessary and suﬃcient for
+consistency of empirical risk minimization. Advances in Computational
+Mathematics, 25(1-3), 161–193.
+
+Nguyen, T. D., Pham, H. T. B., and Dang, V. H. (2010). An eﬃcient pseudo
+inverse matrix-based solution for secure auditing.
+In Proceedings of the
+IEEE International Conference on Computing and Communication Tech-
+nologies, Research, Innovation, and Vision for the Future, IEEE Interna-
+tional Conference.
+
+Nordberg, L. (1982). A procedure for determination of a good ridge param-
+
+eter in linear regression. Communications in Statistics, A11, 285–309.
+
+Penrose, R. and Todd, J. A. (1956). On best approximate solutions of linear
+matrix equations. Mathematical Proceedings of the Cambridge Philosoph-
+ical Society, null, 17–19.
+
+33
+
+Poggio, T. and Girosi, F. (1990a). Networks for approximation and learning.
+
+Proceedings of the IEEE , 78(9), 1481–1497.
+
+Poggio, T. and Girosi, F. (1990b). Regularization algorithms for learning
+that are equivalent to multilayer networks. Science, 247(4945), 978–982.
+
+Poggio, T., Rifkin, R., Mukherjee, S., and Niyogi, P. (2004). General condi-
+tions for predictivity in learning theory. Letters to Nature, 428, 419/422.
+
+Rao, C. and Mitra, S. (1971). Generalized inverse of matrices and its appli-
+cations. Wiley series in probability and mathematical statistics: Applied
+probability and statistics. Wiley.
+
+Saleh, A. and Kibria, B. (1993). Performances of some new preliminary
+test ridge regression estimators and their properties. Communications in
+Statistics – Theory and methods, 22, 2747–2764.
+
+Tibshirani, R. (1996). Regression shrinkage and selection via the lasso. Jour-
+
+nal of Royal Statistical Society, 58, 267–288.
+
+Tikhonov, A. and Arsenin, V. (1977). Solutions of ill-posed problems. Scripta
+
+series in mathematics. Winston, Washington DC.
+
+Tikhonov, A. N. (1963). Solution of incorrectly formulated problems and the
+
+regularization method. Soviet Math. Dokl., 4, 1035–1038.
+
+Wang, X. (2013). Special issue on extreme learning machines with uncer-
+
+tainty. Int. J. Unc. Fuzz. Knowl. Based Syst., 21.
+
+Wang, X.-Z., D., W., and Huang, G.-B. (2012). Special issue on extreme
+
+learning machines. Soft Computing, 16(9), 1461–1463.
+
+Yu, D. and Deng, L. (2012). Eﬃcient and eﬀective algorithms for training
+single-hidden-layer neural networks. Pattern Recogn. Lett., 33(5), 554–558.
+
+34
+
+

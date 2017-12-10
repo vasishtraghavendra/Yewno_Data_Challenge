@@ -1,0 +1,1382 @@
+An Online Unsupervised Structural Plasticity Algorithm for Spiking Neural Networks
+
+Subhrajit Roy, Student Member, IEEE and Arindam Basu, Member, IEEE
+
+1
+
+5
+1
+0
+2
+
+ 
+c
+e
+D
+4
+
+ 
+
+ 
+ 
+]
+E
+N
+.
+s
+c
+[
+ 
+ 
+
+1
+v
+4
+1
+3
+1
+0
+
+.
+
+2
+1
+5
+1
+:
+v
+i
+X
+r
+a
+
+Abstract—In this article, we propose a novel Winner-Take-All
+(WTA) architecture employing neurons with nonlinear dendrites
+and an online unsupervised structural plasticity rule for training
+it. Further,
+to aid hardware implementations, our network
+employs only binary synapses. The proposed learning rule is
+inspired by spike time dependent plasticity (STDP) but differs
+for each dendrite based on its activation level. It trains the
+WTA network through formation and elimination of connections
+between inputs and synapses. To demonstrate the performance
+of the proposed network and learning rule, we employ it to
+solve two, four and six class classiﬁcation of random Poisson
+spike time inputs. The results indicate that by proper tuning
+of the inhibitory time constant of the WTA, a trade-off between
+speciﬁcity and sensitivity of the network can be achieved. We use
+the inhibitory time constant to set the number of subpatterns per
+pattern we want to detect. We show that while the percentage
+of successful trials are 92%, 88% and 82% for two, four and
+six class classiﬁcation when no pattern subdivisions are made,
+it increases to 100% when each pattern is subdivided into 5
+or 10 subpatterns. However, the former scenario of no pattern
+subdivision is more jitter resilient than the later ones.
+
+I. INTRODUCTION AND MOTIVATION
+
+The WTA is a computational framework in which a group
+of recurrent neurons cooperate and compete with each other
+for activation. The computational power of WTA [1]–[3] and
+its function in cortical processing [1], [4] have been studied in
+detail. Various models and hardware implementations of WTA
+have been proposed for both rate [5]–[12] and spike based
+[13]–[15] neural networks. In recent past, researchers have
+looked into the application of STDP learning rule on WTA
+circuits. The performance of competitive spiking neurons
+trained with STDP has been studied for different types of input
+such as discrete spike volleys [16]–[18], periodic inputs [19],
+[20] and inputs with random intervals [15], [21], [22].
+
+for
+
+the ﬁrst
+
+In this paper,
+
+time we are proposing a
+Winner-Take-All (WTA) network which uses neurons with
+nonlinear dendrites (NNLD) and binary synapses as the ba-
+sic computational units. This architecture, which we refer
+to as Winner-Take-All employing Neurons with NonLinear
+Dendrites (WTA-NNLD), uses a novel branch-speciﬁc Spike
+Timing Dependent Plasticity based Network Rewiring (STDP-
+NRW) learning rule for its training. We have earlier presented
+[23] a branch-speciﬁc STDP rule for batch learning of a
+supervised classiﬁer constructed of NNLDs. The primary
+differences of our current approach with [23] are:
+
+Manuscript received Nov 15, 2014
+The
+
+authors
+
+are with the School of Electrical
+
+and Electronic
+Engineering, Nanyang Technological University, Singapore 639798.(e-
+mail:arindam.basu@ntu.edu.sg). This work was supported by MOE through
+grants RG 21/10 and ARC 8/13.
+
+Copyright (c) 2010 IEEE. Personal use of this material
+
+is permitted.
+However, permission to use this material for any other purposes must be
+obtained from the IEEE by sending an email to pubs-permissions@ieee.org.
+
+• We present an unsupervised learning rule for training a
+
+WTA network.
+
+• We propose an online learning scheme where connection
+
+modiﬁcations occur after presentation of each pattern.
+
+In this article we consider spike train inputs with patterns
+occurring at random order which is the same type presented in
+[15]. The primary differences between our work and the one
+proposed in [15] are:
+
+• Our WTA network is composed of neurons with nonlinear
+dendrites instead of traditional neurons with no dendrites.
+• Unlike the network proposed in [15] that requires high
+resolution weights,
+the proposed network uses low-
+resolution non-negative integer weights and trains itself
+through modifying connections of inputs to dendrites.
+Hence, change of the ‘morphology’ or structure of the
+neuron (in terms of connectivity pattern) reﬂects the
+learning. This results in easier hardware implementation
+since a low-resolution non-negative integer weight of W
+can be implemented by activating a shared binary synapse
+W times through time multiplexing schemes like address
+event representation (AER) [24], [25].
+
+• In [15], though the neurons were allowed to learn and
+respond to subpatterns, there was no actual guideline or
+control parameter to set the number of subpatterns to be
+learned. Here we utilize the slow time constant of the
+inhibitory signal to select the number of subpatterns we
+want to divide a pattern into.
+
+In the following section, we will present a overview of
+NNLD, propose the WTA-NNLD architecture and STDP-
+NRW learning rule and show how the inhibitory slow time
+constant can be used to select subpatterns within a pattern.
+Then we shall provide guidelines on selecting the parameters
+associated with WTA-NNLD and STDP-NRW. In Section IV
+we will describe the classiﬁcation task considered in this
+article which will be followed by the results. We will also
+present the robustness of the proposed method to variations
+of parameters in Section V, a quality that is essential for
+its implementation in low-power, subthreshold neuromorphic
+designs that are plagued with mismatch. We will conclude the
+paper by discussing the implications of our work and future
+directions in the last section.
+
+II. BACKGROUND AND THEORY
+
+In this section, we shall ﬁrst present the working principle of
+a NNLD. This will be followed by a description of the WTA-
+NNLD architecture and STDP-NRW learning rule. Lastly, we
+will throw some light on the role of inhibitory time constant
+in balancing the speciﬁcity and sensitivity of the network.
+
+d(cid:80)
+
+i=1
+
+wij((cid:80)
+
+ti
+g<t
+
+K(t − ti
+
+g))
+
+I j
+b,in(t) =
+
+2
+
+(5)
+
+where b(.) is the nonlinear activation function of the dendritic
+branch characterized by b(z) = z2/xthr, I j
+b,out(t) is the output
+current of the jth dendrite and I j
+b,in(t) is the input current to
+the dendritic nonlinearity. Here, xthr describes the behavior
+of the dendritic nonlinear function by setting a limit on the
+minimum number of coactive synapses required to produce
+a supra-linear response. K denotes the post-synaptic current
+kernel given by:
+
+K(t) = I0(e
+
+τs − e
+− t
+
+− t
+
+τf )
+
+(6)
+
+where τf and τs are the fast and slow time constants governing
+the rise and fall times respectively and I0 is a normalizing
+constant. In this article, we consider low resolution non-
+negative integer weights associated with the input lines. So
+wij{0, 1, ...., k} means the number of times the ith input line
+is connected to the jth dendritic branch. Like our earlier work
+[29], we allow multiple connections of one input dimension
+to a single dendrite but restrict the number of connections per
+i=1 wij = k for each j. The
+
+dendrite to k by enforcing (cid:80)d
+(cid:88)
+
+output of the NNLD is a spike train and can be denoted as
+
+f (t) =
+
+δ(t − ta)
+
+(7)
+
+where a = 1, 2, ... is the spike index.
+
+a
+
+B. Winner-Take-All employing Neurons with NonLinear Den-
+drites (WTA-NNLD)
+
+We propose a spike based WTA network, depicted in Fig. 2,
+which is composed of N such NNLDs. Each NNLD is com-
+posed of m dendrites, where each dendrite chooses (repetition
+allowed) k of the d available input lines and connects to k
+synapses having weight 1. The membrane voltage, threshold
+voltage and input current of the nth NNLD are denoted by
+V n(t), Vthr and I n
+in(t) respectively and their dynamics is
+governed by Equation 1. For the nth NNLD, while the pre-
+synaptic spike-train arriving at the ith input line is denoted
+by ei(t) as before, the emitted output spike train is given by
+a ). Note that for any applied input pattern,
+
+f n(t) =(cid:80)
+
+δ(t − tn
+
+a is measured from its beginning.
+tn
+We have modelled the effect of lateral inhibition by provid-
+ing each NNLD with a global inhibitory current signal Iinh(t)
+supplied by a single inhibitory neuron Ninh through synapses.
+The signal Iinh(t) is provided by the inhibitory neuron to all
+the NNLD whenever any one of them ﬁres an output spike.
+Iinh(t) is modeled as Iinh(t) = Kinh(t− tn
+last), when the last
+post-synaptic spike is produced by the nth NNLD at tn
+last. The
+inhibitory post-synaptic kernel, Kinh, is given by:
+
+a
+
+Kinh(t) = I0,inh(e
+
+− t
+τs,inh − e
+
+− t
+
+τf,inh )
+
+(8)
+
+where g = 1, 2, ... is the label of the spike. Then, the input
+current Iin(t) to the neuron can be calculated as:
+
+Iin(t) =
+
+I j
+b,out(t)
+
+I j
+b,out(t) = b(I j
+
+b,in(t))
+
+(3)
+
+(4)
+
+where τf,inh and τs,inh are the fast and slow time constants
+dictating the rise and fall
+times of the inhibitory current
+respectively and I0,inh sets its amplitude.
+
+Fig. 1: A neuronal cell with nonlinear dendrites
+
+A. Neuron with nonlinear dendrites (NNLD)
+
+The computational model of NNLD was ﬁrst proposed by
+Mel et al. in [26]. They showed that such neurons have higher
+storage capacity than their non-dendritic counterparts. They
+used two such NNLDs to construct a supervised classiﬁer
+and demonstrated its performance in pattern memorization.
+Recently NNLD has also been employed to develop com-
+putationally powerful rate [27] and spike based [28], [29]
+supervised classiﬁers. The structure of NNLD is isomorphic
+to a feedforward spiking neural network with a single layer
+of hidden neurons and one output neuron [30]. The lumped
+dendritic nonlinearities b() are equivalent to the hidden neu-
+rons interposed between the input and output layers. However,
+spiking neurons implement nonlinear thresholding, integration,
+refractory period etc. Hence, it is typically a much larger
+circuit compared to the square law nonlinearity of a dendrite,
+which makes the NNLD an area efﬁcient architecture.
+
+As depicted in Fig. 1, a NNLD consists of m dendritic
+branches having lumped nonlinearities, with each branch con-
+taining k excitatory synaptic contact points of weight 1. If we
+consider a d dimensional input pattern, then each synapse is
+driven by any one of these input dimensions where d >> k.
+We use the Leaky Integrate-and-Fire (LIF) model to generate
+output spikes. Thus, the neuronal membrane voltage is guided
+by the following differential equation:
+
++
+
+R
+
+dt
+
+V (t)
+
+= Iin(t)
+
+dV (t)
+C
+If V (t) ≥ Vthr, V (t) → 0; &f (t) → 1
+else f (t) = 0
+
+(1)
+
+where V (t), Vthr, Iin(t) and f (t) are the membrane voltage,
+threshold voltage, input current and output spikes of the NNLD
+respectively. Let us denote the input spike train arriving at the
+ith input line as ei(t) which is given by:
+
+ei(t) =
+
+δ(t − ti
+g)
+
+(2)
+
+(cid:88)
+
+g
+
+m(cid:80)
+
+j=1
+
+1234m12345dmsehcnarbcitirdneddinputsb()∑f(t)3
+
+trace of the nth NNLD and b(cid:48)() denotes derivative
+of the nonlinear function b().
+
+2) Potentiation: If the nth NNLD of the WTA-NNLD
+network ﬁres a post-synaptic spike at time tpost then
+pj(t) at t = tpost ∀ p = 1, 2, ...k; j = 1, 2, ..., m
+cn
+i.e. for each synapse connected to the nth NNLD is
+updated by ∆cn
+
+pj(t = tpost) given by:
+pj(t) = b(cid:48)
+
+j(t) ¯ei(t)(cid:12)(cid:12)t=tpost
+
+∆cn
+
+(10)
+where ¯ei(t) = K(t) ∗ ei(t) is the pre-synaptic trace
+of the corresponding input line connected to it.
+
+A pictorial explanation of this update rule of cn
+pj(t) is
+shown in Fig. 3. Note that for a square law nonlinearity,
+b(cid:48)(z) ∝ z and hence can be easily computed in hardware
+without requiring any extra circuitry to calculate the
+derivative.
+
+• During the presentation of the pattern whenever a spike
+is produced by any of the N excitatory NNLDs, the
+inhibitory neuron Ninh sends an inhibitory signal to all
+the NNLDs of the WTA.
+
+• After the network has been integrated over the current
+pattern of duration Tp, the synaptic connections of the
+NNLDs which have produced at
+least one spike are
+modiﬁed.
+
+• If we consider that Q out of N NNLDs have produced
+post-synaptic spike/spikes for the current pattern, then the
+connectivity of the qth NNLD ∀q = 1, 2..., Q is updated
+by tagging the synapse (sq
+min) having the lowest value of
+correlation coefﬁcient at t = Tp out of the m×k synapses
+connected to it for possible replacement.
+
+• To aid the unsupervised learning process, randomly cho-
+sen sets Rq containing nR of the d input dimensions
+are forced to make silent synapses of weight 1 on the
+min ∀ q = 1, 2..., Q. We term
+dendritic branch of sq
+these synapses as “silent” since they do not contribute
+to the computation of V n(t) - so they do not alter the
+classiﬁcation when the same pattern set is re-applied.
+The value of cq
+pj(t = Tp) is calculated for synapses
+in Rq and the synapse having maximum cq
+pj(t = Tp)
+max ∀ q = 1, 2..., Q is identiﬁed.
+in Rq denoted by rq
+Next, the input line connected to sq
+min is swapped with
+the input
+instead of
+the traditional method of training by changing of high-
+resolution synaptic weights, our learning rule modiﬁes
+the connections between the inputs and dendrites based
+on the ﬁtness values.
+
+line connected to rq
+
+max. Hence,
+
+• All the cn
+
+pj(t) values are reset to zero and the above men-
+tioned steps are repeated whenever a pattern is presented.
+Here, we deﬁne an epoch for C class classiﬁcation as a
+set of patterns consisting of one pattern from each of the
+C classes- in random order. We deﬁne another term lmean
+as the average of the latencies of the post-synaptic spikes
+in the network over time period of the last epoch which
+is given by:
+
+lmean =<
+
+tn
+a >1
+
+(11)
+
+(cid:88)
+
+(cid:88)
+
+n
+
+a
+
+Fig. 2: A spike based WTA network employing neurons with lumped
+dendritic nonlinearities as the competing entities. For implementing
+lateral inhibition, a inhibitory neuron has been included which, upon
+activation, provides a global inhibition signal to all the NNLDs.
+C. Spike Timing Dependent Plasticity based Network Re-
+Wiring learning rule (STDP-NRW)
+
+Since we consider binary synapses with weight 0 or 1, we do
+not have the provision to keep real valued weights associated
+with them. Hence, to guide the unsupervised learning, we
+deﬁne a correlation coefﬁcient based ﬁtness value cn
+pj(t) for
+the pth synaptic contact point on the jth dendrite of the nth
+NNLD of the WTA network, as a substitute for its weight.
+In the proposed algorithm, structural plasticity or connection
+modiﬁcations happen in longer timescales (at
+the end of
+patterns) which is guided by the ﬁtness function cn
+pj(t) updated
+by a STDP inspired rule in shorter timescales (at each pre-
+and post-synaptic spike). The operation of the network and
+learning process comprises the following steps whenever a
+pattern is presented:
+pj(t = 0) = 0 ∀ p =
+
+pj(t) is initialized as cn
+1, 2, ...k; j = 1, 2, ..., m & n = 1, 2, ..., N.
+
+• cn
+
+• The value of cn
+
+pj(t) is depressed at pre-synaptic and
+potentiated at post-synaptic spikes according to the fol-
+lowing rule:
+
+1) Depression: If the pre-synaptic spike occurs at the
+pth synapse on the jth dendritic branch of the nth
+NNLD at time tpre, then the value of cn
+pj(t) at t =
+tpre is updated by a quantity ∆cn
+pj(t = tpre) given
+by:
+
+j(t) ¯f n(t)(cid:12)(cid:12)t=tpre
+
+pj(t) = −b(cid:48)
+
+∆cn
+
+(9)
+where ¯f n(t) = K(t) ∗ f n(t) is the post-synaptic
+
+∑ ∑ f 1(t)b()Input Spike Trains∑ ∑ b()m DLNN rep setirdnedNinhIinh(t)Iinh(t)Iinh(t)Iinh(t)Excitatory ConnectionInhibitory Connectionf 2(t)f 3(t)f N(t)4
+
+Fig. 3: An example of the update rule of ﬁtness value (cn
+pj(t)) is
+shown. When a post-synaptic spike occurs at tpost1 the value of
+pj(t) increases by b(cid:48)
+j(tpost1)¯ei(tpost1). Due to the appearance of a
+cn
+j(tpre2) ¯f n(tpre2) as
+pre-synaptic spike at tpre2, cn
+shown in the ﬁgure.
+
+pj(t) reduces by b(cid:48)
+
+where < · >1 denotes averaging over one epoch. We note
+the value of lmean for every epoch and the learning is
+considered to converge when the value of a ‘Convergence
+Measure’ (CM) based on lmean reaches saturation. We
+deﬁne our ‘Convergence Measure’ in Section III.
+
+D. Speciﬁcity and Sensitivity: Role of Inhibitory Time Con-
+stant
+
+When a pattern is presented to the WTA-NNLD and any
+one of the N NNLDs produce an output spike, a global
+inhibition current Iinh(t) is injected into all the N NNLDs.
+The slow time constant τs,inh of this signal controls the output
+ﬁring activity of the WTA-NNLD. Typically, a large value
+of τs,inh (w.r.t to Tp) is set, and only one NNLD produces
+an output spike i.e. patterns of same class are encoded by a
+single NNLD. The post-synaptic spike latency for a pattern
+P is deﬁned as the time difference between the start of
+the pattern and the ﬁrst spike produced by any one of the
+N neurons of WTA-NNLD. During training of WTA-NNLD
+for this case, different NNLDs get
+locked onto different
+classes of pattern and the latency gradually decreases until
+the end of the training. Thus, after completion of training,
+the unique NNLDs which have learned different classes of
+pattern rely only on the ﬁrst few spikes (determined by the
+latency at the end of training) to predict the pattern’s class
+thereby signiﬁcantly reducing the prediction time [15]. So, the
+sensitivity of the network is increased. However, the problems
+with this approach are:
+
+• The percentage of successful classiﬁcations can be less
+due to the strict requirement of different neurons ﬁring
+based only on ﬁrst few spikes of different patterns (shown
+in Section IV).
+
+• Though the prediction time of a pattern’s class is sig-
+niﬁcantly reduced, this method neglects most part of the
+pattern after the ﬁrst few spikes which may lead to a lot
+of false detections.
+
+We demonstrate the limitation mentioned in the above point
+by a simple example in Fig. 4. Let us consider we are perform-
+ing C class classiﬁcation and assume that after the training
+
+Fig. 4: Speciﬁcity is reduced if only one NNLD encodes a pattern
+based on its ﬁrst few spikes. As shown, a different pattern with a
+section resembling the beginning of class 1 pattern may cause neuron
+Nf 1 to respond.
+phase is complete, NNLD Nf 1 responds to patterns belonging
+to Class 1. NNLD Nf 1 has trained itself to provide an output
+spike depending on the position of the ﬁrst few spikes (red
+spikes in dashed box of Fig. 4) of the pattern. It neglects
+the rest of the pattern while providing a prediction. However,
+for longer patterns there is a chance that this spike set can
+occur anywhere inside a random pattern (not belonging to any
+class or to another class). The same NNLD Nf 1 responds to
+such patterns by producing a post-synaptic spike. Thus, we see
+that though trained WTA-NNLD is very sensitive in this case,
+it loses speciﬁcity. On the other hand, if we set a moderate
+value of τs,inh, then for a single pattern multiple NNLDs are
+capable of producing output spikes. Hence, patterns of the
+same class are now encoded by a sequence of successive ﬁring
+of few NNLDs where each NNLD ﬁres for one subpattern.
+Let nsub be the number of subpatterns that is set by a proper
+choice of τs,inh. Thus the original case of one NNLD ﬁring
+for each pattern corresponds to nsub = 1 . In this article, for
+a C class classiﬁcation we deﬁne a successful trial as one
+in which (a) during the training phase WTA-NNLD learns
+different unique representations for patterns of different classes
+and (b) after completion of training and achieving success
+in (a), the network produces the same representation, when
+presented with testing patterns corresponding to classes that it
+had learned during the training phase. When nsub = 1 i.e. no
+pattern subdivisions are made, this unique representation is a
+different neuron ﬁring for different classes of patterns. When
+nsub > 1, the unique representation is a different sequence
+of successive NNLDs ﬁring for different classes of patterns.
+When, nsub > 1, we allow the NNLDs to detect subpatterns
+within patterns. Since in this approach the WTA-NNLD gives
+weightage to the entire pattern before predicting its class, the
+number of false detections can be largely reduced. However,
+this method has a limitation of being less jitter resilient −
+one of the many subpatterns can be easily corrupt by noisy
+jitters in spike (shown in Section IV) and fail to produce a
+unique identiﬁer during testing phase. Hence, the choice of
+nsub and consequently the inhibitory time constant depends
+on the amount of temporal jitter in the application.
+
+f n(t)cpjn(t)tpre1tpre2tpost1Ɗcpjn(tpost1) Ɗcpjn(tpre2) ttttttpost2Ɗcpjn(tpost2) f n(t)e (t)ie (t)iResponding NNLD : Nf1Class 1 patternWTA-NNLDResponding NNLD : Nf1WTA-NNLDRandom patternIII. CHOICE OF PARAMETERS
+
+The following is an exhaustive list of the parameters used
+
+by WTA-NNLD and STDP-NRW:
+
+5
+
+1) Tp: Duration of a pattern
+2) d: Dimension of the input
+3) m: Number of dendrites per NNLD
+4) k: Number of synapses per dendrite
+5) nR: Number of input dimensions in replacement set
+6) τs and τf : Slow and fast time constant of excitatory
+
+current kernel
+
+7) I0: Normalization constant of excitatory current kernel
+8) τs,inh and τf,inh: Slow and fast time constant of in-
+
+hibitory current kernel
+
+9) I0,inh: Normalization constant of inhibitory current ker-
+
+nel
+
+10) xthr: Threshold of dendritic nonlinearity
+11) Vthr: Firing threshold voltage of NNLD
+12) N: Number of NNLDs in WTA
+13) C: Number of classes of patterns
+We will now provide some guidelines on choosing the key
+
+parameters:
+
+a) Total number of synapses per NNLD (s): The number
+of synapses allocated to each neuronal cell of WTA-NNLD are
+kept as equal to the dimension (d) of the input patterns. This
+is done to ensure NNLD uses the same amount of synaptic
+resources as the simplest neuron–a perceptron. Thus, if the
+proposed network is comprised of N such neuronal cells then
+the total number of synaptic resources required are d × N.
+
+b) Number of dendrites per NNLD (m): In [26] a mea-
+sure of the pattern memorization capacity,BN , of the NNLD
+(Fig.1) has been provided by counting all possible functions
+realizable as:
+
+(cid:18)(cid:0)k+d−1
+
+(cid:1) + m − 1
+(cid:19)
+
+bits
+
+(12)
+
+BN = log2
+
+k
+
+m
+
+where m, k and d are the number of dendrites, number of
+synapses per dendrites and dimension of the input respectively
+for this neuronal cell. When a new classiﬁcation problem is
+encountered, we ﬁrst note down the value of d, which in turn
+sets our s since we have considered s = d. Since s = m × k,
+for a ﬁxed s all possible values which m can take are factors
+of s. We calculate BN for these values of m by Equation 12.
+The value of m for which BN attains its maxima is set as
+m in our experiment. As an example, we show in Fig. 5 the
+variation of BN with m when d = 100. It is evident from the
+curve that the capacity is maximum when m = 25 and so in
+our simulations for classifying 100 dimensional patterns we
+employ neuronal cells having 25 dendrites.
+
+c) Number of synapses per branch (k): After s and m
+
+m.
+have been set, the value of k can be computed as k = s
+
+d) The normalization constant (I0), slow (τs) and fast
+time constant (τf ) of excitatory PSC kernel: The fast time
+constant (τf ) and slow time constant (τs) have been deﬁned
+in Section II-C. In hardware implementation of a synapse [29]
+τf usually takes a small positive value and is typically not
+tuned. The slow time constant, τs, is responsible for integration
+across temporally correlated spikes and the performance of
+
+Fig. 5: The pattern memorization capacity of a NNLD (BN ) is plotted
+as function of the number of dendrites (m) for a ﬁxed number of input
+dimensions (d = 100) and synapses (s = 100).
+the network is dependent on its value. If τs takes too small a
+value, then the post synaptic current due to individual spikes
+dies down rapidly and thus temporal integration of separated
+inputs does not take place. On the other hand large values
+of τs render all spikes effectively simultaneous. So, in both
+extremes the extraction of temporal features from the input
+pattern is hampered. In [29] we have provided a mathematical
+formula for calculating τs,opt, the optimal value of τs, with
+respect to the inter spike interval (ISI) of the input pattern for
+which optimal performance of the network is obtained. If we
+are considering d dimensional patterns and the mean ﬁring
+rate of each dimension is µf , then the mean ISI across the
+entire pattern is given by µISI = 1/(d× µf ). We can then set
+τs,opt according to the formula:
+
+τs,opt = 52.83µISI − 3.1
+
+In our simulations, we keep τf as τf = τs
+
+(13)
+10. Since the
+weights of all the active synapses are 1, we set I0 = 1.4351
+to normalize the amplitude of the PSC to be 1.
+
+e) Threshold of nonlinearity (xthr): During the training
+of WTA-NNLD, the STDP-NRW rule preferably selects those
+connection topologies where correlated inputs for synaptic
+connections are connected to the same branch. Thus,
+the
+lumped dendritic nonlinearity b(z) = z2
+should give a
+xthr
+supra-linear output only when correlated input dimensions are
+connected to the dendrite. To ensure this we keep the value
+of xthr equal to the average input to the nonlinear function in
+case of random connections. We create numerous instances of
+dendrites having k synapses and calculate the average input
+to the nonlinear function, bin,avg, for the pattern set at hand.
+Then we set the value of xthr as, xthr = bin,avg.
+
+f) Vthr of NNLD: The NNLD should provide a post-
+synaptic spike only when correlated inputs have been con-
+nected to its dendrites. We consider a NNLD having m den-
+drites and k synapses and create numerous instances of random
+connections to these synapses. We measure the average value
+of the maximum membrane voltage ((Vmax)av) produced
+when this NNLD is integrated over the pattern duration for
+all these instances and set Vthr = (Vmax)av.
+
+g) The normalization constant (I0,inh), slow (τs,inh) and
+fast (τf,inh) time constant of Iinh(t): The post-synaptic ﬁring
+
+100101102150200250300350400450500Number of dendrites (m)Capacity (bits)6
+
+(a)
+
+(b)
+
+(c)
+
+C increases the percentage of successful trials also increases and becomes constant after N
+
+C for two-class, four-class and six-class classiﬁcation. The ﬁgure shows that
+Fig. 6: (a) The percentage of successful trials is plotted against N
+as N
+C = 11. (b) The evolution of CM (averaged
+over 50 trials) with the number of epochs for two-class, four-class and six-class classiﬁcation for nsub = 1. (c) The percentage of successful
+trials is plotted against σjitter/τs for nsub =1, 5 and 10. As the number of subpattern divisions are increased the jitter/noise robustness of
+the network decreases.
+
+N(cid:88)
+
+n=1
+
+1
+n
+
+activity of the WTA-NNLD network is dependent on τs,inh
+and I0,inh. To simulate the hardware scenario we set τf,inh to
+a small value given by τf,inh = τs,inh
+10 . To set I0,inh and τs,inh,
+we ﬁrst excite WTA-NNLD with epini epochs of patterns prior
+to training and calculate the average excitatory current (Ie,av)
+to the NNLDs as:
+
+Ie,av =<
+
+I n
+in(t) >epini
+
+(14)
+where < · >epini denotes averaging over epini epochs. The
+idea is to generate a Iinh(t) which, if provided by Ninh at
+the beginning of a subpattern, decays exponentially to Ie,av
+at the end of the subpattern i.e. after time Tsub has elapsed.
+This ensures that once a post-synaptic spike is generated by
+a NNLD in a particular Tsub time window, other NNLDs are
+unable to ﬁre during that same Tsub time window. Assuming
+τf,inh << τs,inh, we can derive that the required Iinh(t) is
+implemented by setting τs,inh as:
+
+τs,inh =
+
+Tsub
+ln( I0,inh
+Ie,av
+
+)
+
+(15)
+
+Note that τs,inh has an inverse logarithmic relation to I0,inh.
+h) Convergence Measure (CM): The formula for calcu-
+lating CM, applicable to both nsub = 1 and nsub > 1, for
+detecting the convergence of learning is given by:
+
+CM =
+
+lmean
+nsub
+
+− (nsub − 1) Tsub
+
+2
+
+(16)
+
+Note that for nsub = 1, CM = lmean and so it computes
+the time-to-ﬁrst spike for patterns averaged over an epoch. For
+nsub > 1, CM calculates the average time-to-ﬁrst spike from
+the beginning of each subpattern of C patterns of an epoch.
+We consider the learning has converged when the value of
+CM saturates.
+
+IV. EXPERIMENTS AND RESULTS
+
+In this section, we will describe the classiﬁcation task
+considered in this article. To show how the classiﬁcation
+
+performance generalizes to multi-class we will consider two,
+four and six class classiﬁcation. We will be showing the
+performance of WTA-NNLD and STDP-NRW for three values
+of nsub given by nsub = 1, 5 and 10.
+
+A. Problem Description
+
+The benchmark task we have selected to analyze the perfor-
+mance of the proposed method is the Spike Train Classiﬁcation
+problem [31]. In the generalized Spike Train Classiﬁcation
+problem, C arrays of h Poisson spike trains having frequency
+f and length Tp are present which are labeled as classes 1 to
+C. Jittered versions of these templates are created by altering
+the position of each spike within the templates by a random
+amount that is randomly drawn from a Gaussian distribution
+with zero mean and standard deviation σjitter. The network
+is trained by these jittered versions of spike trains, and the
+task is to correctly identify a pattern’s class. In this article,
+unless otherwise mentioned, we have considered h = 100 and
+Poisson spike trains are present in each afferent, f = 20 and Tp
+= 0.5 sec and varied C and σjitter. Inspired by [15], we also
+consider the scenario when h/2 randomly chosen afferents do
+not contain any spikes, while the remaining h/2 afferents are
+Poisson spike trains.
+
+B. Case 1: nsub = 1
+
+In this case we have Tsub = Tp, so one NNLD is capable
+of ﬁring only once when a pattern is presented. Considering
+σjitter = 0, we have varied the number of NNLDs and noted
+the percentage of successful trials which is depicted in Fig.
+6(a). To make the horizontal axis invariant of the number of
+classes, we have taken N
+C as the horizontal axis. From the
+ﬁgure we can conclude that the percentage of successful trials
+gradually increases with an increase in N
+C and ﬁnally becomes
+constant after N
+C = 11. Thus, unless otherwise mentioned, we
+will keep N = 11×C when nsub = 1. It can be seen from Fig.
+6(a) that the percentage of successful trials cannot go beyond
+
+02468101214020406080100N/C%of successful trialsTwo classFour classSix class05010015000.050.10.150.20.25EpochsConvergence Measure (CM)  Two classFour classSix class00.050.10.150.20.250.3020406080100σjitter/τs% of successful trialsnsub= 1nsub= 5nsub= 107
+
+of the proposed method when patterns with 50% empty
+afferents are considered. Fig. 8(a) depicts the results obtained
+by our network for this case with varying amounts of jitter.
+
+C. Case 2: nsub > 1
+
+Next, we consider nsub = 5 i.e. we divide each pattern into
+5 subpatterns by setting τs,inh and I0,inh as per Equation 15.
+For C class classiﬁcation, the maximum number of subpatterns
+can be C × nsub so we set N = C × nsub in this case
+i.e. we keep N = 10, 20 and 30 for two, four and six
+class classiﬁcation respectively. Considering σjitter = 0, the
+evolution of CM with epochs for two, four and six class
+classiﬁcation averaged over 50 trials is shown in Fig. 8(b).
+Moreover, the value of epsat,avg (averaged over 50 trials) is
+found out to be 210, 221 and 230 when C = 2, 4 and 6
+respectively. Unlike Case 1, here we consider the response
+to a pattern as a unique ﬁring sequence of few NNLDs.
+As an example, we consider a particular trial of four class
+classiﬁcation and look into the ﬁrst and last 3 epochs during
+its training. It is evident from Fig. 9 that during the ﬁrst 3
+epochs, WTA-NNLD produces arbitrary sequences of spikes.
+However, it can be seen that after the training of the network
+is complete, WTA-NNLD produces different ﬁring sequences
+for different patterns while producing the same sequence when
+same patterns are encountered. WTA-NNLD trained by this
+method produces a 100% accuracy in recognizing different
+patterns by producing its unique ﬁring sequence for two, four
+and six class classiﬁcation. The performance of the network
+with varying intensity of jitter is provided in Fig. 6(c) (spikes
+present in all afferents) and Fig. 8(a) (spikes present in only
+half of the afferents) which depict that the nsub = 5 case is
+less jitter resilient than the nsub = 1 case.
+
+We further increase the resolution of pattern subdivision
+by decreasing τs,inh. We consider nsub = 10 and following
+the principle of nsub = 5, the number of NNLDs employed
+for nsub = 10 are 20, 40 and 60 for two-class, four-class
+and six-class classiﬁcation. This approach also provides 100%
+accuracy in providing a unique sequence of ﬁring whenever a
+particular pattern is encountered when σjitter = 0. However,
+the performance of the network falls rapidly with the increase
+of σjitter as shown in Fig. 6(c) and Fig. 8(a). We also show the
+evolution of CM with the epochs in Fig. 8(b). Furthermore,
+the number of epochs needed for convergence of CM in this
+case is much more than the previous cases as depicted in
+Fig. 8(c). We conclude that dividing a pattern into too many
+subpatterns hampers the network performance.
+
+Next we delve a bit further and show the statistics of causes
+for the failure of the system in producing successful trials. A
+trial may fail if either condition (a) or (b) (described in Section
+II-D) is not satisﬁed. We denote the failure of condition (a) as
+F 1. Note that for a trial, condition (b) can fail if a pattern
+is misclassiﬁed as a pattern of another class (denoted as
+F 2) or as a random pattern (denoted as F 3). Table I shows
+the statistics of failed trials for nsub = 1, 5 and 10 when
+σjitter/τs ≈ 0.1. Note that F 1 is high for nsub = 1 since a
+unique NNLD might lock onto multiple classes of patterns. F 1
+reduces for nsub = 5 and increases again for nsub = 10 since
+
+(a)
+
+(c)
+
+(b)
+
+(d)
+
+Fig. 7: For four class classiﬁcation the above ﬁgure shows that out
+of 44 NNLDs (a) 7th NNLD recognizes Class 1 pattern (b) Class 2
+pattern ﬁres for the 12th NNLD, (c) 36th NNLD recognizes Class
+3 pattern (d) Class 4 pattern is recognized by 9th NNLD and the
+latency for all four of them decreases over epochs until saturation.
+92%, 88% and 82% for two, four and six class classiﬁcation
+respectively.
+
+Earlier in Section III we have mentioned that
+
+learning
+converges when CM saturates. For nsub = 1, CM = lmean
+is the average of the time-to-ﬁrst spikes for patterns in an
+epoch. As an example we consider a particular trial of four-
+class classiﬁcation and show in Fig. 7 that during training,
+the latencies of the four NNLDs, Nf 1, Nf 2, Nf 3 and Nf 4
+which uniquely recognize the four class of patterns gradually
+reduce until reaching a saturation point. Moreover, in Fig. 6(b)
+we show the epochwise evolution of CM averaged over 50
+trials for two-class, four-class and six-class classiﬁcation. It
+is evident from the ﬁgure that the value of CM decreases
+thereby showing that
+the algorithm is favoring correlated
+inputs such that the post-synaptic spikes can occur faster and
+ﬁnally saturates after some epochs have passed. We denote the
+number of epochs taken by the algorithm for saturation of CM
+as epsat and note its value for 50 trials. The average value of
+epsat for 50 trials, epsat,avg, is then computed to be epsat,avg
+= 149, 157 and 165 for two-class, four-class and six-class
+classiﬁcation respectively. Moreover, this phenomenon clearly
+indicates that while the WTA-NNLD network is being trained
+by STDP-NRW learning rule, C unique NNLDs which have
+locked onto the C different classes of pattern, are trying to
+recognize the start of repeating patterns for different classes.
+Fig. 6(b) also suggests that after the training has stopped, these
+C unique NNLDs, instead of looking at the whole pattern
+of duration Tp = 500ms, can now look only at the starting
+44.8ms, 53.1ms and 56.1ms of the patterns for C = 2, 4 and
+6 respectively to predict its class.
+
+Let us now consider the effect of jitter and we show in
+Fig. 6(c) the performance of the proposed method when the
+intensity of jitter is varied. Next, we look into the performance
+
+050100150715EpochsNf1Class 1 pattern05010015000.10.2EpochsLatency (sec)050100150111213EpochsNf2Class 2 pattern05010015000.10.2EpochsLatency (sec)050100150353637EpochsNf3Class 3 pattern05010015000.20.4EpochsLatency (sec)0501001508910EpochsNf4Class 4 pattern0501001500.10.20.3EpochsLatency (sec)8
+
+(a)
+
+(b)
+
+(c)
+
+Fig. 8: (a) The percentage of successful trials is plotted against σjitter/τs for nsub =1, 5 and 10 for patterns having spikes in only 50
+% of the afferents. (b) The evolution of CM (averaged over 50 trials) with the number of epochs for two-class, four-class and six-class
+classiﬁcation when nsub = 5. (c) This ﬁgure depicts the number of epochs needed for saturation of CM (averaged over 50 trials) against the
+number of subpatterns considered for each pattern (nsub). As nsub increases, WTA-NNLD has to train itself for more number of subpatterns
+and thus there is an increase in epsat,avg.
+
+sometimes the network fails to produce a unique 10 indices
+long representation for all patterns of the same class.
+
+Moreover, we test our network with random patterns and
+note the cases where a learnt unique representation is produced
+for a random input pattern i.e. a false positive error occurs.
+The percentage of false positive errors produced for nsub =
+1, 5 and 10 when σjitter/τs ≈ 0.1 are 8%, 0% and 0%
+respectively. Note that no false positive errors occur for
+nsub =5 and 10 since it is highly unlikely for a random pattern
+to make a sequence of neuron ﬁring same as any of the learnt
+representation.
+
+TABLE I: Analysis of failure statistics
+
+Case
+F 1
+F 2
+F 3
+
+nsub = 1
+
+12%
+2%
+2%
+
+nsub = 5
+
+2%
+2%
+4%
+
+nsub = 10
+
+6%
+2%
+8%
+
+V. VLSI IMPLEMENTATION: EFFECT OF STATISTICAL
+
+VARIATION
+
+In this section we analyze the stability of our algorithm to
+hardware nonidealities by incorporating the statistical varia-
+tions of the key subcircuits. The primary subcircuits needed
+to implement our architecture are synapse, dendritic squaring
+block, neuron and cn
+pj calculator. While the variabilities of
+the synapse circuit are modeled by mismatch in the amplitude
+(I0) and time constant (τs) of the synaptic kernel function,
+the variabilities of the squaring block are captured by a
+multiplicative constant (cbni) [29]. We do not consider the
+variation of inhibitory current kernel since it is global and only
+a single instance is present in the architecture. In our earlier
+work [29], [32], we proposed the circuits for implementing the
+synapse and squaring block of NNLD and performed Monte
+Carlo analysis to ﬁnd their variabilities. We presented that the
+µ of I0, τs and cbni for the worst case scenario are 13%,
+σ
+10.1% and 18% respectively. The mismatch of the LIF neuron
+circuit proposed in [32] was captured by variations in the ﬁring
+
+µ of which was computed to be 12.5%.
+threshold Vthr, the σ
+Lastly, the nonidealities of the cn
+pj calculator block, described
+in [33], are modeled as a multiplicative constant (ccni). Monte
+pj calculator block revealed that its σ
+Carlo analysis of the cn
+µ
+for the worst case is 18%.
+
+Fig. 10 shows the performance of the proposed method
+when these nonidealities are included in the model for nsub =
+1 and nsub = 5 keeping σjitter/τs ≈ 0.1. The bars correspond-
+ing to I0, τs, cbni, and ccni denote the performance degrada-
+tion when statistical variations of I0, τs, cbni, and ccni are
+included individually. The results of Fig. 10(a) and Fig. 10(b)
+depict that the performance of the proposed algorithm is most
+affected by τs and ccni and least by cbni. Finally, to mimic
+the proper hardware scenario we consider the simultaneous
+implementations of all the nonidealities, which is marked by
+(...). The (...) bars show that there is an 8% and 6% decrease
+in performance for nsub = 1 and nsub = 5 respectively.
+
+VI. CONCLUSION
+
+We have proposed a new neuro-inspired Winner-Take-All
+architecture (WTA-NNLD) and a STDP inspired dendrite
+speciﬁc structural plasticity based learning rule (STDP-NRW)
+for its training. Motivated by recent biological evidences and
+models suggesting nonlinear processing properties of neu-
+ronal dendrites we employ neurons with nonlinear dendrites
+to construct our WTA architecture. Moreover, we consider
+binary synapses instead of high resolution synaptic weights.
+Thus our learning rule, instead of weight updates, trains the
+network by modiﬁcation of the connections between input
+and synapses. We have also provided a method by which the
+number of subpatterns per pattern learned by WTA-NNLD
+can be controlled. WTA-NNLD encodes patterns of different
+classes by either activity of distinct NNLDs or by a distinct
+sequence of NNLD ﬁrings. To demonstrate the performance
+of WTA-NNLD and STDP-NRW, we have considered two,
+four and six class classiﬁcation of 100 dimensional Poisson
+spike trains. We can conclude from the result that the slow
+time constant of inhibitory signal (τs,inh) can be properly set
+
+00.050.10.150.20.250.3020406080100σjitter/τs% of successful trials  nsub=1nsub=5nsub=1005010015020000.050.10.150.20.25EpochsConvergence Measure (CM)  Two classFour classSix class0246810100200300400500600700800nsubepsat,avg  Two classFour classSix class9
+
+Fig. 9: The input and output of WTA-NNLD has been shown for a particular trial of the four class classiﬁcation when nsub = 5. P1, P2, P3
+and P4 represent the patterns of a particular class. The ﬁgure depicts that before learning WTA-NNLD produces arbitrary spikes whenever
+a pattern is presented. After learning, the network produces unique sequence of NNLD spikes for patterns of different classes. This unique
+sequence acts as an identiﬁer of the pattern class.
+
+to obtain a tradeoff between speciﬁcity and sensitivity of the
+network. Our immediate future work will include studying
+the effects of connection changes after the network gets
+integrated over multiple patterns. This will reduce the number
+of required computations. On another note, we will look into
+the classiﬁcation of spike based MNIST [34], [35] datasets by
+our method. Our network can be immediately scaled to learn
+the digits of MNIST dataset, the only requirement being addi-
+tional simulation time and computational memory compared
+to the tasks considered in this article. Furthermore, to achieve
+
+invariance to scaling and rotation during image classiﬁcation,
+we will be constructing NNLD based convolutional neural
+networks [36] trained by structural plasticity. We will also
+implement the proposed network in hardware and apply it for
+real time online unsupervised classiﬁcation of spatio-temporal
+spike trains.
+
+REFERENCES
+
+[1] M. Riesenhuber and T. Poggio, “Hierarchical models of object recog-
+nition in cortex,” Nature Neuroscience, vol. 2, no. 11, pp. 1019–1025,
+1999.
+
+Time (s)noisnemid tupnIEpoch #1P2P1P4P3Epoch #2P4P4P2P3P1P1P3P2Epoch #3First three epochsTime (s)xedni DLNNLast three epochsEpoch #epsat-2Epoch #epsat-1Epoch #epsatOutput of WTA-NNLDInput to WTA-NNLDP1P3P2P4P3P2P1P4P2P3P4P1Input to WTA-NNLDTime (s)noisnemid tupnIxedni DLNNTime (s)Output of WTA-NNLD10
+
+[9] T. Serrano and B. L. Barranco, “A modular current-mode high-precision
+the IEEE International
+winner-take-all circuit,”
+Symposium on Circuits and Systems (ISCAS), May 1994, vol. 5, pp.
+557–560.
+
+in Proceedings of
+
+[10] G. Indiveri, “Winner-take-all networks with lateral excitation,” Analog
+Integrated Circuits and Signal Processing, vol. 13, no. 1-2, pp. 185–193,
+1997.
+
+[11] G. Indiveri, “A current-mode hysteretic winner-take-all network, with
+excitatory and inhibitory coupling,” Analog Integrated Circuits and
+Signal Processing, vol. 28, no. 3, pp. 279–291, 2001.
+
+[12] S. C. Liu, “A normalizing aVLSI network with controllable winner-
+take-all properties,” Analog Integrated Circuits and Signal Processing,
+vol. 31, no. 1, pp. 47–53, 2002.
+
+[13] M. Oster, R. Douglas, and S. C. Liu, “Computation with spikes in
+a winner-take-all network,” Neural Computation, vol. 21, no. 9, pp.
+2437–2465, Sep. 2009.
+
+[14] J. L. McKinstry and G. M. Edelman, “Temporal sequence learning in
+winner-take-all networks of spiking neurons demonstrated in a brain-
+based device,” Frontiers in Neurorobotics, vol. 7, no. 10, 2013.
+
+[15] T. Masquelier, R. Guyonneau, and S. J. Thorpe, “Competitive STDP-
+based spike pattern learning,” Neural Computation, vol. 21, no. 5, pp.
+1259–1276, May 2009.
+
+[16] A. Delorme, L. Perrinet, and S. J. Thorpe, “Networks of integrate-and-
+ﬁre neurons using rank order coding B: Spike timing dependent plasticity
+and emergence of orientation selectivity,” Neurocomputing, vol. 38, no.
+40, pp. 539–545, 2001.
+
+[17] R. Guyonneau, R. VanRullen, and S. J. Thorpe, “Temporal codes and
+sparse representations: A key to understanding rapid processing in the
+visual system,” Journal of Physiology-Paris, vol. 98, no. 4-6, pp. 487 –
+497, 2004.
+
+[18] T. Masquelier and S. J Thorpe,
+
+“Unsupervised learning of visual
+features through spike timing dependent plasticity,” PLoS Computational
+Biology, vol. 3, no. 2, pp. e31. doi:10.1371/journal.pcbi.0030031, 02
+2007.
+
+[19] W. Gerstner, R. Ritz, and J. L. V. Hemmen, “Why spikes? hebbian
+learning and retrieval of time-resolved excitation patterns,” Biological
+Cybernetics, vol. 69, no. 5-6, pp. 503–515, 1993.
+
+[20] M. Yoshioka,
+
+“Spike-timing-dependent learning rule to encode spa-
+tiotemporal patterns in a network of spiking neurons,” Physical Review
+E, vol. 65, pp. 011903, Dec 2001.
+
+[21] B. Nessler, M. Pfeiffer, L. Buesing, and W. Maass, “Bayesian compu-
+tation emerges in generic cortical microcircuits through spike-timing-
+dependent plasticity,” PLoS Computational Biology, vol. 9, no. 4, pp.
+e1003037, 2013.
+
+[22] D. Kappel, B. Nessler, and W. Maass, “STDP installs in winner-take-
+all circuits an online approximation to hidden markov model learning,”
+PLoS Computational Biology, vol. 10, no. 3, pp. e1003511, Mar 2014.
+“Hardware-amenable
+structural learning for spike-based pattern classiﬁcation using a simple
+model of active dendrites,” Neural Computation, vol. 27, no. 4, pp.
+845–897, 2015.
+
+[23] S. Hussain, S. C. Liu, and Arindam Basu,
+
+[24] K. A. Boahen, “Point-to-point connectivity between neuromorphic chips
+using address events,” IEEE Transactions on Circuits and Systems II:
+Analog and Digital Signal Processing, vol. 47, no. 5, pp. 416–434, May
+2000.
+
+[25] S. Brink, S. Nease, P. Hasler, S. Ramakrishnan, R. Wunderlich, A. Basu,
+and B. Degnan,
+“A learning-enabled neuron array IC based upon
+transistor channel models of biological phenomena,” IEEE Transactions
+on Biomedical Circuits and Systems, vol. 7, no. 1, pp. 71–81, Feb. 2013.
+[26] P. Poirazi and B. W. Mel, “Impact of active dendrites and structural
+plasticity on the memory capacity of neural tissue,” Neuron, vol. 29,
+no. 3, pp. 779–796, Mar. 2001.
+
+[27] S. Hussain, R. Gopalakrishnan, A. Basu, and S. C. Liu, “Morphological
+Learning: Increased Memory Capacity of Neuromorphic Systems with
+Binary Synapses Exploiting AER Based Reconﬁguration,” in IEEE Intl.
+Joint Conference on Neural Networks (IJCNN), Aug. 2013, pp. 1 – 7.
+[28] S. Roy, A. Basu, and S. Hussain, “Hardware efﬁcient, Neuromorphic
+Dendritically Enhanced Readout for Liquid State Machines,” in Pro-
+ceedings of the IEEE Biomedical Circuits and Systems (BioCAS), Nov
+2013, pp. 302–305.
+
+[29] S. Roy, A. Banerjee, and A. Basu,
+
+“Liquid state machine with
+dendritically enhanced readout for low-power, neuromorphic VLSI im-
+plementations,” IEEE Transactions on Biomedical Circuits and Systems,
+vol. 8, no. 5, pp. 681–695, Oct. 2014.
+
+[30] M.P. Jadi, B.F. Behabadi, A. Poleg-Polsky, J. Schiller, and B.W. Mel,
+“An augmented two-layer model captures nonlinear analog spatial inte-
+
+(a)
+
+(b)
+
+Fig. 10: Stability of WTA-NNLD trained by STDP-NRW is plotted
+with respect to different hardware nonidealities for nsub = 1 (a)
+and nsub = 5 (b). The constant red line indicates the percentage
+of successful trials obtained by our method without any nonidealities
+when σjitter/τs ≈ 0.1. The bars represent the percentage of success-
+ful trials obtained after inclusion of nonidealities. The rightmost bar
+marked by (...) represents the performance when all the nonidealities
+are included simultaneously.
+
+[2] W. Maass,
+
+“Neural computation with winner-take-all as the only
+nonlinear operation,” in Advances in Neural Information Processing
+Systems 12, pp. 293–299. MIT Press, 2000.
+
+[3] W. Maass, “On the computational power of winner-take-all,” Neural
+
+Computation, vol. 12, no. 11, pp. 2519–2535, 2000.
+
+[4] L. Itti, C. Koch, and E. Niebur, “A model of saliency-based visual
+IEEE Transactions on Pattern
+attention for rapid scene analysis,”
+Analysis and Machine Intelligence, vol. 20, no. 11, pp. 1254–1259, Nov.
+1998.
+
+[5] S. Kaski and T. Kohonen, “Winner-take-all networks for physiological
+models of competitive learning,” Neural Networks, vol. 7, no. 67, pp.
+973 – 984, 1994.
+
+[6] J. A. Barnden and K. Srinivas, “Temporal winner-take-all networks:
+a time-based mechanism for fast selection in neural networks,” IEEE
+Transactions on Neural Networks, vol. 4, no. 5, pp. 844–853, Sep. 1993.
+“Min-net winner-take-all CMOS
+implementation,” Electronics Letters, vol. 29, no. 14, pp. 1237–1239,
+Jul. 1993.
+
+[7] Y. He and E. Sanchez-Sinencio,
+
+[8] J. A. Starzyk and X. Fang, “CMOS current mode winner-take-all circuit
+with both excitatory and inhibitory feedback,” Electronics Letters, vol.
+29, no. 10, pp. 908–910, May 1993.
+
+020406080100% of successful trials(...)ccniI0τscbni020406080100% of successful trialsI0τs(...)cbniccni11
+
+gration effects in pyramidal neuron dendrites,” Proceedings of the IEEE,
+vol. 102, no. 5, pp. 782–798, May 2014.
+
+[31] T. Natschl¨ager, H. Markram, and W. Maass, Computer models and
+analysis tools for neural microcircuits, chapter 9, Kluver Academic
+Publishers (Boston), 2002.
+
+[32] A. Banerjee, A. Bhaduri, S. Roy, S. Kar, and A. Basu, “A current-
+mode spiking neural classiﬁer with lumped dendritic nonlinearity,” in
+Proceedings of
+the IEEE International Sympoisum on Circuits and
+Systems (ISCAS), 2015, number May.
+
+[33] S. Roy, S.K. Kar, and A. Basu,
+
+“Architectural exploration for on-
+chip, online learning in spiking neural networks,” in 14th International
+Symposium on Integrated Circuits (ISIC), Dec 2014, pp. 128–131.
+
+[34] Y. Lecun, L. Bottou, Y. Bengio, and P. Haffner, “Gradient-based learning
+applied to document recognition,” Proceedings of the IEEE, vol. 86, no.
+11, pp. 2278–2324, Nov. 1998.
+
+and B. L. Barranco,
+[Online]. Available:
+
+“The MNIST-
+http://www2.imse-
+
+[35] T. S. Gotarredona
+
+database,”
+
+DVS
+cnm.csic.es/caviar/MNISTDVS.html.
+
+[36] Y. LeCun and Y. Bengio, “The handbook of brain theory and neural
+networks,” chapter Convolutional Networks for Images, Speech, and
+Time Series, pp. 255–258. MIT Press, Cambridge, MA, USA, 1998.
+
+

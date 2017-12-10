@@ -1,0 +1,1542 @@
+4
+1
+0
+2
+ 
+c
+e
+D
+6
+1
+
+ 
+
+ 
+ 
+]
+
+V
+C
+.
+s
+c
+[
+ 
+ 
+
+2
+v
+6
+2
+5
+4
+
+.
+
+2
+1
+4
+1
+:
+v
+i
+X
+r
+a
+
+Highly Efﬁcient Forward and Backward Propagation of Convolutional Neural
+
+Networks for Pixelwise Classiﬁcation
+
+Hongsheng Li1,2, Rui Zhao1, and Xiaogang Wang1
+
+1Multimedia Laboratory, The Chinese University of Hong Kong
+
+2School of Electronic Engineering, University of Electronic Science and Technology of China
+
+lihongsheng@gmail.com, {rzhao, xgwang}@ee.cuhk.edu.hk
+
+Abstract
+
+We present highly efﬁcient algorithms for performing
+forward and backward propagation of Convolutional Neu-
+ral Network (CNN) for pixelwise classiﬁcation on images.
+For pixelwise classiﬁcation tasks, such as image segmenta-
+tion and object detection, surrounding image patches are
+fed into CNN for predicting the classes of centered pixels
+via forward propagation and for updating CNN parameters
+via backward propagation. However, forward and back-
+ward propagation was originally designed for whole-image
+classiﬁcation. Directly applying it to pixelwise classiﬁca-
+tion in a patch-by-patch scanning manner is extremely in-
+efﬁcient, because surrounding patches of pixels have large
+overlaps, which lead to a lot of redundant computation.
+
+The proposed algorithms eliminate all the redundant
+computation in convolution and pooling on images by in-
+It generates
+troducing novel d-regularly sparse kernels.
+exactly the same results as those by patch-by-patch scan-
+ning. Convolution and pooling operations with such ker-
+nels are able to continuously access memory and can run
+efﬁciently on GPUs. A fraction of patches of interest can
+be chosen from each training image for backward propaga-
+tion by applying a mask to the error map at the last CNN
+layer. Its computation complexity is constant with respect
+to the number of patches sampled from the image. Exper-
+iments have shown that our proposed algorithms speed up
+commonly used patch-by-patch scanning over 1500 times in
+both forward and backward propagation. The speedup in-
+creases with the sizes of images and patches. Source code of
+GPU implementation is ready to be released to the public.
+
+1. Introduction
+
+Convolutional Neural Networks (CNNs) are trainable
+multistage feed-forward neural networks [10]. They have
+been extensively investigated to extract good hierarchical
+feature representations for image recognition tasks. CNN
+
+includes three types of layers: convolution layer, pooling
+layer and non-linearity layer. The input and output of each
+layer are called feature maps.
+
+The convolution layer convolves input feature maps
+with 3D ﬁlter banks to generate output feature maps. Each
+ﬁlter extracts the same type of local features at all locations
+of the input feature map. Conventionally, a convolution
+layer has a stride of 11. But in some recent CNN mod-
+els, greater-than-1 strides were also used in convolution to
+down-sample the output feature map.
+
+The pooling layer decreases the resolution of the feature
+maps to make the output feature maps less sensitive to input
+shift and distortions. Max-pooling and average-pooling are
+most commonly used. Conventionally, a pooling layers has
+a stride equalling its kernel size. But in some recent CNN
+models, strides different than kernel sizes were also used.
+
+The non-linearity layer is a point-wise non-linear func-
+
+tion applied to each entry of feature maps.
+
+After extracting features with a multilayer convolutional
+network, fully connected layers with a ﬁnal classiﬁer are
+added to output class predictions. Given training samples
+and their labels, the parameters of CNNs are learned in an
+end-to-end supervised way by minimizing a loss function
+on training data. Forward and backward propagation is used
+to make class predictions for input samples and to update
+CNN parameters based on prediction errors, respectively.
+
+CNN together with its forward and backward propaga-
+tion algorithms was originally designed for whole-image
+classiﬁcation, i.e., predicting one label for a whole image.
+CNN-based OCR algorithms [10], [19], [1], [16] drew a lot
+of attention and were improved over the last decade. With
+deep CNN, Krizhevsky et al. [9] won the image classiﬁ-
+cation challenge in ImageNet LSVRC 2012 and beat other
+computer vision algorithms with large margins. In all the
+applications above, the input samples of CNNs are whole
+
+1A stride of d in convolution and pooling layers denotes that the centers
+of every two neighboring patches extracted from the input feature map are
+exactly d-pixel away from each other. It down-samples the output feature
+map such that its height and width are of 1/d of the original values.
+
+1
+
+(a) Patch-by-patch scanning for CNN based pixelwise classiﬁcation
+
+Figure 1. Comparison of (a) patch-by-patch scanning and (b) the proposed efﬁcient forward and backward propagation for pixelwise
+classiﬁcation. The scene labeling task is used for illustration here.
+
+(b) Our approach
+
+images without redundant information between them, and
+therefore they can be processed independently.
+
+In recent years, CNN has also been applied to object de-
+tection [15], [6], [18], [17], [13], image segmentation [20],
+scene labeling [5], [14], and tracking [4], and signiﬁcantly
+improved the accuracies in these applications. These tasks
+are considered as pixelwise classiﬁcation, i.e., predicting
+a class label for every pixel, and have fundamental differ-
+ence with whole-image classiﬁcation problems. The input
+samples of CNNs are image patches surrounding pixels and
+have large overlaps. Studies [5], [14] have shown that in-
+putting larger image patches to CNNs leads to better accura-
+cies, since CNNs can capture more contextual information.
+In [14], the chosen patch size covers 1/3 of the whole image.
+However, this implies larger overlaps between patches.
+
+Existing approaches ignored such difference and still
+process image patches independently in a way like treat-
+ing whole-images and without modifying the forward and
+backward propagation algorithms. They involved a lot of
+redundant computation on overlapped patches, and the re-
+dundancy increases with both image size and patch size.
+Figure 1.(a) shows straightforward patch-by-patch scanning
+for both forward and backward propagation. Computation
+efﬁciency has become a major bottleneck for these CNN
+based pixelwise classiﬁcation tasks. As a compromised so-
+lution, one could sacriﬁce the resolution of the predicted
+label maps by subsampling, such that overlaps between im-
+age patches can be reduced. In object detection, some image
+patches can be early rejected by fast algorithms before being
+
+feed to CNNs, however, sacriﬁcing recalls. Even given that,
+redundancy still exists and many CNNs based approaches
+for pixelwise classiﬁcation were not suitable for realtime
+applications.
+
+In pixelwise classiﬁcation tasks, it is easy to collect thou-
+sands of training image patches from a single image, since
+every pixel has a label. From a large image set, the number
+of available training samples could reach one billion. Exist-
+ing approaches treated these training patches independently.
+Due to the efﬁciency problem, it is impossible to make use
+of all the available training samples. Usually only a small
+subset was randomly sampled for training.
+
+1.1. Our approach
+
+In this paper, we propose highly efﬁcient forward and
+backward propagation algorithms for CNN based pixelwise
+classiﬁcation. It generates exactly the same result as patch-
+by-patch scanning, without sacriﬁcing the resolutions of
+predicted label maps or early rejecting any patches. Exper-
+imental results show that more than 1, 500 times speedup is
+achieved on 256 × 256 images for both forward and back-
+ward propagation. Theoretical analysis shows that com-
+pared with patch-by-patch scanning, the complexity of our
+algorithms is much less sensitive to patch size and the
+speedup increases with the sizes of images and patches.
+This is important since image resolutions will become
+higher and higher in future applications and CNNs prefer
+large patches which contain more contextual information.
+
+The proposed algorithms also have potential impact on
+
+…CNN training. With fast forward propagation, the predic-
+tion errors of all the pixels in an image can be estimated
+quickly at every backward propagation iteration. As shown
+in Figure 1.(b), based on the error map, an arbitrary portion
+of pixels of interest (even all) on an image can be selected
+by a mask, and their surrounding patches are used to update
+CNN with our modiﬁed backward propagation. The com-
+putation complexity of our backward propagation is con-
+stant with respect to the number of image patches selected.
+Figure 1 compares patch-by-patch scanning and our ap-
+proach. At the test stage, patch-by-patch scanning sequen-
+tially and independently feeds patches to CNN and the for-
+ward propagation is repeated for all the pixels. In our ap-
+proach, the whole image is taken as the input of CNN which
+predicts the whole label map with only one pass of the mod-
+iﬁed forward propagation. At each training iteration, exist-
+ing approaches predict the error of each sampled patch and
+use it to calculate gradients with backward propagation. If a
+mini-batch contains K training patches, both forward prop-
+agation and backward propagation are repeated for K times
+and the gradients estimated from the K patches are aver-
+aged to update CNN parameters. In our approach, a whole-
+image and its label map are treated as an input-target pair.
+With the proposed fast forward propagation, class labels at
+all the pixels can be quickly predicted, and all the predic-
+tion errors in the same image can be used to update CNN
+parameters with only one pass of the modiﬁed backward
+propagation.
+
+If with 1-stride convolution and without pooling layers,
+it is not difﬁcult to implement the one-pass forward propa-
+gation and one-pass backward propagation described above.
+Otherwise it is nontrivial, because convolution and pooling
+operations with greater-than-1 strides have down-sampling
+effect within each patch. The key of our approach is to mod-
+ify both the convolution and pooling kernels of the original
+CNN by inserting a speciﬁc number of all-zero columns and
+rows to compensate for the down-sampling by the convolu-
+tion and pooling layers. We call such kernels the d-regularly
+sparse kernels. Moreover, based on d-regularly sparse ker-
+nels, all strides of the convolution and pooling operations
+become 1, regardless of the strides of convolution and pool-
+ing in the original CNN. The 1-strides ensure continuous
+memory access, which is the key to maximize the computa-
+tional efﬁciency on GPUs.
+
+The main contributions of this work can be summarized
+as three-fold. (1) Our proposed algorithms eliminate all the
+redundant computation of forward and backward propaga-
+tion in CNN based pixelwise classiﬁcation, and achieve sig-
+niﬁcant speedup. (2) The proposed d-regularly sparse ker-
+nels not only ensure exactly the same results as patch-by-
+patch scanning in both forward and backward propagation,
+but also allow to access memory in a continuous manner,
+which is the key to fully utilize the computational capabil-
+
+ity of GPUs, regardless of the strides of convolution and
+pooling in the original CNN. 3) By applying a mask to the
+error map at the last layer of a CNN, one can choose an ar-
+bitrary subset of patches of interest from a training image
+to update CNN parameters via backward propagation and
+with constant computation complexity.
+
+2. Related Work
+
+There have been previous works [9], [3], [12] on efﬁ-
+cient computation of CNNs. But most methods assumed in-
+put samples are independent and did not take the redundant
+computation between samples into account.
+
+Our work is most related to the fast scanning method in
+[7], which was applied in scene labeling [14]. Fast scan-
+ning can be viewed as performing convolution or pooling
+with different starting offsets to generate multiple feature
+“fragments”. The output fragments at the last layer were re-
+organized to generate the ﬁnal label maps. Compared with
+fast scanning [7], our key advantage is to ensure 1-strides
+in all convolution and pooling operations after introducing
+the d-regularly sparse kernels. It allows to access memory
+addresses continuously, which is the key to fully utilize the
+computational power of GPUs. In contrast, fast scanning [7]
+still keeps large strides in its operations and is not ideal for
+GPU implementation. It was only implemented on CPUs
+in [7], [14]. Even with GPU implementation, it is multiple
+times slower than our algorithms.
+
+There are works [11] taking whole images as inputs to
+perform forward and backward propagation with multilayer
+fully connected networks. However, these works used fully
+connected layers and are therefore only suitable for images
+with regular structures such as pedestrians or faces, but not
+for general objects and images.
+
+3. Efﬁcient forward propagation
+3.1. Convolutional neural network
+
+For CNN consisting of K layers, without loss of gener-
+alization, we assume that the input and output of each layer
+consist of only one 2D feature map throughout the paper.
+Let xk ∈ Rn1×n2 and yk ∈ Rm1×m2 denote the input and
+output feature map of the kth layer, respectively. yk is also
+the input of the next layer, i.e., yk = xk+1.
+If the kth layer is a convolution layer, we denote Wk ∈
+Rlk×lk and bk ∈ R as the convolution kernel and the bias
+parameter of this layer. The output of this layer is yk =
+Wk∗dk xk+bk, where ∗dk denotes the convolution operation
+on xk with a kernel Wk and a stride of dk.
+
+If the kth layer is a pooling layer, it can be viewed as
+ﬁrst extracting feature patches from strided locations of the
+input feature map with a binary mask Pk ∈ Rpk×pk. The
+maximal or the mean value of each feature patch is then
+calculated as the pooling result of that patch. Let yk =
+
+(a) Wk ∈ R3×3
+
+(b) Pk ∈ R2×2
+
+(c) Wk conversion result
+
+(d) Pk conversion result
+
+Figure 2. (a) 3× 3 convolution kernel Wk whose entries are gener-
+ally non-zeros (represented by colored squares). (b) 2 × 2 pooling
+kernel Pk whose entries act as binary masks to extract features
+only at masked locations (represented by shaded squares).
+(c)
+Convert the convolution kernel Wk in (a) to a 2-regularly sparse
+convolution kernel Wk,2. Colored squares represent entries from
+kernel Wk, and white squares represent 0. (d) Convert the pool-
+ing kernel Pk in (c) to a 3-regularly sparse pooling kernel Pk,3.
+Shaded (white) squares represent masked (unmasked) locations.
+
+xk (cid:125)dk Pk denote a general pooling operation with a binary
+kernel Pk and a stride of dk on the input feature map.
+
+The parameters of a K-layer CNN can be optimized by
+gradient descent. For pixelwise classiﬁcation tasks, patches
+centered at pixels of training images are cropped as train-
+ing samples. For each patch in an input image I, the CNN
+outputs a prediction or a score. When feeding the image I
+as the input of the CNN by setting x1 = I, forward prop-
+agation cannot generate a prediction at every pixel location
+due to the greater-than-1 strides in convolution and pooling
+layers.
+
+Our goal is to make a one-time scan for each layer and
+generate exactly the same result as the time-consuming
+patch-by-patch scanning, however, without redundant com-
+putation. To achieve this goal, we introduce d-regularly
+sparse kernels to replace convolution and pooling kernels.
+Then it allows to take a whole image as input and directly
+output a label map for all the pixels without loss of resolu-
+tion.
+
+3.2. d-regularly sparse kernels
+
+For convolution kernel Wk and pooling kernel Pk, each
+entry is 1-pixel away from its neighboring entries (see Fig-
+ures 2.(a) and 2.(b) for examples). We create d-regularly
+sparse kernels for convolution and pooling layers by inter-
+sting all-zero rows and columns into the original kernels to
+make every two original neighboring entries d-pixel away.
+The d-regularly sparse convolution and pooling kernels are
+denoted by Wk,d and Pk,d, respectively.
+In Figures 2.(c)
+
+Algorithm 1: Efﬁcient Forward Propagation of CNN
+Input: Input image I, convolution parameters Wk, bk,
+
+pooling kernels Pk, strides of each layer dk
+
+d ← 1
+x1 ← I
+for k = {1, 2,··· , K} do
+
+if Layer k == convolution layer then
+
+Convert Wk to Wk,d (see Section 3.2)
+yk ← Wk,d ∗1 xk + bk,
+
+else if Layer k == pooling layer then
+
+Convert Pk to Pk,d (see Section 3.2)
+yk ← Pk,d (cid:125)1 xk
+
+1 begin
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16 end
+
+end
+d ← d × dk
+xk+1 ← yk
+
+end
+return output feature map yk
+
+and 2.(d), we show a 2-regularly sparse kernel Wk,2, and
+a 3-regularly sparse kernel Pk,3. The original kernels can
+be viewed as 1-regularly sparse kernels where d = 1, i.e.,
+Wk = Wk,1 and Pk = Pk,1. Note that the d-regularly
+sparse kernels are not equivalent to using a stride of d in the
+conventional convolution and pooling layers. Actually, with
+our d-regularly sparse kernels, all strides in the convolution
+and pooling layers of the modiﬁed CNN are ﬁxed to 1.
+
+3.3. Image padding
+
+Note that the original CNN is trained with image patches
+If a CNN
+centered at pixel locations of training images.
+takes n × n image patches as inputs, a test image of size
+h × w should be padded to the size of (h + 2(cid:98)n/2(cid:99)) ×
+(w + 2(cid:98)n/2(cid:99)) to ensure patches centered at the border of
+the original image are also of size n × n.
+3.4. Efﬁcient forward propagation
+
+Our algorithm for efﬁcient forward propagation is sum-
+marized in Algorithm 1. Note that strides in all layers are
+ﬁxed to 1. We explain the algorithm step-by-step by con-
+verting a conventional CNN which includes 3 convolution
+layers and 2 max-pooling layers to a new one with regularly
+sparse kernels. For simplicity, non-linearity layers are not
+included and only strides of pooling layers are greater than
+1. The original CNN is composed of a 2 × 2 convolution
+layer followed by a 2×2 pooling layer with a stride of 2, an-
+other 2× 2 convolution layer and a 3× 3 pooling layer with
+a stride of 3, and a ﬁnal 2 × 2 convolution layer to generate
+a feature score. The original network takes 15 × 15 image
+patches as inputs and outputs a single feature score after the
+forward propagation. The output feature map of the CNN
+
+(a) Padded Input Image x1 of size 19 × 19
+
+(b) Top-left Image Patch ˜x1 of size 15 × 15
+
+(c1) Proposed Pooling
+
+P2,1 (cid:125)1 x2
+
+(d1) Proposed Convolution
+
+W3,2 ∗1 x3
+
+(e1) Proposed Pooling
+
+P4,2 (cid:125)1 x4
+
+(f1) Proposed Convolution
+
+W5,6 ∗1 x5
+
+(c2) Original Pooling
+
+P2 (cid:125)2 ˜x2
+
+(d2) Original Convolution
+
+W3 ∗1 ˜x3
+
+(e2) Original Pooling
+
+P4 (cid:125)3 ˜x4
+
+(f2) Original Convolution
+
+W5 ∗1 ˜x5
+
+Figure 3. Illustration of our forward propagation using a CNN with 3 convolution and 2 pooling layers described in Section 3.4. (a) A
+5 × 5 input image (shown as shaded squares) is padded to 19 × 19 to ensure a patch centered on the border of the original image can cover
+15 × 15 pixels. In our algorithm, the padded image is treated as the input of CNN and denoted as x1. (b) 15 × 15 patch (shown as blue
+squares) centered at the top-left (shown as the yellow square) of the 5 × 5 image. In the original CNN, the patch is cropped and fed to
+the network as input ˜x1. (c1) Pooling on x2 ∈ R18×18 with pooling kernel P2,1 ∈ R2×2. x2 is obtained by convolving x1 in (a) with
+the convolution kernel W1,1 = W1. The pooling result is a 17 × 17 feature map y2. Red squares represent feature scores corresponding
+to those obtained by the original CNN on ˜x2 after pooling (as shown in (c2)). (c2) Pooling in the original CNN on ˜x2 ∈ R14×14. ˜x2
+is obtained by convolving ˜x1 in (b) with the convolution kernel W1. The pooling result is a 7 × 7 feature map ˜y2. (d1) Convolving the
+feature map x3 ∈ R17×17 with the regularly sparse convolution kernel W3,2. The result is a 15 × 15 feature map. Blue squares represent
+feature scores corresponding to those obtained by convolving W3 with ˜x3 in the original CNN (as shown in (d2)). (d2) Convolving the
+feature map ˜x3 with original convolution kernel W3. The result is a 6 × 6 feature map y3. (e1) Pooling on x4 ∈ R15×15 with regularly
+sparse pooling kernel P4,2 ∈ R5×5. The result is a 11× 11 feature map y4. Yellow squares represent feature scores corresponding to those
+obtained with the original CNN on ˜x4 after pooling (as shown in (e2)). (e2) Pooling with the original CNN on ˜x4 ∈ R6×6. The result is
+a 4 × 4 feature map ˜y4. (f1) Convolving the feature map x5 ∈ R11×11 with the regularly sparse convolution kernel W5,6. The result is a
+5 × 5 feature map y5. Purple squares represent feature scores corresponding to those obtained by convolving W5 with ˜x5 in the original
+CNN. (f2) Convolving the feature map ˜x5 with original convolution kernel W5, which results in a singe feature score ˜y5.
+
+is of size 1 × 1. Given a 5 × 5 input image2 (Figure 3.(a)),
+where each pixel needs a prediction score, it is ﬁrst padded
+to 19 × 19. The image patch centered at the top-left corner
+of the original image is shown in Figure 3.(b).
+
+We illustrate how our algorithm computes at each layer
+of the modiﬁed CNN in Figure 3 and compare its compu-
+tation with that of the original CNN by using the full input
+image in Figure 3.(a) and the top-left image patch in Fig-
+ure 3.(b). For the ﬁrst convolution and pooling layers, the
+proposed algorithm performs convolution in the same way
+as the original CNN, but pools 2 × 2 patches with stride
+d2 = 1. The difference between our algorithm and the orig-
+inal CNN for the ﬁrst pooling layer is illustrated in Fig-
+ure 3.(c). Our algorithm performs convolution on the whole
+padded input image and does not reduce its resolution after
+pooling with stride d2 = 1. In contrast, the original CNN
+
+2We choose an image size smaller than the patch size for the conve-
+
+nience of illustration; otherwise, the ﬁgure will be too big.
+
+performs convolution only on one patch and the resolution
+of the feature map is reduced after pooling. For our modi-
+ﬁed CNN, because the stride in the previous pooling layer
+equals 1, the input feature maps for the second convolution
+and pooling layers are not equivalent to the ones obtained
+by the original CNN. As shown in Figures 3.(d)-3.(e), each
+pair of neighboring entries obtained with the original CNN
+is now 2-pixel away from each other in the feature map ob-
+tained with our algorithm. To generate same feature scores
+as the original CNN after another round of convolution and
+pooling operations, the convolution kernel W3 and pooling
+kernel P4 should be converted to 2-regularly sparse kernels
+W3,2 and P4,2 to let neighboring entries in these kernels be
+2 pixels away. After the 2nd pooling layer in our modiﬁed
+CNN, each pair of neighboring entries in the output feature
+map obtained with the original CNN is now d2×d4 = 6 pix-
+els away from each other in the output feature map. There-
+fore, the convolution kernels W5 should be converted to 6-
+
+regularly sparse kernels W5,6 to generate the ﬁnal feature
+map (see Figure 3.(f)).
+
+Since fully connected layers can be viewed as convo-
+lution operations, such layers following the convolution or
+poolying layers in the original CNN can also be converted
+to convolution layers with regularly sparse kernels.
+3.5. Theoretical speedup of forward propagation
+
+We assume that each convolution layer is followed by a
+pooling layer and a non-linearity layer. Let s2 be the num-
+ber of pixels in the input feature map of the 1st layer (usu-
+k be the number of pixels in
+ally a pre-processed image), m2
+each image patch at layer k, l2
+k be the number of pixels of
+k be the number of
+the convolution kernel at layer k, and p2
+foreground masks in the pooling kernel following layer k.
+The computation complexity of patch-by-patch scanning at
+layer k with a stride of 1 can be calculated as,
+
+(1)
+
+O(cid:0)s2 · (m2
+
+k)(cid:1) ≈ O(cid:0)s2m2
+
+kl2
+k
+
+(cid:1).
+
+kl2
+
+k + 2m2
+
+On the left-hand side, the s2 term denotes that a total of
+s2 image patches are evaluated, the m2
+k term denotes the
+complexity of convolving each image patch at the kth con-
+volution layer, and the 2m2
+k term denotes that each pixel is
+compared or added once at the pooling layer followed by a
+non-linear transformation at the non-linearity layer.
+
+kl2
+
+For our algorithm, the time complexity is calculated as
+
+k + 1)(cid:1) ≈ O(cid:0)(s + mk)2l2
+
+k
+
+(cid:1).
+
+O(cid:0)(s + mk)2(l2
+
+k + p2
+
+(2)
+
+On the left-hand side, the (s + mk)2 term denotes that the
+input image needs to be padded before being processing
+k denotes the complexity of
+as described in Section 3.3, l2
+convolving the input feature map at layer k, p2
+k denotes the
+complexity of pooling following layer k, and 1 denotes the
+complexity of applying point-wise non-linear transforma-
+k is
+tion to output feature maps. On the right hand side, p2
+omitted because it is usually smaller than l2
+k, and pooling
+operations are generally much faster than convolutions.
+
+Our algorithm has a speedup of O(s2m2
+
+k/(s + mk)2)
+compared with the patch-by-patch scanning. The speedup
+increases with image size and image patch size. Since the
+size of intermediate feature map m2
+k gradually decreases
+due to greater-than-1 strides, the speedup is the largest for
+the 1st layer and gradually decreases.
+3.6. GPU implementation
+
+Our algorithm can run very efﬁciently on GPU. The efﬁ-
+ciency on GPU is limited by the way it accesses GPU mem-
+ory. Our forward propagation algorithm has the advantage
+of continuously accessing GPU memory by threads in the
+same blocks, which is the key to fully utilize the computa-
+tional capacity of GPU.
+
+The Caffe library [8] provides one of the fastest imple-
+mentations of convolution on GPU [2]. It extracts feature
+
+(a) Memory accessed by 25 threads
+
+(b) Iter. 1
+by ours
+
+(c) Iter. 2
+by ours
+
+(d) Iter. 1
+
+by [7]
+
+(e) Iter. 2
+
+by [7]
+
+Figure 4. (a) Input feature map is accessed iteratively by our pro-
+posed convolution operation with 25 GPU threads. Each thread
+extracts 4 values iteratively from the input feature map to form a
+matrix. Convolution is performed by matrix multiplication with
+the original kernel. (b)-(c) GPU threads 1-3 in (a) access the input
+feature map at iterations 1 and 2. Note that the memory addresses
+accessed by the threads are consecutive. (d)-(e) Illustration of how
+GPU threads 1-3 access strided locations of the GPU memory at
+iterations 1 and 2 by fast scanning in [7].
+
+patches from the input feature map and convert them into a
+large matrix. Convolution is calculated as a matrix multipli-
+cation between this large matrix and the convolution kernel.
+Our algorithm is implemented based on the conv layer
+of the Caffe library. Every thread is in charge of extracting
+values from the input feature map for calculating one entry
+on the output feature map. At every location of the input
+feature map, all values speciﬁed by the non-zero entries of
+the convolution kernel are iteratively extracted by a single
+thread. The extracted values are then organized into a large
+matrix and multiplied by the convolution kernel to gener-
+ate the ﬁnal result (Figure 4.(a)). In this way, consecutive
+threads in a same block can access consecutive addresses
+in the GPU memory and take full use of the GPU memory
+bandwidth (Figures 4.(b) and 4.(c)).
+
+The max and average pooling can be implemented in a
+similar way, i.e., each GPU thread performing max or av-
+erage calculation on the extracted feature patches for one
+output entry. Thus the continuous access to the GPU mem-
+ory is achieved in both convolution and pooling layers.
+
+Fast scanning [7] performs convolution or pooling op-
+erations with greater-than-1 strides in the original manner
+but with different starting offsets. Therefore, it has to ac-
+cess strided addresses of memory (Figures 4.(d) and 4.(e)),
+which is unable to fully utilize the bandwidth of GPU mem-
+ory and signiﬁcantly hinders its efﬁciency. Moreover, each
+
+…X…operation with different offsets leads to multiple output sub-
+feature maps of different sizes, and the number of such
+sub-feature maps increases exponentially as the number of
+strided layers increases, further hindering its efﬁciency.
+4. Efﬁcient backward propagation
+
+Backward propagation on the modiﬁed CNN with reg-
+ularly sparse kernels can be performed by directly feeding
+whole images and their pixelwise label maps as the inputs.
+Compared with a conventional CNN, there are two differ-
+ences for performing backward propagation on the modiﬁed
+CNN: 1) the errors at the last layer are no longer single val-
+ues but the errors of all pixels (or a fraction of chosen pixels)
+in a training image; and 2) only gradients of the non-zeros
+entries in the regularly sparse convolution kernels are cal-
+culated and only those entries are updated during training.
+4.1. Backward propagation of convolution layers
+
+Let δk denote the error map corresponding to the input
+feature map xk at layer k. To compute one entry in the error
+map δk, one should extract the next layer’s errors of units
+that are connected to the entry of interest in δk, then mul-
+tiply each of them by the associated weights in the convo-
+lution kernel, and sum the weighted errors. The calculation
+of all entries of the error map δk can be converted to a con-
+volution operation: δk = pad(δk+1) ∗1 rot(Wk,d), where
+pad() denotes zero padding the error map δk+1, and rot()
+denotes rotating convolution kernel Wk,d for 180◦.
+
+(cid:80)
+
+u,v, where (xk)i
+
+u,v(δk+1)u,v(xk)i
+
+For each non-zero entry Wk,d(i) in the convolution ker-
+nel Wk,d, its gradient is calculated as the sum of all the
+weighted errors that are calculated with the entry. The
+weights for errors are determined by the input values from
+the input feature map xk for convolution: ∇Wk,d(i) =
+u,v are the input val-
+ues in xk and are multiplied elementwise by Wk,d(i) dur-
+ing convolution to compute the entry at (u, v) of the out-
+put feature map xk+1. Calculating the gradients of Wk
+can be converted into a convolution operation: ∇Wk,d =
+xk ∗1 rot(δk+1,d), where δk+1,d denotes that the error map
+δk+1 is inserted with all-zero rows and columns as the ker-
+nel Wk,d does at layer k. Similarly, the gradient for the bias
+bk is calculated as the sum of all the entries in δk+1. The
+speedup of backward propagation can be derived similarly
+to that of forward propagation as O(s2m2
+k+1/(s+mk+1)2).
+4.2. Backward propagation of pooling layers
+
+For max pooling with regularly sparse kernels, the in-
+dex within every patch where the maximal value is chosen
+is recorded during forward propagation. During backward
+propagation, the errors at δk+1 transfer back to the errors
+at δk, and accumulate at the locations speciﬁed by those
+indices. For average pooling, it can be viewed as a mean
+ﬁltering and calculated similarly as the convolution layer.
+
+4.3. Selecting pixels of interest
+
+We can select prediction errors of only a fraction of pix-
+els in a training image for backward propagation. This is
+achieved by applying a mask on the error map of the last
+layer, where the prediction errors of pixels of interest are
+kept and the errors at other entries are set to zero (see “Error
+Mask” in Figure 1.(b)). The gradients calculated in this way
+are exactly the same as those calculated by extracting the
+image patches centered at the pixels of interest in the train-
+ing image and feeding them as a mini-batch into the original
+CNN. The computation complexity does not change when
+different subsets of pixels are chosen.
+
+This is an important property for tasks such as object
+detection, where only a small number of positive samples
+exist in each training image. If image patches at all pixel
+locations are used for training, the gradients by the positive
+samples would be overwhelmed by those calculated with
+the signiﬁcantly larger number of negative samples. For
+scene labeling tasks, other strategies of choosing pixels dur-
+ing training might be beneﬁcial for impoving the accuracy.
+
+5. Experiments
+
+All the experiments are conducted on an NVIDIA K40
+GPU. Fast scanning in [7] and patch-by-patch scanning are
+used for comparison. Fast scanning only supports forward
+propagation. All the methods were implemented based on
+the Caffe library. The actual running time is used to evaluate
+the efﬁciency of the compared methods.
+5.1. Running times of practical CNN models
+
+We tested the running times of forward and backward
+propagation of two practical CNN models, the Plain CNN1
+and the RCNN3 models, for scene labeling from [14]. De-
+tailed network structures are recorded in Tables 1 and 2. The
+output feature map is of size 256 × 256 with 32 channels.
+The input feature map is padded accordingly to 388 × 388
+and 410 × 410 for the two models respectively. Note that
+the running times of the CNN models depend only on the
+image size and network structures but not on speciﬁc fea-
+ture and kernel values. Random numbers were ﬁlled in the
+input images and the convolution kernels.
+
+As shown by the layerwise and overall timing results, our
+proposed method achieves a speedup of over 1500 times
+compared with the traditional patch-by-patch approach.
+Compared with the fast scanning method [7], our proposed
+algorithm has a speedup over 10 times at the pool1 layer
+and a speedup over 2 times at the pool2 layer. Since the
+fast scanning method outputs multiple sub-feature maps at
+the pool1 and pool2 layers, the large number of sub-feature
+maps also hinders the efﬁciency of the conv2 and conv3 lay-
+ers. Those timing results show that the performance of the
+fast scanning method decreases signiﬁcantly as the stride in-
+
+pool2
+2 × 2
+
+46.68
+
+tanh2
+
+-
+
+16.76
+
+conv3
+
+32 × 7 × 7 / 1
+
+22134.8
+
+Layer Type
+
+Kernel Size / Stride
+
+Patch-by-Patch
+Fwd. Prop. (ms)
+Fast Scanning [7]
+Fwd. Prop. (ms)
+
+Our Method
+
+Fwd. Prop. (ms)
+Speedup by Ours
+
+Fwd. Prop.
+
+Patch-by-Patch
+Bwd. Prop. (ms)
+
+Our Method
+
+Bwd. Prop. (ms)
+Speedup by Ours
+
+Bwd. Prop.
+
+conv1
+
+50 × 6 × 6 / 1
+
+22983.8
+
+pool1
+8 × 8 / 8
+
+4916.4
+
+3.103
+
+3.074
+
+7476.8
+
+68.04
+
+6.688
+
+735.1
+
+tanh1
+
+-
+
+73.71
+
+0.518
+
+0.526
+
+140.1
+
+conv2
+
+50 × 3 × 3 / 1
+
+5066.2
+
+10.63
+
+7.088
+
+714.8
+
+56992.3
+
+14765.7
+
+64.53
+
+6886.0
+
+7.42
+
+14.52
+
+0.481
+
+7680.9
+
+1016.9
+
+134.2
+
+27.11
+
+254.0
+
+2.464
+
+0.386
+
+1.211
+
+0.395
+
+38.5
+
+186.3
+
+42.4
+
+19.8
+
+1.538
+
+0.424
+
+121.1
+
+46.7
+
+Overall
+55238.4
+
+158.09
+
+35.39
+
+72.95
+
+16.41
+
+1348.86
+
+1560.8
+
+8285.2
+
+87199.8
+
+39.78
+
+208.3
+
+91.26
+
+955.5
+
+Table 1. The layewise timing and speedup results of forward and backward propagation by our proposed algorithm, and the layerwise
+timing results of forward propagation by the fast scanning method [7] on the Plain CNN1 model with 3 × 388 × 388 images as inputs.
+
+Layer Type
+
+Kernel Size / Stride
+
+Sliding Window
+Fwd. Prop. (ms)
+
+Our Method
+
+Fwd. Prop. (ms)
+Speedup by Ours
+
+Fwd. Prop.
+
+Sliding Window
+Bwd. Prop. (ms)
+
+Our Method
+
+Bwd. Prop. (ms)
+Speedup by Ours
+
+Bwd. Prop.
+Layer Type
+
+Sliding Window
+Fwd. Prop. (ms)
+
+Our Method
+
+Fwd. Prop. (ms)
+Speedup by Ours
+
+Bwd. Prop.
+
+Sliding Window
+Bwd. Prop. (ms)
+
+Our Method
+
+Fwd. Prop. (ms)
+Speedup by Ours
+
+Bwd. Prop.
+
+Kernel Size / Stride
+
+conv11
+
+25 × 8 × 8 / 1
+
+39485.6
+
+4.398
+
+8978.1
+
+pool11
+2 × 2 / 2
+
+1960.2
+
+0.854
+
+2295.3
+
+73961.5
+
+10054.8
+
+8.193
+
+9027.4
+
+1.428
+
+7041.2
+
+tanh11
+
+-
+
+693.0
+
+0.337
+
+2056.4
+
+602.6
+
+0.282
+
+2136.9
+
+conv22
+
+50 × 8 × 8 / 1
+
+conv23
+
+32 × 1 × 1 / 1
+
+conv31
+
+25 × 8 × 8 / 1
+
+14765.3
+
+18.98
+
+777.9
+
+28744.1
+
+52.35
+
+549.1
+
+2433.4
+
+1.920
+
+1267.4
+
+8522.3
+
+5.368
+
+1587.6
+
+conv12
+
+50 × 8 × 8 / 1
+
+conv13
+
+32 × 1 × 1 / 1
+
+conv21
+
+25 × 8 × 8 / 1
+
+pool21
+2 × 2 / 2
+
+59017.2
+
+24.42
+
+2416.8
+
+6473.1
+
+2.466
+
+2631.3
+
+63548.4
+
+28.90
+
+2198.9
+
+146019.3
+
+25206.7
+
+133706.2
+
+332.2
+
+0.70
+
+474.6
+
+1623.8
+
+0.844
+
+1923.9
+
+tanh21
+
+-
+
+98.14
+
+0.227
+
+426.7
+
+106.7
+
+0.245
+
+6627.8
+
+Overall
+
+66.55
+
+2194.1
+
+pool31
+2 × 2 / 2
+
+32.15
+
+0.488
+
+65.9
+
+17059.8
+
+20.55
+
+830.2
+
+16727.5
+
+128.358
+
+50.89
+
+328.7
+
+0.630
+
+203.7
+
+6.778
+
+3718.9
+
+tanh31
+
+-
+
+13.81
+
+0.164
+
+84.2
+
+15.91
+
+0.180
+
+88.4
+
+71.69
+
+1865.1
+
+conv32
+
+50 × 8 × 8 / 1
+
+conv33
+
+32 × 1 × 1 / 1
+
+17015.4
+
+2069.7
+
+224997.4
+
+10.76
+
+1581.4
+
+8657.7
+
+29.47
+
+293.8
+
+1.080
+
+1916.4
+
+2793.6
+
+3.117
+
+896.2
+
+116.2
+
+1935.6
+
+456871.1
+
+298.0
+
+1533.1
+
+Table 2. The layewise timing and speedup results of the forward and backward propagation by our proposed algorithm on the RCNN3
+model with 3 × 410 × 410 images as inputs.
+
+creases and it is therefore not suitable for GPU implementa-
+tion. We also observed that some pooling layers might take
+even longer time to calculate than the convolution layers.
+Since the pooling operations are mostly limited by the band-
+width of GPU memory, this again shows the importance of
+continuous memory access by our proposed algorithm.
+
+We also tested the running time of backward propaga-
+tion by randomly choosing 128, 512, or 1024 pixels from
+the error map at the last CNN layer as described in Section
+4.3. The running times of backward propagation with error
+masks have no difference with those without masks.
+
+The maximal numerical differences between the gradi-
+ents calculated by our proposed algorithm and by the patch-
+by-patch method are smaller than 10−6 for all above testing
+cases. The numerical results validate the correctness of our
+algorithm and our implementation.
+
+Time (ms)
+
+Overall speedup
+
+Padded image size
+3 × 260 × 260
+3 × 388 × 388
+3 × 644 × 644
+
+12.57
+35.39
+121.68
+
+1098.0
+1560.8
+1815.9
+
+Table 3. The timing and speedup results by our proposed algorithm
+on the Plain CNN1 model with different input image sizes.
+
+size
+
+Input patch
+37 × 37
+69 × 69
+133 × 133
+
+pool1 kernel
+size / stride
+2 × 2 / 2
+4 × 4 / 4
+8 × 8 / 8
+
+Overall
+time (ms)
+
+24.53
+26.84
+35.39
+
+conv1
+speedup
+2264.0
+3406.9
+7476.8
+
+pool1
+speedup
+218.0
+390.7
+735.1
+
+Overall
+speedup
+1293.8
+1320.8
+1560.8
+
+Table 4. The timing and speedup results by our proposed algorithm
+on the Plain CNN1 model with modiﬁcations to the pool1 layer to
+take 37 × 37 and 69 × 69 image patches as inputs.
+
+5.2. Effects of different image and image patch sizes
+We also tested the running times of forward propagation
+of the above mentioned Plain CNN1 model with different
+
+image sizes and image patch sizes.
+Images of two additional image sizes, 128 × 128 and
+512 × 512, which are padded to 260 × 260 and 644 × 644
+respectively, are fed into the CNN model as the inputs. The
+timing and speedup results are reported in Table 3.
+To make the Plain CNN1 model take image patches of
+sizes different than 133 × 133 as input and still output sin-
+gle values, we adjusted the pooling kernel size of the pool1
+layer to 4×4 with a stride of 4 to take 69×69 image patches
+as inputs, and to 2 × 2 with a stride of 2 to take 37 × 37
+image patches as inputs. The timing and speedup results
+are recorded in Table 4. It shows that the speedup of the
+conv1 and pool1 layers decrease signiﬁcantly as the image
+patch size decreases, but the overall speedup only decreases
+slightly. This is because image patch sizes after the pool1
+layer are not signiﬁcantly changed.
+
+The speedup results of the above two experiments show
+that the speedup increases as the image size and image patch
+size increase, which validates our theoretical analysis.
+
+6. Conclusions and future works
+
+This work has fundamental contributions to deep learn-
+ing, since forward and backward propagation is the founda-
+tion of CNN. By analyzing the key difference with whole-
+image classiﬁcation, the proposed algorithms eliminate all
+the redundant computation in the forward and backward
+propagation in CNN for pixelwise classiﬁcation. With
+guarantee on producing exactly the same results as patch-
+by-patch scanning, over 1, 500 times speedup has been
+achieved in our experiments, and the speedup will further
+increase with the sizes of images and patches. The pro-
+posed d-regularly sparse kernels can covert convolution and
+pooling kernels with various strides into operations with 1-
+strides, which allows continuous memory access on GPU.
+Therefore, it has great ﬂexibility to handle various CNNs
+with different designs and structures, and reaches high efﬁ-
+ciency on GPU implementation.
+
+It opens the door to many high-impact applications and
+research in the future. It breaks the efﬁciency bottleneck
+of CNN based pixelwise classiﬁcation, and makes the re-
+altime applications possible. It has the potential to change
+CNN training fundamentally. Since at each training itera-
+tion the error map over all pixels in an image can be esti-
+mated quickly with fast forward propagation, it can be used
+to guide the selection of training patches by considering the
+spatial distribution and dynamic variation of errors. In con-
+trast, training patches were completely randomly selected
+in existing works. Moreover, an arbitrary subset of training
+patches can be selected from an image for the proposed fast
+backward propagation with constant computation complex-
+ity. Many interesting training strategies are expected to be
+developed based our work. It is not difﬁcult to extend our
+algorithms to video analysis with 3D convolution and 3D
+
+pooling, where much more redundancy exists in cube-by-
+cube scanning and even higher speedup is expected.
+References
+[1] K. Chellapilla, S. Puri, and P. Y. Simard. High perfor-
+mance convolutional neural networks for document process-
+ing. Proc. Int’l Workshop on Frontiers in Handwriting
+Recognition, 2006. 1
+
+[2] S. Chintala. Convnet benchmarks. https://github.
+
+com/soumith/convnet-benchmarks, 2014. 6
+
+[3] J. Dean, G. S. Corrado, R. Monga, K. Chen, M. Devin, Q. V.
+Le, M. Z. Mao, M. Ranzato, A. Senior, P. Tucker, K. Yang,
+and A. Y. Ng. Large scale distributed deep networks. Proc.
+Int’l Conf. on Neural Information Processing Systems, 2012.
+3
+
+[4] J. Fan, W. Xu, Y. Wu, , and Y. Gong. Human tracking using
+convolutional neural networks. IEEE Transactions on Neural
+Networks, 21(10):1610–1623, 2010. 2
+
+[5] C. Farabet, C. Couprie, L. Najman, and Y. LeCun. Learning
+hierarchical features for scene labeling. IEEE Trans. on Pat-
+tern Analysis and Machine Intelligence, 35(8):1915–1929,
+2013. 2
+
+[6] A. Frome, G. Cheung, A. Abdulkader, M. Zennaro, B. Wu,
+A. Bissacco, H. Adam, H. Neven, and L. Vincent. Large-
+scale privacy protection in google street view. Proc. Int’l
+Conf. on Computer Vision, 2009. 2
+
+[7] A. Giusti, D. C. Ciresan, J. Masci, L. M. Gambardella, and
+J. Schmidhuber. Fast image scanning with deep max-pooling
+convolutional neural networks. Proc. Int’l Conf. on Image
+Processing, 2013. 3, 6, 7, 8
+
+[8] Y. Jia, E. Shelhamer, J. Donahue, S. Karayev, J. Long, R. Gir-
+shick, S. Guadarrama, and T. Darrell. Caffe: Convolu-
+tional architecture for fast feature embedding. arXiv preprint
+arXiv:1408.5093, 2014. 6
+
+[9] A. Krizhevsky, I. Sutskever, and G. E. Hinton.
+
+Imagenet
+classiﬁcation with deep convolutional neural networks. Proc.
+Int’l Conf. on Neural Information Processing Systems, 2012.
+1, 3
+
+[10] Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner. Gradient-
+based learning applied to document recognition. Proc. of
+IEEE, 86(11):2278–2324, 1998. 1
+
+[11] P. Luo, X. Wang, and X. Tang. Pedestrian parsing via deep
+decompositional neural network. Proc. Int’l Conf. Computer
+Vision, 2013. 3
+
+[12] M. Mathieu, M. Henaff, and Y. LeCun.
+of convolutional networks through FFTs.
+arXiv:1312.5851, 2014. 3
+
+Fast training
+arXiv preprint
+
+[13] M. Oquab, L. Bottou, I. Laptev, and J. Sivic. Learning and
+transferring mid-level image representations using convolu-
+tional neural networks. Proc. Int’l Conf. on Computer Vision
+and Pattern Recognition, 2014. 2
+
+[14] P. O. Pinheiro and R. Collobert. Recurrent convolutional
+neural networks for scene labeling. Proc. Int’l Conf. on Ma-
+chine Learning, 2014. 2, 3, 7
+
+[15] H. A. Rowley, S. Baluja, and T. Kanade. Neural network-
+based face detection. IEEE Trans. on Pattern Analysis and
+Machine Intelligence, 20(1):23–28, 1998. 2
+
+[16] P. Sermanet, S. Chintala, and Y. LeCun. Convolutional neu-
+ral networks applied to house numbers digit classiﬁcation.
+Proc. Int’l Conf. on Pattern Recognition, 2012. 1
+
+[17] P. Sermanet, D. Eigen, X. Zhang, M. Mathieu, R. Fergus,
+and Y. LeCun. Overfeat: Integrated recognition, localization
+and detection using convolutional networks. arXiv preprint
+arXiv:1312.6229, 2013. 2
+
+[18] P. Sermanet, K. Kavukcuoglu, S. Chintala, and Y. LeCun.
+Pedestrian detection with unsupervised multi-stage feature
+learning. Proc. Int’l Conf. on Computer Vision and Pattern
+Recognition, 2013. 2
+
+[19] P. Y. Simard, D. Steinkraus, and J. C. Platt. Best practices for
+convolutional neural networks applied to visual document
+analysis. Proc. Int’l Conf. Document Analysis and Recog-
+nition, pages 958–963, 2003. 1
+
+[20] Z. Wu, Y. Huang, Y. Yu, L. Wang, and T. Tan. Early hierar-
+chical contexts learned by convolutional networks for image
+segmentation. Proc. Int’l Conf. Pattern Recognition, 2014. 2
+
+

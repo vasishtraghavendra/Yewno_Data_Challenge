@@ -1,0 +1,2391 @@
+5
+1
+0
+2
+
+ 
+r
+a
+
+ 
+
+M
+2
+1
+
+ 
+ 
+]
+E
+N
+.
+s
+c
+[
+ 
+ 
+
+3
+v
+6
+4
+3
+3
+
+.
+
+2
+0
+4
+1
+:
+v
+i
+X
+r
+a
+
+Geometry and Expressive Power of
+
+Conditional Restricted Boltzmann Machines
+
+Guido Mont´ufar1, Nihat Ay1,2,3, and Keyan Ghazi-Zahedi1
+
+1Max Planck Institute for Mathematics in the Sciences, Inselstraße 22, 04103 Leipzig, Germany
+
+2Department of Mathematics and Computer Science, Leipzig University, PF 10 09 20, 04009 Leipzig,
+
+3Santa Fe Institute, 1399 Hyde Park Road, Santa Fe, NM 87501, USA
+
+Germany
+
+Abstract
+
+Conditional restricted Boltzmann machines are undirected stochastic neural networks with a layer
+of input and output units connected bipartitely to a layer of hidden units. These networks deﬁne
+models of conditional probability distributions on the states of the output units given the states of the
+input units, parametrized by interaction weights and biases. We address the representational power
+of these models, proving results their ability to represent conditional Markov random ﬁelds and
+conditional distributions with restricted supports, the minimal size of universal approximators, the
+maximal model approximation errors, and on the dimension of the set of representable conditional
+distributions. We contribute new tools for investigating conditional probability models, which allow
+us to improve the results that can be derived from existing work on restricted Boltzmann machine
+probability models.
+Keywords: conditional restricted Boltzmann machine, universal approximation, Kullback-Leibler
+approximation error, expected dimension
+
+1 Introduction
+
+Restricted Boltzmann Machines (RBMs) (Smolensky 1986; Freund and Haussler 1994) are gener-
+ative probability models deﬁned by undirected stochastic networks with bipartite interactions be-
+tween visible and hidden units. These models are well-known in machine learning applications,
+where they are used to infer distributed representations of data and to train the layers of deep neural
+networks (Hinton et al. 2006; Bengio 2009). The restricted connectivity of these networks allows to
+train them efﬁciently on the basis of cheap inference and ﬁnite Gibbs sampling (Hinton 2002; 2012),
+even when they are deﬁned with many units and parameters. An RBM deﬁnes Gibbs-Boltzmann
+probability distributions over the observable states of the network, depending on the interaction
+weights and biases. An introduction is offered by Fischer and Igel (2012). The expressive power
+of these probability models has attracted much attention and has been studied in numerous papers,
+treating, in particular, their universal approximation properties (Younes 1996; Le Roux and Bengio
+2008; Mont´ufar and Ay 2011), approximation errors (Mont´ufar et al. 2011), efﬁciency of represen-
+tation (Martens et al. 2013; Mont´ufar and Morton 2015), and dimension (Cueto et al. 2010).
+
+In certain applications, it is preferred to work with conditional probability distributions, instead
+of joint probability distributions. For example, in a classiﬁcation task, the conditional distribution
+may be used to indicate a belief about the class of an input, without modeling the probability of
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+observing that input; in sensorimotor control, it can describe a stochastic policy for choosing ac-
+tions based on world observations; and in the context of information communication, to describe a
+channel. RBMs naturally deﬁne models of conditional probability distributions, called conditional
+restricted Boltzmann machines (CRBMs). These models inherit many of the nice properties of RBM
+probability models, such as the cheap inference and efﬁcient training. Speciﬁcally, a CRBM is de-
+ﬁned by clamping the states of an input subset of the visible units of an RBM. For each input state
+one obtains a conditioned distribution over the states of the output visible units. See Figure 1 for
+an illustration of this architecture. This kind of conditional models and slight variants thereof have
+seen success in many applications; for example, in classiﬁcation (Larochelle and Bengio 2008),
+collaborative ﬁltering (Salakhutdinov et al. 2007), motion modeling (Taylor et al. 2007; Zeiler et al.
+2009; Mnih et al. 2012; Sutskever and Hinton 2007), and reinforcement learning (Sallans and Hin-
+ton 2004).
+
+So far, however, there is not much theoretical work addressing the expressive power of CRBMs.
+We note that it is relatively straightforward to obtain some results on the expressive power of
+CRBMs from the existing theoretical work on RBM probability models. Nevertheless, an accurate
+analysis requires to take into account the speciﬁcities of the conditional case. Formally, a CRBM
+is a collection of RBMs, with one RBM for each possible input value. These RBMs differ in the
+biases of the hidden units, as these are inﬂuenced by the input values. However, these hidden biases
+are not independent for all different inputs, and, moreover, the same interaction weights and biases
+of the visible units are shared for all different inputs. This sharing of parameters draws a substantial
+distinction of CRBM models from independent tuples of RBM models.
+
+In this paper we address the representational power of CRBMs, contributing theoretical insights
+to the optimal number of hidden units. Our focus lies on the classes of conditional distributions
+that can possibly be represented by a CRBM with a ﬁxed number of inputs and outputs, depending
+on the number of hidden units. Having said this, we do not discuss the problem of ﬁnding the
+optimal parameters that give rise to a desired conditional distribution (although our derivations
+include an algorithm that does this), nor problems related to incomplete knowledge of the target
+conditional distributions and generalization errors. A number of training methods for CRBMs have
+been discussed in the references listed above, depending on the concrete applications. The problems
+that we deal with here are the following: 1) are distinct parameters of the model mapped to distinct
+conditional distributions; what is the smallest number of hidden units that sufﬁces for obtaining
+a model that can 2) approximate any target conditional distribution arbitrarily well (a universal
+approximator); 3) approximate any target conditional distribution without exceeding a given error
+tolerance; 4) approximate selected classes of conditional distributions arbitrarily well? We provide
+non-trivial solutions to all of these problems. We focus on the case of binary units, but the main
+ideas extend to the case of discrete non-binary units.
+
+This paper is organized as follows. Section 2 contains formal deﬁnitions and elementary prop-
+erties of CRBMs. Section 3 investigates the geometry of CRBM models in three subsections. In
+Section 3.1 we study the dimension of the sets of conditional distributions represented by CRBMs
+and show that in most cases this is the dimension expected from counting parameters (Theorem 4).
+In Section 3.2 we address the universal approximation problem, deriving upper and lower bounds
+on the minimal number of hidden units that sufﬁces for this purpose (Theorem 7). In Section 3.3
+we analyze the maximal approximation errors of CRBMs (assuming optimal parameters) and derive
+an upper-bound for the minimal number of hidden units that sufﬁces to approximate every condi-
+tional distribution within a given error tolerance (Theorem 11). Section 4 investigates the expressive
+
+2
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+Hidden layer
+
+z1
+
+z2
+
+z3
+
+z4
+
+V
+
+c
+
+zm
+
+···
+W
+
+x1
+
+x2
+
+··· xk
+
+Input layer
+
+y1
+
+y2
+
+···
+
+Output layer
+
+b
+
+yn
+
+Figure 1: Architecture of a CRBM. An RBM is the special case with k = 0.
+
+power of CRBMs in two subsections. In Section 4.1 we describe how CRBMs can represent natural
+families of conditional distributions that arise in Markov random ﬁelds. In Section 4.2 we study the
+ability of CRBMs to approximate conditional distributions with restricted supports. This section
+addresses, especially, the approximation of deterministic conditional distributions (Theorem 21). In
+Section 5 we offer a discussion and an outlook. In order to present the main results in a concise way,
+we have deferred all proofs to the appendices. Nonetheless, we think that the proofs are interesting
+in their own right, and we have prepared them with a fair amount of detail.
+
+2 Deﬁnitions
+
+p ∈ ∆n is a vector of 2n non-negative entries p(y), y ∈ {0, 1}n, adding to one,(cid:80)
+
+We will denote the set of probability distributions on {0, 1}n by ∆n. A probability distribution
+y∈{0,1}n p(y) = 1.
+The set ∆n is a (2n − 1)-dimensional simplex in R2n.
+We will denote the set of conditional distributions of a variable y ∈ {0, 1}n, given another
+variable x ∈ {0, 1}k, by ∆k,n. A conditional distribution p(·|·) ∈ ∆k,n is a 2k × 2n row-stochastic
+matrix with rows p(·|x) ∈ ∆n, x ∈ {0, 1}k. The set ∆k,n is a 2k(2n − 1)-dimensional polytope in
+R2k×2n. It can be regarded as the 2k-fold Cartesian product ∆k,n = ∆n × ··· × ∆n, where there is
+one probability simplex ∆n for each possible input state x ∈ {0, 1}k. We will use the abbreviation
+[N ] := {1, . . . , N}, where N is a natural number.
+Deﬁnition 1. The conditional restricted Boltzmann machine (CRBM) with k input units, n output
+units, and m hidden units, denoted RBMk
+n,m, is the set of all conditional distributions in ∆k,n that
+can be written as
+
+p(y|x) =
+
+Z(W, b, V x + c)
+
+1
+
+exp(z(cid:62)V x+z(cid:62)W y+b(cid:62)y+c(cid:62)z),
+
+∀y ∈ {0, 1}n, x ∈ {0, 1}k,
+
+(cid:88)
+(cid:88)
+
+z∈{0,1}m
+
+(cid:88)
+
+y∈{0,1}n
+
+z∈{0,1}m
+
+with normalization function
+
+Z(W, b, V x + c) =
+
+exp(z(cid:62)V x + z(cid:62)W y + b(cid:62)y + c(cid:62)z),
+
+∀x ∈ {0, 1}k.
+
+Here, x, y, and z are column state vectors of the k input units, n output units, and m hidden
+units, respectively, and (cid:62) denotes transposition. The parameters of this model are the matrices of
+interaction weights V ∈ Rm×k, W ∈ Rm×n and the vectors of biases b ∈ Rn, c ∈ Rm.
+
+3
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+When there are no input units (k = 0), the model RBMk
+
+n,m reduces to the restricted Boltzmann
+
+machine probability model with n visible units and m hidden units, denoted RBMn,m.
+
+We can view RBMk
+
+n,m as a collection of 2k restricted Boltzmann machine probability models
+with shared parameters. For each input x ∈ {0, 1}k, the output distribution p(·|x) is the probability
+distribution represented by RBMn,m for the parameters W, b, (V x + c). All p(·|x) have the same
+interaction weights W , the same biases b for the visible units, and differ only in the biases (V x + c)
+for the hidden units. The joint behavior of these distributions with shared parameters is not trivial.
+n,m can also be regarded as representing block-wise normalized versions of
+the joint probability distributions represented by RBMn+k,m. Namely, a joint distribution p ∈
+RBMn+k,m ⊆ ∆k+n is an array with entries p(x, y), x ∈ {0, 1}k, y ∈ {0, 1}n. Conditioning p on
+y(cid:48) p(x, y(cid:48)), y ∈ {0, 1}n.
+
+x is equivalent to considering the normalized x-th row p(y|x) = p(x, y)/(cid:80)
+
+The model RBMk
+
+3 Geometry of Conditional Restricted Boltzmann Machines
+
+In this section we investigate three basic questions about the geometry of CRBM models. First,
+what is the dimension of a CRBM model? Second, how many hidden units does a CRBM need in
+order to be able to approximate every conditional distribution arbitrarily well? Third, how accurate
+are the approximations of a CRBM, depending on the number of hidden units?
+
+3.1 Dimension
+The model RBMk
+n,m is deﬁned by marginalizing out the hidden units of a graphical model. This
+implies that several choices of parameters may represent the same conditional distributions. In turn,
+the dimension of the set of representable conditional distributions may be smaller than the number
+of model parameters, in principle.
+
+When the dimension of RBMk
+
+n,m is equal to the number of parameters, dim(RBMk
+
+n,m) =
+(k + n)m + n + m, or, otherwise, equal to the dimension of the ambient polytope of conditional
+n,m) = 2k(2n − 1), then the model is said to have the expected dimension.
+distributions, dim(RBMk
+In this section we show that RBMk
+n,m has the expected dimension for most triplets (k, n, m). In
+particular, we show that this holds in all practical cases, where the number of hidden units m is
+smaller than exponential with respect to the number of visible units k + n.
+
+The dimension of a parametric model is given by the maximum of the rank of the Jacobian of its
+parametrization (assuming mild differentiability conditions). Computing the rank of the Jacobian
+is not easy in general. A resort is to compute the rank only in the limit of large parameters, which
+corresponds to considering a piece-wise linearized version of the original model, called the tropical
+model. Cueto et al. (2010) used this approach to study the dimension of RBM probability models.
+Here we apply their ideas in order to study the dimension of CRBM conditional models.
+
+The following functions from coding theory will be useful for phrasing the results:
+
+Deﬁnition 2. Let A(n, d) denote the cardinality of the largest subset of {0, 1}n whose elements are
+at least Hamming distance d apart. Let K(n, d) denote the smallest cardinality of a set such that
+every element of {0, 1}n is at most Hamming distance d apart from that set.
+
+dim(RBMn,m) = 2n − 1 for m ≥ K(n, 1).
+
+Cueto et al. (2010) showed that dim(RBMn,m) = nm + n + m for m + 1 ≤ A(n, 3), and
+It is known that A(n, 3) ≥ 2n−(cid:100)log2(n+1)(cid:101) and
+4
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+K(n, 1) ≤ 2n−(cid:98)log2(n+1)(cid:99). In turn, the probability model RBMn,m has the expected dimension for
+most pairs (n, m). Noting that dim(RBMk
+n,m) ≥ dim(RBMk+n,m) − (2k − 1), we directly infer
+the following bounds for the dimension of conditional models:
+Proposition 3.
+
+n,m) ≥ (n + k)m + n + m + k − (2k − 1) for m + 1 ≤ A(k + n, 3).
+n,m) = 2k(2n − 1) for m ≥ K(k + n, 1).
+
+• dim(RBMk
+• dim(RBMk
+These bounds are too loose and do not allow us to attest whether the conditional model has the
+expected dimension, unless m ≥ K(k + n, 1). Hence we need to study the conditional model in
+more detail. We obtain the following result:
+Theorem 4. The conditional model RBMk
+
+n,m has the expected dimension in the following cases:
+
+• dim(RBMk
+• dim(RBMk
+We note the following practical version of the theorem, which results from inserting appropriate
+
+n,m) = (k + n + 1)m + n for m + 1 ≤ A(k + n, 4).
+n,m) = 2k(2n − 1) for m ≥ K(k + n, 1).
+
+bounds on the functions A and K:
+Corollary 5. The conditional model RBMk
+
+n,m has the expected dimension in the following cases:
+
+n,m) = (n + k + 1)m + n for m ≤ 2(k+n)−(cid:98)log2((k+n)2−(k+n)+2)(cid:99).
+n,m) = 2k(2n − 1) for m ≥ 2(k+n)−(cid:98)log2(k+n+1)(cid:99).
+
+• dim(RBMk
+• dim(RBMk
+These results show that, in all cases of practical interest, where m is less than exponential in
+k + n, the dimension of the CRBM model is indeed equal to the number of model parameters. In all
+these cases, almost every conditional distribution that can be represented by the model is represented
+by at most ﬁnitely many different choices of parameters.
+
+On the other hand, the dimension alone is not very informative about the ability of a model to
+approximate target distributions. In particular, it may be that a high dimensional model covers only
+a tiny fraction of the set of all conditional distributions, or also that a low dimensional model can
+approximate any target conditional relatively well. We address the minimal dimension and number
+of parameters of a universal approximator in the next section. In the subsequent section we address
+the approximation errors depending on the number of parameters.
+
+3.2 Universal Approximation
+In this section we ask for the smallest number of hidden units m for which the model RBMk
+approximate every conditional distribution from ∆k,n arbitrarily well.
+
+n,m can
+
+Note that each conditional distribution p(y|x) can be identiﬁed with the set of joint distributions
+of the form r(x, y) = q(x)p(y|x), with strictly positive marginals q(x). In particular, by ﬁxing a
+marginal distribution, we obtain an identiﬁcation of ∆k,n and a subset of ∆k+n. Figure 2 illustrates
+this identiﬁcation in the case n = k = 1 and q ≡ 1
+2.
+This implies that universal approximators of joint probability distributions deﬁne universal ap-
+proximators of conditional distributions. We know that RBMn+k,m is a universal approximator
+whenever m ≥ 1
+
+2 2k+n − 1 (see Mont´ufar and Ay 2011), and therefore:
+
+5
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+δ11
+
+∆2
+
+1
+2 ∆1,1
+
+δ00
+
+δ01
+
+δ10
+
+Figure 2: The polytope of conditional distributions ∆1,1 embedded in the probability simplex ∆2.
+
+Proposition 6. The model RBMk
+bitrarily well whenever m ≥ 1
+
+2 2k+n − 1.
+
+n,m can approximate every conditional distribution from ∆k,n ar-
+
+This improves previous results by Younes (1996) and van der Maaten (2011). On the other
+hand, since conditional models do not need to model the input-state distribution, in principle it is
+possible that RBMk
+n,m is a universal approximator even if RBMn+k,m is not a universal approxi-
+mator. In fact, we obtain the following improvement of Proposition 6, which does not follow from
+corresponding results for RBM probability models:
+
+Theorem 7. The model RBMk
+trarily well whenever
+
+n,m can approximate every conditional distribution from ∆k,n arbi-
+
+ 1
+
+3
+
+m ≥
+
+2 2k(2n − 1),
+8 2k(2n − 1) + 1,
+4 2k(2n − 1 + 1/30),
+
+1
+
+if k ≥ 1
+if k ≥ 3
+if k ≥ 21
+
+.
+
+In fact, the model RBMk
+n,m can approximate every conditional distribution from ∆k,n arbitrarily
+well whenever m ≥ 2kK(r)(2n − 1) + 2S(r)P (r), where r is any natural number satisfying k ≥
+1 + ··· + r =: S(r), and K and P are functions (deﬁned in Lemma 30 and Proposition 32) which
+tend to approximately 0.2263 and 0.0269, respectively, as r tends to inﬁnity.
+
+We note the following weaker but practical version of Theorem 7:
+
+Corollary 8. Let k ≥ 1. The model RBMk
+∆k,n arbitrarily well whenever m ≥ 1
+
+2 2k(2n − 1) = 1
+
+2 2k+n − 1
+
+2 2k.
+
+n,m can approximate every conditional distribution from
+
+These results are signiﬁcant, because they reduce the bounds following from universal approxi-
+mation results for probability models by an additive term of order 2k, which corresponds precisely
+to the order of parameters needed in order to model the input-state distributions.
+
+As expected, the asymptotic behavior of the theorem’s bound is exponential in the number of
+input and output units. This lies in the nature of the universal approximation property. A crude lower
+bound on the number of hidden units that sufﬁces for universal approximation can be obtained by
+comparing the number of parameters of the model and the dimension of the conditional polytope:
+
+6
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+Figure 3: Schematic illustration of the maximal approximation error of a model Mk,n ⊆ ∆k,n.
+Proposition 9. If the model RBMk
+arbitrarily well, then necessarily m ≥
+
+n,m can approximate every conditional distribution from ∆k,n
+
+(n+k+1) (2k(2n − 1) − n).
+
+The results presented above highlight the fact that CRBM universal approximation may be pos-
+sible with a drastically smaller number of hidden units than RBM universal approximation, for the
+same number of visible units. However, even with these reductions the universal approximation
+property requires an enormous number of hidden units. In order to provide a more informative de-
+scription of the approximation capabilities of CRBMs, in the next section we investigate how the
+maximal approximation error decreases as hidden units are added to the model.
+
+1
+
+3.3 Maximal Approximation Errors
+From a practical perspective it is not necessary to approximate conditional distributions arbitrarily
+well, but fair approximations sufﬁce. This can be especially important if the number of required
+hidden units grows disproportionately with the quality of the approximation. In this section we
+investigate the maximal approximation errors of CRBMs depending on the number of hidden units.
+Figure 3 gives a schematic illustration of the maximal approximation error of a conditional model.
+The Kullback-Leibler divergence of two probability distributions p and q in ∆k+n is given by
+
+(cid:88)
+
+(cid:88)
+
+x
+
+y
+
+D(p(cid:107)q) :=
+
+p(x)p(y|x) log
+
+p(x)p(y|x)
+q(x)q(y|x)
+
+=D(pX(cid:107)qX ) +
+
+p(x)D(p(·|x)(cid:107)q(·(cid:107)x)),
+
+(cid:88)
+
+x
+
+(cid:88)
+
+x
+
+where pX =(cid:80)
+
+y∈{0,1}n p(x, y) denotes the marginal distribution over x ∈ {0, 1}k.
+
+The divergence of two conditional distributions p(·|·) and q(·|·) in ∆k,n is given by
+
+D(p(·|·)(cid:107)q(·|·)) :=
+
+uX (x)D(p(·|x)(cid:107)q(·|x)),
+
+where uX denotes the uniform distribution over x. Even if the divergence between two joint distri-
+butions does not vanish, the divergence between their conditional distributions may vanish.
+
+7
+
+bbbbbbbbbbbb∆k,nMk,nDMk,nMONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+The divergence from a conditional distribution p(·|·) to the set Mk,n of conditional distributions
+
+deﬁned by a model of joint probability distributions Mk+n is given by
+
+D(p(·|·)(cid:107)Mk,n) := inf
+q∈Mk,n
+
+D(p(·|·)(cid:107)q(·|·)) = inf
+
+q∈Mk+n
+
+D(uX p(·|·)(cid:107)q) − D(uX(cid:107)qX ).
+
+The maximum of the divergence from a conditional distribution to Mk,n satisﬁes
+D(p(cid:107)Mk+n) =: DMk+n.
+
+DMk,n := max
+
+D(p(·|·)(cid:107)Mk,n) ≤ max
+p∈∆k+n
+
+p(·|·)∈∆k,n
+
+Hence we can bound the maximal divergence of a CRBM by the maximal divergence of an
+
+RBM (studied in Mont´ufar et al. 2011) and obtain the following:
+Proposition 10. If m ≤ 2(n+k)−1−1, then the divergence from any conditional distribution p(·|·) ∈
+∆k,n to the model RBMk
+
+n,m is bounded by
+
+DRBMk
+
+n,m ≤ DRBMk+n,m ≤ (n + k) − (cid:98)log2(m + 1)(cid:99) −
+
+m + 1
+
+2(cid:98)log2(m+1)(cid:99)
+
+.
+
+This proposition implies the universal approximation result from Proposition 6 as the special
+case with vanishing approximation error, but it does not imply Theorem 7 in the same way. Taking
+more speciﬁc properties of the conditional model into account, we can improve the proposition and
+obtain the following:
+Theorem 11. Let l ∈ [n]. The divergence from any conditional distribution in ∆k,n to the model
+RBMk
+
+n,m is bounded from above by
+
+DRBMk
+
+n,m ≤ n − l, whenever m ≥
+
+2 2k(2l − 1),
+8 2k(2l − 1) + 1,
+4 2k(2l − 1 + 1/30),
+In fact, the divergence from any conditional distribution in ∆k,n to RBMk
+by DRBMk
+
+1
+
+n,m ≤ n − l, where l is the largest integer with m ≥ 2k−S(r)F (r)(2l − 1) + R(r).
+
+This theorem implies the universal approximation result from Theorem 7 as the special case with
+vanishing approximation error. We note the following weaker but practical version of Theorem 11
+(analogue to Corollary 8):
+Corollary 12. Let k ≥ 1 and l ∈ [n]. The divergence from any conditional distribution in ∆k,n to
+the model RBMk
+
+n,m is bounded from above by DRBMk
+
+n,m ≤ n − l, whenever m ≥ 1
+
+2 2k(2l − 1).
+
+Given an error tolerance, we can use these bounds to ﬁnd a sufﬁcient number of hidden units
+
+that guarantees approximations within this error tolerance.
+
+In plain terms, the results presented above show that the worst case approximation errors of
+CRBMs decrease at least with the logarithm of the number of hidden units. On the other hand, in
+practice one is not interested in approximating all possible conditional distributions, but only special
+classes. One can expect that CRBMs can approximate certain classes of conditional distributions
+better than others. This is the subject of the next section.
+
+8
+
+ 1
+
+3
+
+if k ≥ 1
+if k ≥ 3
+if k ≥ 21
+
+.
+
+n,m is bounded from above
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+Figure 4: Example of a Markov random ﬁeld and a corresponding RBM architecture that can rep-
+resent it.
+
+4 Representation of Special Classes of Conditional Models
+
+In this section we ask about the classes of conditional distributions that can be compactly repre-
+sented by CRBMs and whether CRBMs can approximate interesting conditional distributions using
+only a moderate number of hidden units.
+
+The ﬁrst part of the question is about familiar classes of conditional distributions that can be
+expressed in terms of CRBMs, which in turn would allow us to compare CRBMs with other models
+and to develop a more intuitive picture of Deﬁnition 1.
+
+The second part of the question clearly depends on the speciﬁc problem at hand. Nonetheless,
+some classes of conditional distributions may be considered generally interesting, as they contain
+solutions to all instances of certain classes of problems. An example is the class of deterministic
+conditional distributions, which sufﬁces to solve any Markov decision problem in an optimal way.
+
+4.1 Representation of Conditional Markov Random Fields
+In this section we discuss the ability of CRBMs to represent conditional Markov random ﬁelds,
+depending on the number of hidden units that they have. The main idea is that each hidden unit of
+an RBM can be used to model the pure interaction of a group of visible units. This idea appeared in
+previous work by Younes (1996), in the context of universal approximation.
+Deﬁnition 13. Consider a simplicial complex I on [N ]; that is, a collection of subsets of [N ] =
+{1, . . . , N} such that A ∈ I implies B ∈ I for all B ⊆ A, and ∅ ∈ I. The random ﬁeld EI ⊆ ∆N
+with interactions I is the set of probability distributions of the form
+
+(cid:17)
+(cid:16)(cid:88)
+(cid:89)
+∈{0,1}N exp((cid:80)
+
+A∈I
+
+i∈A
+
+θA
+
+xi
+
+,
+
+for all x = (x1, . . . , xN ) ∈ {0, 1}N ,
+(cid:81)
+
+i∈A x(cid:48)i) and parameters θA ∈ R, A ∈ I.
+
+A∈I θA
+
+1
+Z
+
+p(x) =
+
+with normalization Z =(cid:80)
+
+exp
+
+x(cid:48)
+
+We obtain the following result:
+
+Theorem 14. Let I be a simplicial complex on [k + n].
+{k + 1}, . . . , A (cid:54)= {k + n}, A (cid:54)= ∅}|, then the model RBMk
+distribution of (xk+1, . . . , xk+n), given (x1, . . . , xk), that can be represented by EI ⊆ ∆k+n.
+
+If m ≥ |{A ∈ I : A (cid:54)⊆ [k], A (cid:54)=
+n,m can represent every conditional
+
+An interesting special case is when each output distribution can be chosen arbitrarily from a
+
+given Markov random ﬁeld:
+
+9
+
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbMONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+Corollary 15. Let I be a simplicial complex on [n] and for each x ∈ {0, 1}n let px be some
+probability distribution from EI ⊆ ∆n. If m ≥ 2k(|I| − 1) − |{A ∈ I : |A| = 1}|, then the model
+n,m can represent the conditional distribution deﬁned by q(y|x) = px(y), for all y ∈ {0, 1}n,
+RBMk
+for all x ∈ {0, 1}k.
+
+We note the following direct implication for RBM probability models:
+
+Corollary 16. Let I be a simplicial complex on [n]. If m ≥ |{A ∈ I : |A| > 1}|, then RBMn,m
+can represent any probability distribution p from EI.
+
+Figure 4 illustrates a Markov random ﬁeld and an RBM architecture that can represent it.
+
+4.2 Approximation of Conditional Distributions with Restricted Supports
+
+In this section we continue the discussion about the classes of conditional distributions that can be
+represented by CRBMs, depending on the number of hidden units. Here we focus on a hierarchy of
+conditional distributions deﬁned by the total number of input-output pairs with positive probability.
+Deﬁnition 17. For any k, n, and 0 ≤ d ≤ 2k(2n − 1), let Ck,n(d) ⊆ ∆k,n denote the union of all
+d-dimensional faces of ∆k,n; that is, the set of conditional distributions that have a total of 2k + d
+or fewer non-zero entries, Ck,n(d) := {p(·|·) ∈ ∆k,n : |{(x, y) : p(y|x) > 0}| ≤ 2k + d}.
+
+Note that Ck,n(2k(2n − 1)) = ∆k,n. The vertices (zero-dimensional faces) of ∆k,n are the
+conditional distributions which assign positive probability to only one output, given each input,
+and are called deterministic. By Carath´eodory’s theorem, every element of Ck,n(d) is a convex
+combination of (d + 1) or fewer deterministic conditional distributions.
+
+The sets Ck,n(d) arise naturally in the context of reinforcement learning and partially observable
+Markov decision processes (POMDPs). Namely, every ﬁnite POMDP has an associated effective
+dimension d, which is the dimension of the set of all state processes that can be generated by station-
+ary stochastic policies. Mont´ufar et al. (2014) showed that the policies represented by conditional
+distributions from the set Ck,n(d) are sufﬁcient to generate all the processes that can be generated
+by ∆k,n. In general, the effective dimension d is relative small, such that Ck,n(d) is a much smaller
+policy search space than ∆k,n.
+
+We have the following result:
+
+Proposition 18. If m ≥ 2k + d − 1, then the model RBMk
+Ck,n(d) arbitrarily well.
+
+n,m can approximate every element from
+
+This result shows the intuitive fact that each hidden unit of can be used to model the probability
+of an input-output pair. Since each conditional distribution has 2k input-output probabilities that
+are completely determined by the other probabilities (due to normalization), it is interesting to ask
+whether the amount of hidden units indicated in the proposition is strictly necessary. Further below,
+Theorem 21 will show that, indeed, hidden units are required for modeling the positions of the
+positive probability input-output pairs, even if their speciﬁc values do not need to be modeled.
+
+We note that certain structures of positive probability input-output pairs can be modeled with
+fewer hidden units than stated in Proposition 18. An simple example is the following direct gener-
+alization of Corollary 8:
+
+10
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+Proposition 19. If d is divisible by 2k and m ≥ d/2, then the model RBMk
+n,m can approximate
+every element from Ck,n(d) arbitrarily well, when the set of positive-probability outputs is the same
+for all inputs.
+
+In the following we will focus on deterministic conditional distributions. This is a particularly
+interesting and simple class of conditional distributions with restricted supports. It is well known
+that any ﬁnite Markov decision processes (MDPs) has an optimal policy deﬁned by a stationary
+deterministic conditional distribution (see Bellman 1957; Ross 1983). Furthermore, Ay et al. (2013)
+showed that it is always possible to deﬁne simple two-dimensional manifolds that approximate all
+deterministic conditional distributions arbitrarily well.
+
+Certain classes of conditional distributions (in particular deterministic conditionals) coming
+
+from feedforward networks can be approximated arbitrarily well by CRBMs:
+
+Theorem 20. The model RBMk
+n,m can approximate every conditional distribution arbitrarily well,
+which can be represented by a feedforward network with k input units, a hidden layer of m linear
+threshold units, and an output layer of n sigmoid units.
+n,m can
+approximate every deterministic conditional distribution from ∆k,n arbitrarily well, which can be
+represented by a feedforward linear threshold network with k input, m hidden, and n output units.
+
+In particular, the model RBMk
+
+The representational power of feedforward linear threshold networks has been studied inten-
+sively in the literature. For example, Wenzel et al. (2000) showed that a feedforward linear threshold
+network with k ≥ 1 input, m hidden, and n = 1 output units, can represent the following:
+
+• Any Boolean function f : {0, 1}k → {0, 1}, when m ≥ 3 · 2k−1−(cid:98)log2(k+1)(cid:99); e.g., when
+
+m ≥ 3
+
+k+2 2k.
+
+• The parity function fparity : {0, 1}k → {0, 1}; x (cid:55)→
+• The indicator function of any union of m linearly separable subsets of {0, 1}k.
+Although CRBMs can approximate this rich class of deterministic conditional distributions ar-
+bitrarily well, the next result shows that the number of hidden units required for universal approxi-
+mation of deterministic conditional distributions is rather large:
+
+(cid:80)
+i xi mod 2, when m ≥ k.
+
+(cid:110)
+Theorem 21. The model RBMk
+ily well if m ≥ min
+2k − 1, 3n
+
+k+2 2k(cid:111)
+
+n,m can approximate every deterministic policy from ∆k,n arbitrar-
+
+and only if m ≥ 2k/2 − (n+k)2
+2n .
+
+By this theorem, in order to approximate all deterministic conditional distributions arbitrarily
+well, a CRBM requires exponentially many hidden units, with respect to the number of input units.
+
+5 Conclusion
+
+This paper gives a theoretical description of the representational capabilities of conditional restricted
+Boltzmann machines (CRBMs) relating model complexity and model accuracy. CRBMs are based
+on the well studied restricted Boltzmann machine (RBM) probability models. We proved an exten-
+sive series of results that generalize recent theoretical work on the representational power of RBMs
+in a non-trivial way.
+
+11
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+We studied the problem of parameter identiﬁability. We showed that every CRBM with up
+to exponentially many hidden units (in the number of input and output units) represent a set of
+conditional distributions of dimension equal to the number of model parameters. This implies that
+in all practical cases, CRBMs do not waste parameters, and, generically, only ﬁnitely many choices
+of the interaction weights and biases produce the same conditional distribution.
+
+We addressed the classical problems of universal approximation and approximation quality. Our
+results show that a CRBM with m hidden units can approximate every conditional distribution of
+n output units, given k input units, without surpassing a Kullback-Leibler approximation error of
+the form n − log2(m/2k−1 + 1) (assuming optimal parameters). Thus this model is a universal
+approximator whenever m ≥ 1
+2 2k(2n − 1). In fact we provided tighter bounds depending on k.
+For instance, if k ≥ 21, then the universal approximation property is attained whenever m ≥
+4 2k(2n − 29/30). Our proof is based on an upper bound for the complexity of an algorithm that
+1
+packs Boolean cubes with sequences of non-overlapping stars, for which improvements may be
+possible. It is worth mentioning that the set of conditional distributions for which the approximation
+error is maximal may be very small. This is a largely open and difﬁcult problem. We note that
+our results can be plugged into certain analytic integrals (Mont´ufar and Rauh 2014) to produce
+upper-bounds for the expectation value of the approximation error when approximating conditional
+distributions drawn from a product Dirichlet density on the polytope of all conditional distributions.
+For future work it would be interesting to extend our (optimal-parameter) considerations by an
+analysis of the CRBM training complexity and the errors resulting from non-optimal parameter
+choices.
+
+We also studied speciﬁc classes of conditional distributions that can be represented by CRBMs,
+depending on the number of hidden units. We showed that CRBMs can represent conditional
+Markov random ﬁelds by using each hidden unit to model the interaction of a group of visible vari-
+ables. Furthermore, we showed that CRBMs can approximate all binary functions with k input bits
+and n output bits arbitrarily well if m ≥ 2k − 1 or m ≥ 3n
+k+2 2k and only if m ≥ 2k/2− (n + k)2/2n.
+In particular, this implies that there are exponentially many deterministic conditional distributions
+which can only be approximated arbitrarily well by a CRBM if the number of hidden units is expo-
+nential in the number of input units. This aligns with well known examples of functions that cannot
+be compactly represented by shallow feedforward networks, and reveals some of the intrinsic con-
+straints of CRBM models that may prevent them from grossly over-ﬁtting.
+
+We think that the developed techniques can be used for studying other conditional probability
+models as well. In particular, for future work it would be interesting to compare the representational
+power of CRBMs and of combinations of CRBMs with feedforward nets (combined models of this
+kind include CRBMs with retroactive connections and recurrent temporal RBMs). Also, it would
+be interesting to apply our techniques to study stacks of CRBMs and other multilayer conditional
+models. Finally, although our analysis focuses on the case of binary units, the main ideas can be
+extended to the case of discrete non-binary units.
+
+A Details on the Dimension
+
+Proof of Proposition 3. Each joint distribution of x and y has the form p(x, y) = p(x)p(y|x) and
+the set ∆k of all marginals p(x) has dimension 2k − 1. This shows the ﬁrst statement. The items
+(cid:3)
+follow directly from the corresponding statements for the probability model.
+
+12
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+Proof of Theorem 4. We will prove a stronger statement, where the condition on m appearing in
+the ﬁrst item is relaxed to the following: The set {0, 1}k+n contains m disjoint radius-1 Hamming
+balls whose union does not contain any set of the form [x] := {(x, y) ∈ {0, 1}k+n : y ∈ {0, 1}n}
+for x ∈ {0, 1}k, and whose complement has full afﬁne rank as a subset of Rk+n.
+The proof is based on the ideas developed in (Cueto et al. 2010) for studying the RBM proba-
+bility model.
+
+We consider the Jacobian of RBMk
+
+n,m for the parametrization given in Deﬁnition 1. The dimen-
+n,m is the maximum rank of the Jacobian over all possible choices of θ = (W, V, b, c) ∈
+sion of RBMk
+RN , N = n + m + (n + k)m. Let hθ(v) := argmaxz∈{0,1}m p(z|v) denote the most likely hidden
+state of RBMk+n,m given the visible state v = (x, y), depending on the parameter θ. After a few
+direct algebraic manipulations, we ﬁnd that the maximum rank of the Jacobian is bounded from
+below by the maximum over θ of the dimension of the column-span of the matrix Aθ with rows
+
+(cid:104)
+(1, x(cid:62), y(cid:62)), (1, x(cid:62), y(cid:62)) ⊗ hθ(x, y)(cid:62)
+
+(cid:105)
+
+,
+
+for all (x, y) ∈ {0, 1}k+n,
+
+(1)
+
+modulo vectors whose (x, y)-th entries are independent of y given x. Here ⊗ is the Kronecker
+product, which is deﬁned by (aij)i,j ⊗ (bkl)k,l = (aijbkl)ik,jl. The modulo operation has the effect
+of disregarding the input distribution p(x) in the joint distribution p(x, y) = p(x)p(y|x) represented
+by the RBM. For example, from the ﬁrst block of Aθ we can remove the columns that correspond
+to x, without affecting the mentioned column-span. Summarizing, the maximal column-rank of Aθ
+modulo the vectors whose (x, y)-th entries are independent of y given x is a lower bound for the
+dimension of RBMk
+Note that Aθ depends on θ in a discrete way; the parameter space RN is partitioned in ﬁnitely
+many regions where Aθ is constant. The piece-wise linear map thus emerging, with linear pieces
+represented by the Aθ, is the tropical CRBM morphism, and its image is the tropical CRBM model.
+Each linear region of the tropical morphism corresponds to an inference function hθ : {0, 1}k+n →
+{0, 1}m taking visible state vectors to the most likely hidden state vectors. Geometrically, such an
+inference function corresponds to m slicings of the (k + n)-dimensional unit hypercube. Namely,
+every hidden unit divides the visible space {0, 1}k+n ⊂ Rk+n in two halfspaces, according to its
+preferred state.
+
+n,m.
+
+Each of these m slicings deﬁnes a column block of the matrix Aθ. More precisely,
+
+Aθ = (A|AC1|···|ACm) ,
+
+where A is the matrix with rows (1, v1, . . . , vk+n) for all v ∈ {0, 1}k+n, and AC is the same matrix,
+with rows multiplied by the indicator function of the set C of points v classiﬁed as positive by a
+linear classiﬁer (slicing).
+
+If we consider only linear classiﬁers that select rows of A corresponding to disjoint Hamming
+balls of radius one (that is, such that the Ci are disjoint radius-one Hamming balls), then the rank
+of Aθ is equal to the number of such classiﬁers times (n + k + 1) (which is the rank of each block
+(which is the remainder rank of the ﬁrst block A). The
+ACi), plus the rank of A{0,1}k+n\∪i∈[m]Ci
+column-rank modulo functions of x is equal to the rank minus k + 1 (which is the dimension of
+the functions of x spanned by columns of A), minus at most the number of cylinder sets [x] =
+{(x, y) : y ∈ {0, 1}n} for some x ∈ {0, 1}k that are contained in ∪i∈[m]Ci. This completes the
+proof of the general statement in the ﬁrst item.
+
+13
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+The example given in the ﬁrst item is a consequence of the following observations. Each cylin-
+der set [x] contains 2n points. If a given cylinder set [x] intersects a radius-1 Hamming ball B but
+is not contained in it, then it also intersects the radius-2 Hamming sphere around B. Choosing the
+radius-1 Hamming ball slicings C1, . . . , Cm to have centers at least Hamming distance 4 apart, we
+can ensure that their union does not contain any cylinder set [x].
+
+The second item is by the second item of Proposition 3; when the probability model RBMn+k,m
+(cid:3)
+
+is full dimensional, then RBMk
+
+n,m is full dimensional.
+
+Proof of Corollary 5.
+For the maximal cardinality of distance-4 binary codes of length l it is
+1+(l−1)+(l−1)(l−2)/2 (Gilbert
+known that A(l, 4) ≥ 2r, where r is the largest integer with 2r <
+1952; Varshamov 1957), and so A2(l, 4) ≥ 2l−(cid:98)log2(l2−l+2)(cid:99). Furthermore, for the minimal size of
+radius one covering codes of length l it is known that K(l, 1) ≤ 2l−(cid:98)log2(l+1)(cid:99) (Cueto et al. 2010). (cid:3)
+
+2l
+
+B Details on Universal Approximation
+B.1 Sufﬁcient Number of Hidden Units
+This section contains the proof of Theorem 7 about the minimal size of CRBM universal approxi-
+mators. The proof is constructive; given any target conditional distribution, it proceeds by adjusting
+the weights of the hidden units successively until obtaining the desired approximation. The idea
+of the proof is that each hidden unit can be used to model the probability of an output vector, for
+several different input vectors. The probability of a given output vector can be adjusted at will by a
+single hidden unit, jointly for several input vectors, when these input vectors are in general position.
+This comes at the cost of generating dependent output probabilities for all other inputs in the same
+afﬁne space. The main difﬁculty of the proof lies in the construction of sequences of successively
+conﬂict-free groups of afﬁnely independent inputs, and in estimating the shortest possible length
+of such sequences exhausting all possible inputs. The proof is composed of several lemmas and
+propositions. We start with a few deﬁnitions:
+Deﬁnition 22. Given two probability distributions p and q on a ﬁnite set X , the Hadamard product
+or renormalized entry-wise product p∗ q is the probability distribution on X deﬁned by (p∗ q)(x) =
+x(cid:48) p(x(cid:48))q(x(cid:48)) for all x ∈ X . When building this product, we assume that the supports
+of p and q are not disjoint, such that the normalization term does not vanish.
+
+p(x)q(x)/(cid:80)
+
+strictly positive product distributions r(x) =(cid:81)n
+
+The probability distributions that can be represented by RBMs can be described in terms of
+Hadamard products. Namely, for every probability distribution p that can be represented by RBMn,m,
+the model RBMn,m+1 with one additional hidden unit can represent precisely the probability dis-
+tribution of the form p(cid:48) = p ∗ q, where q = λ(cid:48)r + (1 − λ(cid:48))s is a mixture, with λ(cid:48) ∈ [0, 1], of two
+i=1 si(xi). In other words,
+each additional hidden unit amounts to Hadamard-multiplying the distributions representable by an
+RBM with the distributions representable as mixtures of product distributions. The same result is
+obtained by considering only the Hadamard products with mixtures where r is equal to the uniform
+distribution. In this case, the distributions p(cid:48) = p ∗ q are of the form p(cid:48) = λp + (1 − λ)p ∗ s, where
+s is any strictly positive product distribution and λ =
+λ(cid:48)+2n(1−λ(cid:48))(cid:80)x p(x)s(x) is any weight in [0, 1].
+
+i=1 ri(xi) and s(x) =(cid:81)n
+
+λ(cid:48)
+
+14
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+Deﬁnition 23. A probability sharing step is a transformation taking a probability distribution p to
+p(cid:48) = λp + (1 − λ)p ∗ s, for some strictly positive product distribution s and some λ ∈ [0, 1].
+
+We will need two more standard deﬁnitions from coding theory:
+
+Deﬁnition 24. A radius-1 Hamming ball in {0, 1}k is a set B consisting of a length-k binary vector
+and all its immediate neighbors; that is, B = {x ∈ {0, 1}k : dH (x, z) ≤ 1} for some z ∈ {0, 1}k,
+where dH (x, z) := |{i ∈ [k] : xi (cid:54)= zi}| denotes the Hamming distance between x and z. Here
+[k] := {1, . . . , k}.
+Deﬁnition 25. An r-dimensional cylinder set in {0, 1}k is a set C of length-k binary vectors with
+arbitrary values in r coordinates and ﬁxed values in the other coordinates; that is, C = {x ∈
+{0, 1}k : xi = zi for all i ∈ Λ} for some z ∈ {0, 1}k and some Λ ⊆ [k] with k − |Λ| = r.
+
+The geometric intuition is simple: a cylinder set corresponds to the vertices of a face of a unit
+cube, and a radius-1 Hamming ball corresponds to the vertices of a corner of a unit cube. The
+vectors in a radius-1 Hamming ball are afﬁnely independent. See Figure 5A for an illustration.
+
+In order to prove Theorem 7, for each k ∈ N and n ∈ N we want to ﬁnd an mk,n ∈ N such
+that: for any given strictly positive conditional distribution q(·|·), there exists p ∈ RBMn+k,0 and
+mk,n probability sharing steps taking p to a strictly positive joint distribution p(cid:48) with p(cid:48)(·|·) = q(·|·).
+The idea is that the starting distribution is represented by an RBM with no hidden units, and each
+sharing step is realized by adding a hidden unit to the RBM. In order to obtain these sequences of
+sharing steps, we will use the following technical lemma:
+Lemma 26. Let B be a radius-1 Hamming ball in {0, 1}k and let C be a cylinder subset of {0, 1}k
+containing the center of B. Let λx ∈ (0, 1) for all x ∈ B ∩ C, let ˜y ∈ {0, 1}n and let δ˜y denote
+the Dirac delta on {0, 1}n assigning probability one to ˜y. Let p ∈ ∆k+n be a strictly positive
+(cid:40)
+probability distribution with conditionals p(·|x) and let
+λxp(·|x) + (1 − λx)δ˜y,
+p(·|x),
+
+for all x ∈ B ∩ C
+for all x ∈ {0, 1}k \ C
+
+p(cid:48)(·|x) :=
+
+.
+
+y |p(cid:48)(cid:48)(y|x) − p(cid:48)(y|x)| ≤  for all x ∈ (B ∩ C) ∪ ({0, 1}k \ C).
+
+Then, for any  > 0, there is a probability sharing step taking p to a joint distribution p(cid:48)(cid:48) with
+
+conditionals satisfying(cid:80)
+Proof. We deﬁne the sharing step p(cid:48) = λp + (1 − λ)p ∗ s with a product distribution s sup-
+ported on {˜y} × C ⊆ {0, 1}k+n. Note that given any distribution q on C and a radius-1 Ham-
+ming ball B whose center is contained in C, there is a product distribution s on C such that
+(s(x))x∈C∩B ∝ (q(x))x∈C∩B.
+In other words, the restriction of a product distribution s to a
+radius-1 Hamming ball B can be made proportional to any non-negative vector of length |B|.
+i∈[k] si(xi) for all
+x = (x1, . . . , xk), with factor distributions si. Hence the restriction of s to B is given by the
+vector
+, where, without loss of generality, we chose
+B centered at (0, . . . , 0). Now, by choosing the factor distributions si appropriately, the vector
+(cid:3)
+s1(0) , . . . , sk(1)
+sk(0)
+
+To see this, note that a product distribution is a vector with entries s(x) = (cid:81)
+(cid:0) s1(1)
+
+(cid:81)
+(cid:1) can be made arbitrary in Rk
+
+(cid:16)(cid:81)
+
+i si(0), s1(1)
+s1(0)
+
+i si(0), . . . , sk(1)
+sk(0)
+
+i si(0)
+
+(cid:81)
+
+(cid:17)
+
++.
+
+We have the following two implications of Lemma 26:
+
+15
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+strictly positive joint distribution p ∈ ∆k+n with conditionals satisfying(cid:80)
+Corollary 27. For any  > 0 and q(·|x) ∈ ∆n for all x ∈ B∩C, there is an (cid:48) > 0 such that, for any
+satisfying(cid:80)
+y |p(y|x) − δ0(y)| ≤ (cid:48)
+for all x ∈ B∩ C, there are 2n− 1 sharing steps taking p to a joint distribution p(cid:48)(cid:48) with conditionals
+y |p(cid:48)(cid:48)(y|x) − p(cid:48)(y|x)| ≤  for all x ∈ (B ∩ C) ∪ ({0, 1}k \ C), where δ0 is the Dirac
+delta on {0, 1}n assigning probability one to the vector of zeros and
+for all x ∈ B ∩ C
+for all x ∈ {0, 1}k \ C
+
+q(·|x),
+p(·|x),
+
+p(cid:48)(·|x) :=
+
+(cid:40)
+
+.
+
+Proof. Consider any x ∈ B ∩ C. We will show that the probability distribution q(·|x) ∈ ∆n
+can be written as the transformation of a Dirac delta by 2n − 1 sharing steps. Then the claim
+follows from Lemma 26. Let σ : {0, 1}n → {0, . . . , 2n − 1} be an enumeration of {0, 1}n. Let
+p(0)(y|x) = δσ−1(0)(y) be the starting distribution (the Dirac delta concentrated at the state ˜y ∈
+{0, 1}n with σ(˜y) = 0) and let the t-th sharing step be deﬁned by p(t)(y) = λx
+σ−1(t)p(t−1)(y|x) +
+σ−1(t) ∈ [0, 1]. After 2n − 1 sharing steps, we obtain the
+(1 − λx
+distribution
+
+σ−1(t))δσ−1(t)(y), for some weight λx
+
+p(2n−1)(y|x) =
+
+λx
+˜y(cid:48)
+
+(1 − λx
+
+˜y)δ˜y(y),
+
+for all y ∈ {0, 1}n,
+
+(cid:88)
+
+(cid:16) (cid:89)
+
+˜y
+
+˜y(cid:48) : σ(˜y(cid:48))>σ(˜y)
+
+(cid:17)
+
+whereby λx
+weights:
+
+˜y := 0 for σ(˜y) = 0. This distribution is equal to q(·|x) for the following choice of
+
+λx
+˜y := 1 −
+
+˜y(cid:48) : σ(˜y(cid:48))>σ(˜y) q(˜y(cid:48)|x)
+It is easy to verify that these weights satisfy the condition λx
+for that ˜y with σ(˜y) = 0, independently of the speciﬁc choice of σ.
+
+1 −
+
+,
+
+for all ˜y ∈ {0, 1}n.
+
+˜y ∈ [0, 1] for all ˜y ∈ {0, 1}n, and λx
+
+˜y = 0
+(cid:3)
+
+(cid:80)
+
+q(˜y|x)
+
+Note that this corollary does not make any statement about the rows p(cid:48)(cid:48)(·|x) with x ∈ C \ B.
+When transforming the (B∩C)-rows of p according to Lemma 26, the (C\B)-rows get transformed
+as well, in a non-trivial dependent way. Fortunately, there is a sharing step that allows us to “reset”
+exactly certain rows to a desired point measure, without introducing new non-trivial dependencies:
+Corollary 28. For any  > 0, any cylinder set C ⊆ {0, 1}k, and any ˜y ∈ {0, 1}n, any strictly
+positive joint distribution p can be transformed by a probability sharing step to a joint distribution
+
+p(cid:48)(cid:48) with conditionals satisfying(cid:80)
+
+(cid:40)
+y |p(cid:48)(cid:48)(y|x) − p(cid:48)(y|x)| ≤  for all x ∈ {0, 1}k, where
+
+p(cid:48)(·|x) :=
+
+δ˜y,
+p(·|x),
+
+for all x ∈ C
+for all x ∈ {0, 1}k \ C
+
+.
+
+Proof. The sharing step can be deﬁned as p(cid:48)(cid:48) = λp + (1 − λ)p ∗ s with s close to the uniform
+(cid:3)
+distribution on {˜y} × C and λ close to 0 (close enough depending on ).
+We will refer to a sharing step as described in Corollary 28 as a reset of the C-rows of p.
+
+With all the observations made above, we can construct an algorithm that generates an arbitrarily
+accurate approximation of any given conditional distribution by applying a sequence of sharing
+
+16
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+Output: Transformation p(cid:48) of the input distribution with(cid:80)
+
+Input: Strictly positive joint distribution p, target conditional distribution q(·|·), and  > 0
+y |p(cid:48)(y|x) − q(y|x)| ≤  for all x
+Initialize B ← ∅;
+while B (cid:54)⊇ {0, 1}k do
+
+Choose (disjoint) cylinder sets C1, . . . , CK packing {0, 1}k \ B;
+If needed, perform at most K sharing steps resetting the Ci rows of p for all i ∈ [K],
+taking p(·|x) close to δ0 for all x ∈ Ci for all i ∈ [K] and leaving all other rows close to
+their current values, according to Corollary 28;
+for each i ∈ [K] do
+
+Perform at most 2n − 1 sharing steps taking p(·|x) close to q(·|x) for all x ∈ Bi,
+where Bi is some star contained in Ci, and leaving the ({0, 1}k \ Ci)-rows close to
+their current values, according to Corollary 27;
+
+end
+B ← B ∪ (∪i∈[K]Bi);
+
+end
+
+p(cid:48) has a conditional distribution p(cid:48)(·|·) satisfying (cid:80)
+
+Algorithm 1: Algorithmic illustration of the proof of Theorem 7. The algorithm performs sequen-
+tial sharing steps on a strictly positive joint distribution p ∈ ∆k+n until the resulting distribution
+y |p(cid:48)(y|x) − q(y|x)| ≤  for all x. Here
+B ⊆ {0, 1}k denotes the set of inputs x that have been readily processed in the current iteration.
+
+steps to any given strictly positive joint distribution. We denote by star the intersection of a radius-1
+Hamming ball and a cylinder set containing the center of the ball. See Figure 5A. The details of the
+algorithm are given in Algorithm 1.
+
+In order to obtain a bound on the number m of hidden units for which RBMk
+
+p ∈ RBMn+k,0 with conditionals satisfying(cid:80)
+
+n,m can approx-
+imate a given target conditional distribution arbitrarily well, we just need to evaluate the number
+of sharing steps run by Algorithm 1. For this purpose, we investigate the combinatorics of sharing
+step sequences and evaluate their worst case lengths. We can choose as starting distribution some
+y |p(y|x) − δ0(y)| ≤ (cid:48) for all x ∈ {0, 1}k, for
+some (cid:48) > 0 small enough depending on the target conditional q(·|·) and the targeted approximation
+accuracy .
+Deﬁnition 29. A sequence of stars B1, . . . , Bl packing {0, 1}k with the property that the smallest
+cylinder set containing any of the stars in the sequence does not intersect any previous star in the
+sequence is called a star packing sequence for {0, 1}k.
+
+The number of sharing steps run by Algorithm 1 is bounded from above by (2n − 1) times
+the length of a star packing sequence for the set of inputs {0, 1}k. Note that the choices of stars
+and the lengths of the possible star packing sequences are not unique. Figure 5B gives an example
+showing that starting a sequence with large stars is not necessarily the best strategy to produce a
+short sequence. The next lemma states that there is a class of star packing sequences of a certain
+length, depending on the size of the input space. Thereby, this lemma upper-bounds the worst case
+complexity of Algorithm 1.
+Furthermore, for this sequence, Algorithm 1 requires at most R(r) :=(cid:81)r
+Lemma 30. Let r ∈ N, S(r) := 1 + 2 +··· + r, k ≥ S(r), fi(z) := 2S(i−1) + (2i − (i + 1))z, and
+F (r) := fr(fr−1(··· f2(f1))). There is a star packing sequence for {0, 1}k of length 2k−S(r)F (r).
+i=2(2i − (i + 1)) resets.
+
+17
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+A
+
+B
+
+C
+
+Figure 5: A) Examples of radius-1 Hamming balls in cylinder sets of dimension 3, 2, and 1. The
+cylinder sets are shown as bold vertices connected by dashed edges, and the nested Hamming balls
+(stars) as bold vertices connected by solid edges. B) Three examples of star packing sequences for
+{0, 1}3. C) Illustration of the star packing sequence constructed in Lemma 30 for {0, 1}6.
+
+Proof. The star packing sequence is constructed by the following procedure.
+In each step, we
+deﬁne a set of cylinder sets packing all sites of {0, 1}k that have not been covered by stars so far,
+and include a sub-star of each of these cylinder sets in the sequence.
+As an initialization step, we split {0, 1}k into 2k−S(r) S(r)-dimensional cylinder sets, denoted
+D(j1), j1 ∈ {1, . . . , 2k−S(r)}.
+In the ﬁrst step, for each j1, the S(r)-dimensional cylinder set D(j1) is packed by 2S(r−1) r-
+dimensional cylinder sets C(j1),i, i ∈ {1, . . . , 2S(r−1)}. For each i, we deﬁne the star B(j1),i as the
+radius-1 Hamming ball within C(j1),i centered at the smallest element of C(j1),i (with respect to the
+lexicographic order of {0, 1}k), and include it in the sequence.
+At this point, the sites in D(j1) that have not yet been covered by stars is D(j1) \ (∪iB(j1),i).
+This set is split into 2r − (r + 1) S(r − 1)-dimensional cylinder sets, which we denote by D(j1,j2),
+j2 ∈ {1, . . . , 2r − (r + 1)}.
+Note that ∪j1D(j1,j2) is a cylinder set, and hence, for each j2, the (∪j1D(j1,j2))-rows of a con-
+ditional distribution being processed by Algorithm 1 can be jointly reset by one single sharing step
+to achieve p(cid:48)(·|x) ≈ δ0 for all x ∈ ∪j1D(j1,j2).
+In the second step, for each j2, the cylinder set D(j1,j2) is packed by 2S(r−2) (r−1)-dimensional
+cylinder sets C(j1,j2),i, i ∈ {1, . . . , 2S(r−2)}, and the corresponding stars are included in the se-
+quence.
+The procedure is iterated until the r-th step. In this step, each D(j1,...,jr) is a 1-dimensional
+cylinder set and is packed by a single 1-dimensional cylinder set C(j1,...,jr),1 = B(j1,...,jr),1. Hence,
+at this point, all of {0, 1}k has been exhausted and the procedure terminates.
+
+18
+
+bbbbbbbbh010ih000ih011ih001ih100ih101ih110ih111ibbbbbbbbbbbh010ih000ih100ih110ibbbbbbbbbh000ih100ibbbbbb1bb2bb34bbb12bbbbb31234bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbB(1),1B(1),2B(1),3B(1),4B(1),5B(1),6B(1),7B(1),8bbB(1,1,1),1bbbbbbB(1,1),1B(1,1),2D(1)={0,1}6GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+(r)
+n,k =
+
+m
+2k
+2k
+2k
+2k
+2k
+2k
+...
+2k
+
+r
+1
+2
+3
+4
+5
+...
+> 17
+
+2−S(r) F (r)
+2−1
+2−3
+2−6
+2−10
+2−15
+
+1
+3
+20
+284
+8408
+
+...
+
+(2n − 1) +
+(2n − 1) +
+(2n − 1) +
+(2n − 1) +
+(2n − 1) +
+(2n − 1) +
+...
+
+...
+
+R(r)
+
+0
+1
+4
+44
+
+1144
+...
+
+0.2263
+
+(2n − 1) + 2S(r)0.0269
+
+Table 1: Numerical evaluation of the bounds from Proposition 31. Each row evaluates the universal
+approximation bound m
+
+(r)
+n,k for a value of r.
+
+number of branches created from the ﬁrst step on, which is precisely R(r) =(cid:81)
+
+Summarizing, the procedure is initialized by creating the branches D(j1), j1 ∈ [2k−S(r)]. In
+the ﬁrst step, each branch D(j1) produces 2S(r−1) stars and splits into the branches D(j1,j2), j2 ∈
+[2r − (r + 1)]. More generally, in the i-th step, each branch D(j1,...,ji) produces 2S(r−i) stars, and
+splits into the branches D(j1,...,ji,ji+1), ji+1 ∈ [2r−(i−1) − (r + 1 − (i − 1))].
+The total number of stars D(j1,...,jr) is given precisely by 2k−S(r) times the value of the iterative
+function F (r) = fr(fr−1(··· f2(f1))), whereby f1 = 1. The total number of resets is given by the
+i∈[r](2i − (i + 1)).
+Figure 5C offers an illustration of these star packing sequences. The ﬁgure shows the case
+k = S(3) = 6. In this case, there is only one initial branch D(1) = {0, 1}6. The stars B(1),i,
+i ∈ [2S(2)] = [8] are shown in solid blue, B(1,1),i, i ∈ [2S(1)] = [2] in dashed red, and B(1,1,1),1 in
+dotted green. For clarity, only these stars are highlighted. The stars B(1,j2),i and B(1,j2,1),1 resulting
+(cid:3)
+from split branches are similar, translated versions of the highlighted ones.
+
+With this, we obtain the general bound of the theorem:
+
+Proposition 31 (Theorem 7, general bound). Let k ≥ S(r). The model RBMk
+every conditional distribution from ∆k,n arbitrarily well whenever m ≥ m
+2k−S(r)F (r)(2n − 1) + R(r).
+Proof. This is in view of the complexity of Algorithm 1 for the sequence given in Lemma 30. (cid:3)
+
+n,m can approximate
+(r)
+(r)
+k,n, where m
+k,n :=
+
+(r)
+
+In order to make the universal approximation bound more comprehensible, in Table 1 we evalu-
+ated the sequence m
+n,k for r = 1, 2, 3 . . . and k ≥ S(r). Furthermore, the next proposition gives an
+explicit expression for the coefﬁcients 2−S(r)F (r) and R(r) appearing in the bound. This yields the
+(r)
+n,k decreases with increasing r, except possibly
+second part of Theorem 7. In general, the bound m
+for a few values of k when n is small. For a pair (k, n), any m
+n,k with k ≥ S(r) is a sufﬁcient
+number of hidden units for obtaining a universal approximator.
+
+(r)
+
+Proposition 32 (Theorem 7, explicit bounds). The function K(r) := 2−S(r)F (r) is bounded from
+
+below and above as K(6)(cid:81)r
+
+i=7
+
+(cid:0)1 − i−3
+
+2i
+
+(cid:1)
+
+≤ K(r) ≤ K(6)(cid:81)r
+
+i=7
+
+(cid:0)1 − i−4
+
+2i
+
+(cid:1) for all r ≥ 6. Fur-
+
+19
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+thermore, K(6) ≈ 0.2442 and K(∞) ≈ 0.2263. Moreover, R(r) := (cid:81)r
+
+2S(r)P (r), where P (r) := 1
+2
+
+(cid:81)r
+i=2(1 − (i+1)
+
+2i ), and P (∞) ≈ 0.0269.
+
+i=2(2i − (i + 1)) =
+
+Proof. From the deﬁnition of S(r) and F (r), we obtain that
+
+K(r) = 2−r + K(r − 1)(1 − 2−r(r + 1)).
+
+(2)
+
+Note that K(1) = 1
+
+2, and that K(r) decreases monotonically.
+
+c , then the left hand side of Equation (2) is bounded from below
+Now, note that if K(r − 1) ≤ 1
+as K(r) ≥ K(r− 1)(1− 2−r(r + 1− c)). For a given c, let rc be the ﬁrst r for which K(r− 1) ≤ 1
+c ,
+assuming that such an r exists. Then
+
+K(r) ≥ K(rc − 1)
+
+i + 1 − c
+
+2i
+
+1 −
+
+,
+
+for all r ≥ rc.
+
+(3)
+
+(cid:18)
+
+r(cid:89)
+
+i=rc
+
+(cid:19)
+
+(cid:19)
+
+,
+
+Similarly, if K(r) > 1
+
+d for all r ≥ rb, then
+r(cid:89)
+
+K(r) ≤ K(rb − 1)
+
+(cid:18)
+
+i + 1 − b
+
+2i
+
+1 −
+
+for any r ≥ rb.
+
+i=rb
+
+gine Wolfram|Alpha(access June 01, 2014) we obtain that(cid:81)∞i=0
+
+4. On the other hand, using the computational en-
+Direct computations show that K(6) ≈ 0.2445 ≤ 1
+≈ 7.7413.
+Plugging both terms into Equation (3) yields that K(r) is always bounded from below by 0.2259.
+
+(cid:0)1 − i−3
+5, we obtain that K(r) ≤ K(r(cid:48)−1)(cid:81)r
+
+for any r(cid:48) and r ≥ r(cid:48). Using r(cid:48) = 7, the right hand side evaluates in the limit of large r to approxi-
+mately 0.2293.
+Numerical evaluation of K(r) from Equation (2) for r up to one million (using Matlab
+(cid:3)
+
+R2013b) indicates that, indeed, K(r) tends to approximately 0.2263 for large r.
+
+(cid:1)
+i=r(cid:48)(cid:0)1 − i−4
+
+2i
+
+Since K(r) is never smaller than or equal to 1
+
+2i
+
+(cid:1),
+
+We close this subsection with the remark that the proof strategy can be used not only to study
+
+universal approximation, but also approximability of selected classes of conditional distributions:
+
+Remark 33. If we only want to model a restricted class of conditional distributions, then adapting
+Algorithm 1 to these restrictions may yield tighter bounds for the number of hidden units that
+sufﬁces to represent these restricted conditionals. For example:
+
+If we only want to model the target conditionals q(·|x) for the inputs x from a subset S ⊆ {0, 1}k
+and do not care about q(·|x) for x (cid:54)∈ S, then in the algorithm we just need to replace {0, 1}k by S.
+In this case, a cylinder set packing of S \ B is understood as a collection of disjoint cylinder sets
+C1, . . . , CK ⊆ {0, 1}k with ∪i∈[K]Ci ⊇ S \ B and (∪i∈[K]Ci) ∩ B = ∅.
+Furthermore, if for some cylinder set Ci and a corresponding star Bi ⊆ Ci the conditionals
+q(·|x) with x ∈ Bi have a common support set T ⊆ {0, 1}n, then the Ci-rows of p can be reset to a
+distribution δy with y ∈ T , and only |T|− 1 sharing steps are needed to transform p to a distribution
+whose conditionals approximate q(·|x) for all x ∈ Bi to any desired accuracy. In particular, for
+the class of target conditional distributions with supp q(·|x) = T for all x, the term 2n − 1 in the
+complexity bound of Algorithm 1 is replaced by |T| − 1.
+
+20
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+B.2 Necessary Number of Hidden Units
+Proposition 9 follows from simple parameter counting arguments. In order to make this rigorous,
+ﬁrst we make the observation that universal approximation of (conditional) probability distributions
+by Boltzmann machines or any other models based on exponential families, with or without hidden
+variables, requires the number of model parameters to be as large as the dimension of the set being
+approximated. We denote by ∆X ,Y the set of conditionals with inputs form a ﬁnite set X and outputs
+from a ﬁnite set Y. Accordingly, we denote by ∆Y the set of probability distributions on Y.
+Lemma 34. Let X , Y, and Z be some ﬁnite sets. Let M ⊆ ∆X ,Y be deﬁned as the set of condi-
+tionals of the marginal M(cid:48) ⊆ ∆X×Y of an exponential family E ⊆ ∆X×Y×Z. If M is a universal
+approximator of conditionals from ∆X ,Y, then dim(E) ≥ dim(∆X ,Y ) = |X|(|Y| − 1).
+
+The intuition of this lemma is that, for models deﬁned by marginals of exponential families,
+the set of conditionals that can be approximated arbitrarily well is essentially equal to the set of
+conditionals that can be represented exactly, implying that there are no low-dimensional universal
+approximators of this type.
+Proof of Lemma 34. We consider ﬁrst the case of probability distributions; that is, the case with
+|X| = 1 and X × Y ∼= Y. Let M be the image of the exponential family E by a differentiable map
+f (for example, the marginal map). The closure E, which consists of all distributions that can be
+approximated arbitrarily well by E, is a compact set. Since f is continuous, the image of E is also
+compact, and M = f (E) = f (E). The model M is a universal approximator if and only if M =
+∆Y. The set E is a ﬁnite union of exponential families; one exponential family EF for each possible
+support set F of distributions from E. When dim(E) < dim(∆Y ), each point of each EF is a critical
+point of f (the Jacobian is not surjective at that point). By Sard’s theorem, each EF is mapped by
+f to a set of measure zero in ∆Y. Hence the ﬁnite union ∪F f (EF ) = f (∪FEF ) = f (E) = M has
+measure zero in ∆Y.
+For the general case, with |X| ≥ 1, note that M ⊆ ∆X ,Y is a universal approximator iff the
+joint model ∆XM = {p(x)q(y|x) : p ∈ ∆X , q ∈ M} ⊆ ∆X×Y is a universal approximator. The
+latter is the marginal of the exponential family ∆X ∗ E = {p ∗ q : p ∈ ∆X , q ∈ E} ⊆ ∆X×Y×Z.
+(cid:3)
+Hence the claim follows from the ﬁrst part.
+
+If RBMk
+
+Proof of Proposition 9.
+n,m is a universal approximator of conditionals from ∆k,n, then
+the model consisting of all probability distributions of the form p(x, y) = 1
+z exp(z(cid:62)W y +
+Z
+z(cid:62)V x + b(cid:62)y + c(cid:62)z + f (x)) is a universal approximator of probability distributions from ∆k+n.
+The latter is the marginal of an exponential family of dimension mn + mk + n + m + 2k − 1. Thus,
+(cid:3)
+by Lemma 34, m ≥ 2k+n−2k−n
+
+(cid:80)
+
+(n+k+1)
+
+.
+
+C Details on the Maximal Approximation Errors
+
+Proof of Proposition 10. We have that DRBMk
+n,m ≤ maxp∈∆k+n : pX =uX D(p(cid:107) RBMn+k,m). The
+right hand side is bounded by n, since the RBM model contains the uniform distribution. It is also
+2(cid:98)log2(m+1)(cid:99) (Mont´ufar
+bounded by the maximal divergence DRBMn+k,m ≤ (n+k)−(cid:98)log2(m+1)(cid:99)− m+1
+(cid:3)
+et al. 2013).
+
+21
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+In order to prove Theorem 11, we will upper bound the approximation errors of CRBMs by the
+
+approximation errors of submodels of CRBMs. First, we note the following:
+
+Lemma 35. The maximal divergence of a conditional model that is a Cartesian product of a
+probability model is bounded from above by the maximal divergence of that probability model:
+if M = ×x∈{0,1}kN ⊆ ∆k,n for some N ⊆ ∆n, then DM ≤ DN .
+Proof. For any p ∈ ∆k,n, we have
+
+D(p(cid:107)M) = inf
+q∈M
+1
+2k
+
+=
+
+D(p(·|x)(cid:107)q(·|x))
+
+D(p(·|x)(cid:107)q(·|x))
+
+(cid:88)
+
+x
+
+inf
+
+1
+2k
+
+(cid:88)
+(cid:88)
+
+x
+
+x
+
+1
+2k
+
+≤
+
+q(·|x)∈N
+DN = DN .
+
+Deﬁnition 36. Given a partition Z = {Y1, . . . ,YL} of {0, 1}n, the partition model PZ ⊆ ∆n is
+the set of all probability distributions on {0, 1}n with constant value on each partition block.
+
+(cid:3)
+
+z} for all z ∈ {0, 1}l. The divergence from PZ is bounded from above by DPZ ≤ l − n.
+
+n,m can approximate any conditional distribution from the product of partition models P k
+
+The set {0, 1}l, l ≤ n naturally deﬁnes a partition of {0, 1}n into cylinder sets {y ∈ {0, 1}n : y[l] =
+n,m can approximate certain products of partition models arbitrarily well:
+Now, the model RBMk
+Proposition 37. Let Z = {0, 1}l with l ≤ n. Let r be any integer with k ≥ S(r). The model
+RBMk
+Z :=
+PZ × ··· × PZ arbitrarily well whenever m ≥ 2k−S(r)F (r)(|Z| − 1) + R(r).
+Proof. This is analogous to the proof of Proposition 19, with a few differences. Each element z
+of Z corresponds to a cylinder set {y ∈ {0, 1}n : y[l] = z} and the collection of cylinder sets for
+all z ∈ Z is a partition of {0, 1}n. Now we can run Algorithm 1 in a slightly different way, with
+sharing steps deﬁned by p(cid:48) = λp + (1 − λ)uz, where uz is the uniform distribution on the cylinder
+(cid:3)
+set corresponding to z.
+
+Proof of Theorem 11. This follows directly from Lemma 35 and Proposition 37.
+
+(cid:3)
+
+D Details on the Representation of Conditional Distributions from
+
+Markov Random Fields
+
+The proof of Theorem 14 is based on ideas from Younes (1996), who discussed the universal ap-
+proximation property of Boltzmann machines. We will use the following (Younes 1996; Lemma 1):
+
+22
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+Lemma 38. Let  be a real number. Consider a ﬁxed integer N and binary variables x1, . . . , xN .
+There are real numbers w and b such that:
+
+• If  ≥ 0, log (1 + exp(w(x1 + ··· + xN ) + b)) = (cid:81)
+• If  ≤ 0, log (1 + exp(w(x1 + ··· + xN−1 − xN ) + b)) = (cid:81)
+
+i xi + Q(x1, . . . , xN ).
+
+i xi + Q(x1, . . . , xN ).
+
+Where Q is in each case a polynomial of degree less than N − 1 in x1, . . . , xN .
+
+The following is a generalization of (Younes 1996; Lemma 2):
+
+Lemma 39. Let I and J be two simplicial complexes on [n] with J ⊆ I. If p is any distribution
+from EI and m ≥ |{A ∈ I \ J : |A| > 1}|, then there is a distribution p(cid:48) ∈ EJ, such that p ∗ p(cid:48) is
+contained in RBMn,m.
+
+Proof. The proof follows closely the arguments presented in (Younes 1996; Lemma 2). Let K =
+{A ∈ I \ J : |A| > 1}. Consider an RBM with n visible units and m = |K| hidden units. Consider
+a joint distribution q(x, u) = 1
+Z exp(H(x, u)) of the fully observable RBM, deﬁned as follows. We
+label the hidden units by subsets A ∈ K. For each A ∈ K, let s(A) denote the largest element of
+A, and let
+
+(cid:88)
+
+(cid:0)wASA
+
+(cid:88)
+
+(cid:1) +
+
+H(x, u) =
+
+uA
+
+A (xA) + bA
+
+bsxs,
+
+where
+
+A∈K
+
+s∈[n]
+
+(cid:16) (cid:88)
+
+SA
+A (xA) =
+
+(cid:17)
+
+xs
+
++ Axs(A),
+
+s∈A,s<s(A)
+
+Denote the log probabilities of p(x) and p(cid:48)(x) by
+
+for some A ∈ {−1, +1}, wA, bA, bs ∈ R that we will specify further below.
+(cid:89)
+
+(cid:88)
+
+(cid:88)
+
+(cid:89)
+
+xi
+
+and E(cid:48)(x) =
+
+ϑA
+
+xi.
+
+E(x) =
+
+θA
+
+We obtain the desired equality (p ∗ p(cid:48))(x) =(cid:80)
+
+A∈I
+
+i∈A
+
+A∈J
+
+i∈A
+
+(cid:32)(cid:88)
+
+u
+
+E(x) = log
+
+u q(x, u) when
+
+(cid:33)
+
+(cid:88)
+
+A∈J
+
+(cid:89)
+
+i∈A
+
+xi,
+
+(4)
+
+ϑA
+
+exp(H(x, u))
+
+−
+
+23
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+for some choice of ϑA, for A ∈ J, some choice of A, wA, bA, for A ∈ K, and some choice of bs,
+for s ∈ [n]. We have
+
+(cid:32)(cid:88)
+
+u
+
+log
+
+(cid:33)
+
+exp(H(x, u))
+
+= log
+
+= log
+
+uA(wASA
+
+A (xA) + bA) +
+
+exp(uA(wASA
+
+A (xA) + bA))
+
+u
+
+exp
+
+(cid:88)
+(cid:16)(cid:88)
+(cid:16)(cid:88)
+(cid:89)
+(cid:16)(cid:89)
+(cid:88)
+
+A
+
+A
+
+u
+
+bsxs
+
+(cid:17)
+(cid:16)(cid:88)
+(cid:16)(cid:88)
+
+s∈[n]
+
+(cid:88)
+
+s∈[n]
+
+exp
+
+exp
+
+s∈[n]
+
+bsxs
+
+bsxs
+
+(cid:17)
+(cid:17)
+
+(cid:17)
+(cid:17)
+(cid:88)
+
+s∈[n]
+
+(cid:81)
+
+exp(uA(wASA
+
+A (xA) + bA))
+
+A
+
+uA
+
+=
+
+= log
+
+log(1 + exp(wASA
+
+(cid:88)
+A (xA) := log(cid:0)1 + exp(wASA
+
+A
+
+φA
+
+A (xA) + bA)(cid:1)
+
+A (xA) + bA)) +
+
+bsxs
+
+The terms
+
+are of the same form as the functions from Lemma 38.
+
+A to cancel the terms θA
+
+To solve Equation (4), we ﬁrst apply Lemma 38 on φA
+
+i∈A xi of E(x),
+for which A is a maximal element of I \ J of cardinality more than one. This involves choosing
+appropriate A ∈ {−1, +1}, wA and bA, for the corresponding A. The remaining polynomial con-
+sists of terms with strictly smaller monomials. We apply lemma 38 repeatedly on this polynomial,
+i∈A xi,
+until only monomials with A ∈ J or |A| = 1 remain. These terms are canceled with ϑA
+(cid:3)
+A ∈ J, or with bsxs, s ∈ [n].
+Proof of Theorem 14. By Lemma 39, there is a p(cid:48) ∈ EJ, J = 2[k], such that p∗p(cid:48) is in RBMk+n,m.
+Now, the conditionals distribution (p ∗ p(cid:48))(y|x) of the last n units, given the ﬁrst k units, are ide-
+(cid:3)
+pendent of p(cid:48), since this is independent of y.
+
+(cid:81)
+
+Proof of Corollary 15. The statement follows from Theorem 14, considering the simplicial com-
+plex I = 2[k] × J and a joint probability distribution p ∈ EI ⊆ ∆k+n with the desired conditionals
+(cid:3)
+p(·|x) = px.
+
+E Details on the Approximation of Conditional Distributions with Re-
+
+stricted Supports
+
+Proof of Proposition 18. This follows from the fact that RBMn+k,m can approximate any proba-
+(cid:3)
+bility distribution with support of cardinality m + 1 arbitrarily well (Mont´ufar and Ay 2011).
+
+Proof of Proposition 19. This is analogous to the proof of Proposition 31. The complexity of
+Algorithm 1 as evaluated there does not depend on the speciﬁc structure of the support sets, but
+
+24
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+only on their cardinality, as long as they are the same for all x.
+
+(cid:3)
+
+The following lemma states that a CRBM can compute all deterministic conditionals that can
+
+be computed by a feedforward linear threshold network with the same number of hidden units.
+Lemma 40. Consider a function f : {0, 1}k → {0, 1}n. The model RBMk
+n,m can approximate
+the deterministic policy p(y|x) = δf (x)(y) arbitrarily well, whenever this can be represented by a
+feedforward linear threshold network with m hidden units; that is, when
+
+f (x) = hs(W (cid:62)(hs(V x + c)) + b),
+
+for all x ∈ {0, 1}k,
+
+1
+
+for some generic choice of W, V, b, c.
+Proof. Consider the conditional distribution p(·|x). This is the visible marginal of p(y, z|x) =
+Z exp((V x + c)(cid:62)z + b(cid:62)y + z(cid:62)W y). Consider weights α and β, with α large enough, such that
+argmaxz(αV x + αc)(cid:62)z = argmaxz(αV x + αc)(cid:62)z + (βW (cid:62)z + βb)(cid:62)y for all y ∈ {0, 1}n. Note
+that for generic choices of V and c, the set argmaxz(αV + αc)(cid:62)z consists of a single point z∗ =
+hs(V x + c). We have argmax(y,z)(αV x + αc)(cid:62)z + (βW (cid:62)z + βb)(cid:62)y = (z∗, argmaxy(βW (cid:62)z∗ +
+βb)(cid:62)y). Here, again, for generic choices of V and b, the set argmaxy(βW (cid:62)z∗ + βb)(cid:62)y con-
+sists of a single point y∗ = hs(W (cid:62)z∗ + b). The joint distribution p(y, z|x) with parameters
+tβW, tαV, tβb, tαc tends to the point measure δ(y∗,z∗)(y, z) as t → ∞. In this case p(y|x) tends to
+δy∗(y) as t → ∞, where y∗ = hs(W (cid:62)z∗ + b) = hs(W (cid:62) hs(V x + c) + b), for all x ∈ {0, 1}k. (cid:3)
+Proof of Theorem 20.
+The second statement is precisely Lemma 40. For the more general
+Furthermore, for each input x, the CRBM output distribution is p(y|x) =(cid:80)
+statement the arguments are as follows. Note that the conditional distribution p(y|z) of the output
+units, given the hidden units, is the same for a CRBM and for its feedforward network version.
+z(q(z|x)∗ p(z))p(y|z),
+
+where
+
+is the renormalized entry-wise product of the conditioned distribution q(·|x) and the RBM hidden
+marginal distribution
+
+q(z|x) ∗ p(z) =
+
+q(z|x)p(z)
+z(cid:48) q(z(cid:48)|x)p(z(cid:48))
+
+,
+
+for all z
+
+(cid:88)
+
+p(z) =
+
+p(y, z).
+
+Now, if q is deterministic, then q(z|x) ∗ p(z) is the same as q(z|x), regardless of p(z) (strictly posi-
+(cid:3)
+tive).
+
+y
+
+25
+
+is the conditional distribution represented by the ﬁrst layer,
+
+q(z|x) =
+
+exp(z(cid:62)V x + c(cid:62)z)
+z(cid:48) exp(z(cid:48)(cid:62)V x + c(cid:62)z(cid:48))
+
+p(y, z) =
+
+exp(z(cid:62)W y + b(cid:62)y)
+
+y(cid:48),z(cid:48) exp(z(cid:48)(cid:62)W y(cid:48) + b(cid:62)y(cid:48))
+
+is the distribution represented by the RBM with parameters W, b, 0, and
+
+(cid:80)
+(cid:80)
+
+(cid:80)
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+f (x) = hs(W (cid:62) hs([W, V ](cid:2) f (x)
+
+The proof of Theorem 21 builds on the following lemma, which describes a combinatorial
+property of the deterministic policies that can be approximated arbitrarily well by CRBMs. Recall
+that the Heaviside step function hs maps a real number a to 0 if a < 0, to 1/2 if a = 0, and to 1 if
+a > 0.
+Lemma 41. Consider a function f : {0, 1}k → {0, 1}n. The model RBMk
+n,m can approximate
+the deterministic policy p(y|x) = δf (x)(y) arbitrarily well only if there is a choice of the model
+parameters W, V, b, c for which
+
+(cid:3) + c) + b),
+n,m is equal to the mixture distribution p(y|x) =(cid:80)
+Proof. Consider a choice of W, V, b, c. For each input state x, the conditional represented by
+z p(z|x)p(y|x, z), with mixture compo-
+RBMk
+nents p(y|x, z) = p(y|z) ∝ exp((z(cid:62)W + b(cid:62))y) and mixture weights p(z|x) ∝
+y(cid:48) exp((z(cid:62)W +
+(cid:80)
+y |p(y|x) − δf (x)(y)| ≤ α, then(cid:80)
+b(cid:62))y(cid:48) + z(cid:62)(V x + c)) for all z ∈ {0, 1}m. The support of a mixture distribution is equal to the union
+of the supports of the mixture components with non-zero mixture weights. In the present case, if
+y |p(y|x, z) − δf (x)(y)| ≤ α/ for all z with p(z|x) > , for
+any  > 0. Choosing α small enough, α/ can be made arbitrarily small for any ﬁxed  > 0. In this
+case, for every z with p(z|x) > , necessarily
+
+where the Heaviside function hs is applied entry-wise to its argument.
+
+x
+
+for all x ∈ {0, 1}k,
+
+(cid:80)
+
+(z(cid:62)W + b(cid:62))f (x) (cid:29) (z(cid:62)W + b(cid:62))y,
+
+for all y (cid:54)= f (x),
+
+(5)
+
+and hence
+
+sgn(z(cid:62)W + b(cid:62)) = sgn(f (x) − 1
+2 ).
+
+Furthermore, the probability assigned by p(z|x) to all z that do not satisfy Equation (5) has to
+be very close to zero (upper bounded by a function that decreases with α). The probability of z
+given x is given by
+
+p(z|x) =
+
+1
+Zz|x
+
+exp(z(cid:62)(V x + c))
+
+exp((z(cid:62)W + b(cid:62))y(cid:48)).
+
+(cid:88)
+
+y(cid:48)
+
+In view of Equation (5), for all z with p(z|x) > , if α is small enough, p(z|x) is arbitrarily close to
+
+exp(z(cid:62)(V x + c)) exp((z(cid:62)W + b(cid:62))f (x)).
+
+1
+Zz|x
+
+This holds, in particular, for every z that maximizes p(z|x). Therefore,
+
+argmaxz p(z|x) = argmaxz z(cid:62)(W f (x) + V x + c).
+
+Each of these z must satisfy Equation (5). This completes the proof.
+
+(cid:3)
+
+Proof of Theorem 21. Sufﬁcient condition: The bound 2k−1 follows directly from Proposition 18.
+For the second bound, note that any function f : {0, 1}k → {0, 1}n; x (cid:55)→ y can be computed by
+
+26
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+a parallel composition of the functions fi : x (cid:55)→ yi, for all i ∈ [n]. Hence the bound follows from
+Lemma 40 and the fact that a feedforward linear threshold network with 3
+k+2 2k hidden units can
+compute any Boolean function.
+Necessary condition: Recall that a linear threshold function with N input bits and M output
+bits is a function of the form {0, 1}N → {0, 1}M ; y (cid:55)→ hs(W y + b) with W ∈ RM×N and b ∈ RM .
+Lemma 41 shows that each deterministic policy that can be approximated by RBMk
+n,m arbitrarily
+well corresponds to the y-coordinate ﬁxed points of a map deﬁned as the composition of two linear
+threshold functions {0, 1}k+n → {0, 1}m; (x, y) (cid:55)→ hs([W, V ] [ y
+x ] + c) and {0, 1}m → {0, 1}n;
+z (cid:55)→ hs(W (cid:62)z + b). In particular, we can upper bound the number of deterministic policies that
+can be approximated arbitrarily well by RBMk
+n,m, by the total number of compositions of two linear
+threshold functions; one with n + k inputs and m outputs and the other with m inputs and n outputs.
+Let LTF(N, M ) be the number of linear threshold functions with N inputs and M outputs. It
+
+is known that (Ojha 2000; Wenzel et al. 2000)
+
+LTF(N, M ) ≤ 2N 2M .
+
+The number of deterministic policies that can be approximated arbitrarily well by RBMk
+n,m is thus
+bounded above by LTF(n + k, m)· LTF(m, n) ≤ 2m(n+k)2+nm2. The actual number may be much
+smaller, in view of the ﬁxed-point and shared parameter constraints. On the other hand, the number
+= 2n2k. The claim follows from comparing
+of deterministic policies in ∆k,n is as large as (2n)2k
+(cid:3)
+these two numbers.
+
+Acknowledgment
+We acknowledge support from the DFG Priority Program Autonomous Learning (DFG-SPP 1527).
+G. M. and K. G.-Z. would like to thank the Santa Fe Institute for hosting them during the initial
+work on this article.
+
+References
+N. Ay, G. Mont´ufar, and J. Rauh. Selection criteria for neuromanifolds of stochastic dynamics.
+In Y. Yamaguchi, editor, Advances in Cognitive Neurodynamics (III), pages 147–154. Springer,
+2013. URL http://dx.doi.org/10.1007/978-94-007-4792-0 20.
+
+R. E. Bellman. Dynamic programming. Princeton University Press, Princeton, NY, 1957.
+
+Y. Bengio. Learning deep architectures for AI. Found. Trends Mach. Learn., 2(1):1–127, Jan. 2009.
+
+URL http://dx.doi.org/10.1561/2200000006.
+
+M. A. Cueto, J. Morton, and B. Sturmfels. Geometry of the restricted Boltzmann machine.
+
+In
+M. Viana and H. Wynn, editors, Algebraic methods in statistics and probability II, AMS Special
+Session, volume 2. AMS, 2010.
+
+A. Fischer and C. Igel. An introduction to restricted Boltzmann machines.
+
+In L. Alvarez,
+M. Mejail, L. Gomez, and J. Jacobo, editors, Progress in Pattern Recognition, Image Anal-
+ysis, Computer Vision, and Applications, volume 7441 of Lecture Notes in Computer Sci-
+
+27
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+ence, pages 14–36. Springer Berlin Heidelberg, 2012. URL http://dx.doi.org/10.1007/
+978-3-642-33275-3 2.
+
+Y. Freund and D. Haussler. Unsupervised Learning of Distributions of Binary Vectors Using Two
+Layer Networks. Technical report. Computer Research Laboratory, University of California,
+Santa Cruz, 1994.
+
+E. N. Gilbert. A comparison of signalling alphabets. Bell System Technical Journal, 31:504–522,
+
+1952.
+
+G. E. Hinton.
+
+Neural Computation, 14(8):1771–1800, 2002.
+089976602760128018.
+
+Training products of experts by minimizing contrastive divergence.
+URL http://dx.doi.org/10.1162/
+
+G. E. Hinton. A practical guide to training restricted boltzmann machines. In G. Montavon, G. B.
+Orr, and K.-R. M¨uller, editors, Neural Networks: Tricks of the Trade, volume 7700 of Lecture
+Notes in Computer Science, pages 599–619. Springer Berlin Heidelberg, 2012. URL http:
+//dx.doi.org/10.1007/978-3-642-35289-8 32.
+
+G. E. Hinton, S. Osindero, and Y.-W. Teh. A fast learning algorithm for deep belief nets. Neural
+
+Computation, 18(7):1527–1554, 2006.
+
+H. Larochelle and Y. Bengio. Classiﬁcation using discriminative restricted Boltzmann machines.
+In W. W. Cohen, A. McCallum, and S. T. Roweis, editors, Proceedings of the 25th International
+Conference on Machine Learning (ICML 2008), pages 536–543. ACM, 2008.
+
+N. Le Roux and Y. Bengio. Representational power of restricted Boltzmann machines and deep
+
+belief networks. Neural Computation, 20(6):1631–1649, 2008.
+
+J. Martens, A. Chattopadhya, T. Pitassi, and R. Zemel. On the expressive power of restricted Boltz-
+mann machines. In C. Burges, L. Bottou, M. Welling, Z. Ghahramani, and K. Weinberger, ed-
+itors, Advances in Neural Information Processing Systems 26, pages 2877–2885. Curran Asso-
+ciates, Inc., 2013. URL http://papers.nips.cc/paper/5020-on-the-expressiv
+e-power-of-restricted-boltzmann-machines.pdf.
+
+V. Mnih, H. Larochelle, and G. E. Hinton. Conditional restricted Boltzmann machines for structured
+
+output prediction. CoRR, abs/1202.3748, 2012.
+
+G. Mont´ufar and N. Ay. Reﬁnements of universal approximation results for deep belief networks
+
+and restricted Boltzmann machines. Neural Computation, 23(5):1306–1319, 2011.
+
+G. Mont´ufar and J. Morton. When does a mixture of products contain a product of mixtures? SIAM
+Journal on Discrete Mathematics, 29:321–347, 2015. URL http://dx.doi.org/10.1137/
+140957081.
+
+G. Mont´ufar and J. Rauh. Scaling of model approximation errors and expected entropy distances.
+
+Kybernetika, 50(2):234–245, 2014.
+
+28
+
+GEOMETRY AND EXPRESSIVE POWER OF CRBMS
+
+G. Mont´ufar, J. Rauh, and N. Ay. Expressive power and approximation errors of restricted Boltz-
+mann machines. In J. Shawe-Taylor, R. Zemel, P. Bartlett, F. Pereira, and K. Weinberger, editors,
+Advances in Neural Information Processing Systems 24, pages 415–423. Curran Associates, Inc.,
+2011. URL http://papers.nips.cc/paper/4380-expressive-power-and-app
+roximation-errors-of-restricted-boltzmann-machines.pdf.
+
+G. Mont´ufar, J. Rauh, and N. Ay. Maximal information divergence from statistical models deﬁned
+In F. Nielsen and F. Barbaresco, editors, Geometric Science of Informa-
+by neural networks.
+tion, LNCS 8085, pages 759–766. Springer, 2013. URL http://dx.doi.org/10.1007/
+978-3-642-40020-9 85.
+
+G. Mont´ufar, K. Ghazi-Zahedi, and N. Ay. A theory of cheap control in embodied systems. arXiv
+
+preprint arXiv:1407.6836, 2014.
+
+P. C. Ojha. Enumeration of linear threshold functions from the lattice of hyperplane intersec-
+ISSN 1045-9227.
+
+tions. Neural Networks, IEEE Transactions on, 11(4):839–850, Jul 2000.
+doi: 10.1109/72.857765.
+
+S. M. Ross.
+
+Introduction to Stochastic Dynamic Programming: Probability and Mathematical.
+
+Academic Press, Inc., Orlando, FL, USA, 1983.
+
+R. Salakhutdinov, A. Mnih, and G. E. Hinton. Restricted Boltzmann machines for collaborative ﬁl-
+tering. In Proceedings of the 24th International Conference on Machine Learning (ICML 2007),
+pages 791–798, New York, NY, USA, 2007. ACM.
+
+B. Sallans and G. E. Hinton. Reinforcement learning with factored states and actions. Journal of
+
+Machine Learning Research, 5:1063–1088, 2004.
+
+P. Smolensky. Parallel distributed processing: Explorations in the microstructure of cognition,
+In D. E. Rumelhart, J. L. McClelland, and C. PDP Research Group, editors, Parallel
+vol. 1.
+Distributed Processing: Volume 1: Foundations, chapter Information Processing in Dynamical
+Systems: Foundations of Harmony Theory, pages 194–281. MIT Press, Cambridge, MA, USA,
+1986. URL http://dl.acm.org/citation.cfm?id=104279.104290.
+
+I. Sutskever and G. E. Hinton. Learning multilevel distributed representations for high-dimensional
+sequences. In M. Meila and X. Shen, editors, AISTATS, volume 2 of JMLR Proceedings, pages
+548–555. JMLR.org, 2007.
+
+G. W. Taylor, G. E. Hinton, and S. T. Roweis. Modeling human motion using binary latent variables.
+In B. Sch¨olkopf, J. Platt, and T. Hoffman, editors, Advances in Neural Information Processing
+Systems 19, pages 1345–1352. MIT Press, 2007. URL http://papers.nips.cc/paper/
+3078-modeling-human-motion-using-binary-latent-variables.pdf.
+
+L. van der Maaten. Discriminative restricted Boltzmann machines are universal approximators for
+
+discrete data. Technical Report EWI-PRB TR 2011001, Delft University of Technology, 2011.
+
+R. R. Varshamov. Estimate of the number of signals in error correcting codes. Doklady Akad. Nauk
+
+SSSR, 117:739–741, 1957.
+
+29
+
+MONT ´UFAR, AY, AND GHAZI-ZAHEDI
+
+W. Wenzel, N. Ay, and F. Pasemann. Hyperplane arrangements separating arbitrary vertex classes
+in n-cubes. Adv. Appl. Math., 25(3):284–306, 2000. URL http://dx.doi.org/10.1006/
+aama.2000.0701.
+
+L. Younes. Synchronous Boltzmann machines can be universal approximators. Applied Mathemat-
+ics Letters, 9(3):109 – 113, 1996. URL http://www.sciencedirect.com/science/a
+rticle/pii/0893965996000419.
+
+M. Zeiler, G. Taylor, N. Troje, and G. E. Hinton. Modeling pigeon behaviour using a condi-
+tional restricted Boltzmann machine. In 17th European Symposium on Artiﬁcial Neural Networks
+(ESANN), 2009.
+
+30
+
+

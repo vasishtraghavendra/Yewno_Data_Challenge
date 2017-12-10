@@ -1,0 +1,1472 @@
+Distributed k-Means and k-Median Clustering on General
+
+Topologies
+
+Maria Florina Balcan∗
+
+Steven Ehrlich†
+
+Yingyu Liang‡
+
+3
+1
+0
+2
+
+ 
+t
+c
+O
+0
+3
+
+ 
+
+ 
+ 
+]
+
+G
+L
+.
+s
+c
+[
+ 
+ 
+
+3
+v
+4
+0
+6
+0
+
+.
+
+6
+0
+3
+1
+:
+v
+i
+X
+r
+a
+
+Abstract
+
+This paper provides new algorithms for distributed clustering for two popular center-based objec-
+tives, k-median and k-means. These algorithms have provable guarantees and improve communication
+complexity over existing approaches. Following a classic approach in clustering by [16], we reduce
+the problem of ﬁnding a clustering with low cost to the problem of ﬁnding a coreset of small size. We
+provide a distributed method for constructing a global coreset which improves over the previous methods
+by reducing the communication complexity, and which works over general communication topologies.
+Experimental results on large scale data sets show that this approach outperforms other coreset-based
+distributed clustering algorithms.
+
+1 Introduction
+
+Most classic clustering algorithms are designed for the centralized setting, but in recent years data has
+become distributed over different locations, such as distributed databases [24, 8], images and videos over
+networks [23], surveillance [13] and sensor networks [7, 14]. In many of these applications the data is
+inherently distributed because, as in sensor networks, it is collected at different sites. As a consequence it has
+become crucial to develop clustering algorithms which are effective in the distributed setting.
+
+Several algorithms for distributed clustering have been proposed and empirically tested. Some of these
+algorithms [12, 25, 9] are direct adaptations of centralized algorithms which rely on statistics that are easy to
+compute in a distributed manner. Other algorithms [17, 19] generate summaries of local data and transmit
+them to a central coordinator which then performs the clustering algorithm. No theoretical guarantees are
+provided for the clustering quality in these algorithms, and they do not try to minimize the communication
+cost. Additionally, most of these algorithms assume that the distributed nodes can communicate with all other
+sites or that there is a central coordinator that communicates with all other sites.
+
+In this paper, we study the problem of distributed clustering where the data is distributed across nodes
+whose communication is restricted to the edges of an arbitrary graph. We provide algorithms with small
+communication cost and provable guarantees on the clustering quality. Our technique for reducing communi-
+cation in general graphs is based on the construction of a small set of points which act as a proxy for the
+entire data set.
+
+An -coreset is a weighted set of points whose cost on any set of centers is approximately the cost of the
+original data on those same centers up to accuracy . Thus an approximate solution for the coreset is also an
+approximate solution for the original data. Coresets have previously been studied in the centralized setting
+
+∗Georgia Institute of Technology, ninamf@cc.gatech.edu
+†Georgia Institute of Technology, sehrlich@cc.gatech.edu
+‡Georgia Institute of Technology, yliang39@gatech.edu
+
+1
+
+([16, 10]) but have also recently been used for distributed clustering as in [26] and as implied by [11]. In this
+work, we propose a distributed algorithm for k-means and k-median, by which each node constructs a local
+portion of a global coreset. Communicating the approximate cost of a global solution to each node is enough
+for the local construction, leading to low communication cost overall. The nodes then share the local portions
+of the coreset, which can be done efﬁciently in general graphs using a message passing approach.
+
+More precisely, in Section 3, we propose a distributed coreset construction algorithm based on local
+approximate solutions. Each node computes an approximate solution for its local data, and then constructs
+the local portion of a coreset using only its local data and the total cost of each node’s approximation. For 
+constant, this builds a coreset of size ˜O(kd+nk) for k-median and k-means when the data lies in d dimensions
+and is distributed over n sites. If there is a central coordinator among the n sites, then clustering can be
+performed on the coordinator by collecting the local portions of the coreset with a communication cost equal
+to the coreset size. For distributed clustering over general connected topologies, we propose an algorithm
+based on the distributed coreset construction and a message-passing approach, whose communication cost
+improves over previous coreset-based algorithms. We provide a detailed comparison below.
+
+Experimental results on large scale data sets show that our algorithm performs well in practice. For a
+
+ﬁxed amount of communication, our algorithm outperforms other coreset construction algorithms.
+Comparison to Other Coreset Algorithms: Since coresets summarize local information they are a natural
+tool to use when trying to reduce communication complexity. If each node constructs an -coreset on its local
+data, then the union of these coresets is clearly an -coreset for the entire data set. Unfortunately the size
+of the coreset using this natural approach increases greatly with the number of nodes. More sophisticated
+approaches, such as [26] reduce the size of the global coreset by approximating the union of local coresets
+with another coreset. They assume nodes communicate over a rooted tree, with each node passing its coreset
+to its parent. Because the approximation factor of the constructed coreset depends on the quality of its
+component coresets, the accuracy a coreset needs (and thus the overall communication complexity) scales
+with the height of this tree. Although it is possible to ﬁnd a spanning tree in any communication network,
+when the graph has large diameter every tree has large height. In particular many natural networks such as
+grid networks have a large diameter (Ω(√n) for grids) which greatly increases the size of coresets which
+must be communicated across the lower levels of the tree.
+
+We show that it is possible to construct a global coreset with low communication overhead. This is done
+by distributing the coreset construction procedure rather than combining local coresets. The communication
+needed to construct this coreset is negligible – just a single value from each data set representing the
+approximate cost of their local optimal clustering. Since the sampled global -coreset is the same size as
+any local -coreset, this leads to an improvement of the communication cost over the other approaches. See
+Figure 1 for an illustration. The constructed coreset is smaller by a factor of n in general graphs, and is
+independent of the underlying communication topology. This method excels in sparse networks with large
+diameters, where the previous approach in [26] requires coresets that are quadratic in the size of the diameter
+for k-median and quartic for k-means; see Section 4.2 for further details. [11] also merge coresets using
+coreset construction, but they do so in a model of parallel computation and ignore communication costs.
+Section 6 provides a review of additional related work.
+
+2 Preliminaries
+
+Let d(p, q) denote the Euclidean distance between any two points p, q ∈ Rd. The goal of k-means clustering is
+to ﬁnd a set of k centers x = {x1, x2, . . . , xk} which minimize the k-means cost of data set P ⊆ Rd. Here the
+
+2
+
+(a) Zhang et al.[26]
+
+(b) Our Construction
+
+(a) Each node computes a coreset on the weighted pointset for its own data and its subtrees’
+Figure 1:
+coresets. (b) Local constant approximation solutions are computed, and the costs of these solutions are used
+to coordinate the construction of a local portion on each node.
+
+k-means cost is deﬁned as cost(P, x) =(cid:80)
+data set with a weighting function w, then the k-means cost is deﬁned as(cid:80)
+the k-median cost is deﬁned as(cid:80)
+
+p∈P d(p, x)2 where d(p, x) = minx∈x d(p, x). If P is a weighted
+p∈P w(p)d(p, x)2. Similarly,
+p∈P d(p, x). Both k-means and k-median cost functions are known to
+be NP-hard to minimize (see for example [2]). For both objectives, there exist several readily available
+polynomial-time algorithms that achieve constant approximation solutions (see for example [18, 21]).
+
+each node vi, there is a local set of data points Pi, and the global data set is P =(cid:83)n
+
+In the distributed clustering task, we consider a set of n nodes V = {vi, 1 ≤ i ≤ n} which communicate
+on an undirected connected graph G = (V, E) with m = |E| edges. More precisely, an edge (vi, vj) ∈ E
+indicates that vi and vj can communicate with each other. Here we measure the communication cost in
+number of points transmitted, and assume for simplicity that there is no latency in the communication. On
+i=1 Pi. The goal is to ﬁnd a
+set of k centers x which optimize cost(P, x) while keeping the computation efﬁcient and the communication
+cost as low as possible. Our focus is to reduce the total communication cost while preserving theoretical
+guarantees for approximating clustering cost.
+
+2.1 Coresets
+For the distributed clustering task, a natural approach to avoid broadcasting raw data is to generate a local
+summary of the relevant information. If each site computes a summary for their own data set and then
+communicates this to a central coordinator, a solution can be computed from a much smaller amount of data,
+drastically reducing the communication.
+
+In the centralized setting, the idea of summarization with respect to the clustering task is captured by
+the concept of coresets [16, 10]. A coreset is a set of points, together with a weight for each point, such that
+the cost of this weighted set approximates the cost of the original data for any set of k centers. The formal
+deﬁnition of coresets is:
+Deﬁnition 1 (coreset). An -coreset for a set of points P with respect to a center-based cost function is a set
+of points S and a set of weights w : S → R such that for any set of centers x,
+
+w(p)cost(p, x) ≤ (1 + )cost(P, x).
+
+3
+
+(cid:88)
+
+p∈S
+
+(1 − )cost(P, x) ≤
+
+563124C2C4C5C6C3565631245 2 3 4 6 1 In the centralized setting, many coreset construction algorithms have been proposed for k-median, k-
+means and some other cost functions. For example, for points in Rd, algorithms in [10] construct coresets
+of size t = ˜O(kd/4) for k-means and coresets of size t = ˜O(kd/2) for k-median. In the distributed
+setting, it is natural to ask whether there exists an algorithm that constructs a small coreset for the entire
+point set but still has low communication cost. Note that the union of coresets for multiple data sets is a
+coreset for the union of the data sets. The immediate construction of combining the local coresets from
+each node would produce a global coreset whose size was larger by a factor of n, greatly increasing the
+communication complexity. We present a distributed algorithm which constructs a global coreset the same
+size as the centralized construction and only needs a single value1 communicated to each node. This serves
+as the basis for our distributed clustering algorithm.
+
+3 Distributed Coreset Construction
+
+In this section, we design a distributed coreset construction algorithm for k-means and k-median. Note that
+the underlying technique can be extended to other additive clustering objectives such as k-line median.
+
+To gain some intuition on the distributed coreset construction algorithm, we brieﬂy review the coreset
+construction algorithm in [10] in the centralized setting. The coreset is constructed by computing a constant
+approximation solution for the entire data set, and then sampling points proportional to their contributions to
+the cost of this solution. Intuitively, the points close to the nearest centers can be approximately represented
+by the nearest centers while points far away cannot be well represented. Thus, points should be sampled with
+probability proportional to their contributions to the cost.
+
+Directly adapting the algorithm to the distributed setting would require computing a constant approxima-
+tion solution for the entire data set. We show that a global coreset can be constructed in a distributed fashion
+by estimating the weight of the entire data set with the sum of local approximations. We ﬁrst compute a local
+approximation solution for each local data set, and communicate the total costs of these local solutions. Then
+we sample points proportional to their contributions to the cost of their local solutions. At the end of the
+algorithm, the coreset consists of the sampled points and the centers in the local solutions. The coreset points
+are distributed over the nodes, so we call it distributed coreset. See Algorithm 1 for details.
+
+that with probability at least 1 − δ, the union of its output on all nodes is an -coreset for P =(cid:83)n
+
+Theorem 1. For distributed k-means and k-median clustering on a graph, there exists an algorithm such
+i=1 Pi. The
+δ ) + nk) for k-median.
+
+δ ) for k-means, and O( 1
+
+δ ) + nk log nk
+
+2 (kd + log 1
+
+size of the coreset is O( 1
+The total communication cost is O(mn).
+
+4 (kd + log 1
+
+As described below, the distributed coreset construction can be achieved by using Algorithm 1 with
+δ )) for k-median. The
+
+δ ) for k-means and O( 1
+
+appropriate t, namely O( 1
+formal proofs are described in the following subsections.
+
+δ ) + nk log nk
+
+4 (kd + log 1
+
+2 (kd + log 1
+
+3.1 Proof of Theorem 1: k-median
+The analysis relies on the deﬁnition of the pseudo-dimension of a function space and a sampling lemma.
+
+1The value that is communicated is the sum of the costs of approximations to the local optimal clustering. This is guaranteed to
+
+be no more than a constant factor times larger than the optimal cost.
+
+4
+
+Algorithm 1 Communication aware distributed coreset construction
+
+Input: Local datasets {Pi, 1 ≤ i ≤ n}, parameter t (number of points to be sampled).
+
+Round 1: on each node vi ∈ V
+• Compute a constant approximation Bi for Pi.
+Communicate cost(Pi, Bi) to all other nodes.
+(cid:80)n
+Round 2: on each node vi ∈ V
+• Set ti = t cost(Pi,Bi)
+j=1 cost(Pj ,Bj ) and mp = 2cost(p, Bi),∀p ∈ Pi.
+• Pick a non-uniform random sample Si of ti points from Pi,
+(cid:80)
+(cid:80)
+
+where for every q ∈ Si and p ∈ Pi, we have q = p with probability mp/(cid:80)
+
+mz
+
+z∈Pi
+tmq
+
+i
+
+Let wq =
+• For ∀b ∈ Bi, let Pb = {p ∈ Pi : d(p, b) = d(p, Bi)}, wb = |Pb| −
+
+q∈Pb∩S wq.
+Output: Distributed coreset: points Si ∪ Bi with weights {wq : q ∈ Si ∪ Bi}, 1 ≤ i ≤ n.
+
+for each q ∈ Si.
+
+z∈Pi
+
+mz.
+
+(cid:80)
+
+Deﬁnition 2 ([22, 10]). Let F be a ﬁnite set of functions from a set P to R≥0. For f ∈ F , let B(f, r) = {p :
+f (p) ≤ r}. The dimension of the function space dim(F, P ) is the smallest integer d such that for any G ⊆ P ,
+
+(cid:12)(cid:12) ≤ |G|d.
+
+(cid:12)(cid:12){G ∩ B(f, r) : f ∈ F, r ≥ 0}
+ =
+
+(cid:88)
+
+E
+
+Consider a set F of functions f deﬁned on a set of points P . Suppose we draw a sample S according to
+. Then for
+
+mp(cid:80)
+{mp : p ∈ P}, namely for every q ∈ S and every p ∈ P , we have q = p with probability
+any f ∈ F , the expectation of the weighted cost of S equals the cost of the original data P :
+(cid:88)
+
+(cid:88)
+(cid:88)
+
+(cid:88)
+(cid:80)
+
+Pr[q = p]wpf (p)
+
+E[wqf (q)] =
+
+(cid:88)
+
+(cid:88)
+
+(cid:88)
+
+(cid:88)
+
+wqf (q)
+
+z∈P mz
+
+q∈S
+
+q∈S
+
+q∈S
+
+mp(cid:80)
+
+=
+
+q∈S
+
+p∈P
+
+z∈P mz
+
+p∈P
+z∈P mz
+mp|S|
+
+f (p) =
+
+f (p) =
+
+f (p).
+
+q∈S
+
+p∈P
+
+p∈P
+
+1
+|S|
+
+The following lemma shows that if the sample size is large enough, then we also have concentration for
+
+z∈P mz
+mp|S|
+
+any f ∈ F . The lemma is implicit in [10] and we include the proof in the appendix for completeness.
+mp(cid:80)
+Lemma 1. Fix a set F of functions f : P → R≥0. Let S be a sample drawn i.i.d. from P according to
+(cid:1) then with probability
+{mp : p ∈ P}, namely, for every q ∈ S and every p ∈ P , we have q = p with probability
+. Let
+(cid:17)
+wp =
+at least 1 − δ,∀f ∈ F :
+
+(cid:80)
+(cid:12)(cid:12)(cid:12) ≤ 
+(cid:17)(cid:16)
+(cid:16)(cid:80)
+To get a small bound on the difference between(cid:80)
+p∈P f (p) and(cid:80)
+bounded by (cid:80)
+
+q∈S wqf (q), we need to choose mp
+is bounded. More precisely, if we choose mp = maxf∈F f (p), then the difference is
+
+for p ∈ P . If for a sufﬁciently large c, |S| ≥ c
+
+(cid:0)dim(F, P ) + log 1
+
+such that maxp∈P
+
+p∈P f (p) −
+
+(cid:12)(cid:12)(cid:12)(cid:80)
+
+q∈S wqf (q)
+
+maxp∈P
+
+(cid:80)
+
+p∈P mp
+
+z∈P mz
+
+f (p)
+mp
+
+f (p)
+mp
+
+2
+
+.
+
+δ
+
+We ﬁrst consider the centralized setting and review how [10] applied the lemma to construct a coreset for
+k-median as in Deﬁnition 1. A natural approach is to apply this lemma directly to the cost, namely, to choose
+fx(p) := cost(p, x). The problem is that a suitable upper bound mp is not available for cost(p, x). However,
+
+p∈P mp.
+
+5
+
+center to p in the approximation solution. Aiming to approximate the error(cid:80)
+rather than to approximate(cid:80)
+we can still apply the lemma to a different set of functions deﬁned as follows. Let bp denote the closest
+p[cost(p, x) − cost(bp, x)]
+(cid:80)
+p cost(p, x) directly, we deﬁne fx(p) := cost(p, x)− cost(bp, x) + cost(p, bp),
+2(cid:80)
+where cost(p, bp) is added so that fx(p) ≥ 0. Since 0 ≤ fx(p) ≤ 2cost(p, bp), we can apply the lemma to
+(cid:80)
+Note that(cid:80)
+q∈S wqfx(q) does not equal(cid:80)
+q∈S wqfx(q)| by
+fx(p) and mp = 2cost(p, bp). The lemma then bounds the difference |
+it equals the difference between(cid:80)
+q∈S wqcost(q, x). However,
+p∈P cost(p, x) and a weighted cost of the sampled points and the centers in
+the approximation solution. To get a coreset as in Deﬁnition 1, we need to add the centers of the approximation
+solution with speciﬁc weights to the coreset. Then when the sample is sufﬁciently large, the union of the
+sampled points and the centers is an -coreset.
+
+p∈P cost(p, bp), so we have an O()-approximation.
+
+p∈P cost(p, x)−
+
+p∈P fx(p) −
+
+p∈P fx(p)−
+
+(cid:80)
+
+(cid:80)
+
+2
+
+(cid:0)dim(F, P ) + log 1
+
+(cid:1) for a sufﬁciently large constant c.
+
+Our key contribution in this paper is to show that in the distributed setting, it sufﬁces to choose bp from
+the local approximation solution for the local dataset containing p, rather than from an approximation solution
+for the global dataset. Furthermore, the sampling and the weighting of the coreset points can be done in
+a local manner. In the following, we provide a formal veriﬁcation of our discussion above. We have the
+following lemma for k-median with F = {fx : fx(p) = d(p, x) − d(bp, x) + d(p, bp), x ∈ (Rd)k}.
+Lemma 2. For k-median, the output of Algorithm 1 is an -coreset with probability at least 1 − δ, if
+t ≥ c
+Proof. We want to show that for any set of centers x the true cost for using these centers is well approximated
+by the cost on the weighted coreset. Note that our coreset has two types of points: sampled points p ∈
+i=1Bi with weight
+S = ∪n
+wp. We use bp to represent the nearest center to p in the local approximation solution.
+wb := |Pb| −
+We use Pb to represent the set of points having b as their closest center in the local approximation solution.
+As mentioned above, we construct fx to be the difference between the cost of p and the cost of bp on
+x so that Lemma 1 can be applied to fx. Note that 0 ≤ fx(p) ≤ 2d(p, bp) by triangle inequality, and S is
+sufﬁciently large and chosen according to weights mp = d(p, bp), so the conditions of Lemma 1 are met.
+Then we have
+
+and local solution centers b ∈ B = ∪n
+
+i=1Si with weight wp :=
+
+z∈P mz
+mp|S|
+
+(cid:80)
+
+p∈S∩Pb
+
+(cid:80)
+
+δ
+
+(cid:88)
+
+n(cid:88)
+
+(cid:88)
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12)(cid:88)
+
+(cid:88)
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12) ≤ 2
+
+(cid:88)
+
+D =
+
+fx(p) −
+
+wqfx(q)
+
+mp = 2
+
+d(p, bp) = 2
+
+d(Pi, Bi) ≤ O()
+
+d(p, x)
+
+p∈P
+
+p∈P
+where the last inequality follows from the fact that Bi is a constant approximation solution for Pi.
+
+p∈P
+
+p∈P
+
+q∈S
+
+i=1
+
+Next, we show that the coreset is constructed such that D is exactly the difference between the true cost
+
+and the weighted cost of the coreset, which then leads to the lemma.
+
+Note that the centers are weighted such that
+
+(cid:88)
+
+(cid:88)
+
+q∈S∩Pb
+
+|Pb|d(b, x) −
+
+b∈B
+q∈S wqmq, so
+
+(cid:88)
+
+p∈P
+
+wqd(b, x) =
+
+d(bp, x) −
+
+[d(p, x) − d(bp, x) + mp] −
+
+wq [d(q, x) − d(bq, x) + mq]
+
+wbd(b, x) =
+
+b∈B
+
+(cid:88)
+Also note that(cid:80)
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12)(cid:88)
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12)(cid:88)
+
+D =
+
+p∈P
+
+p∈P
+
+=
+
+b∈B
+
+(cid:88)
+p∈P mp =(cid:80)
+(cid:88)
+
+d(p, x) −
+
+wqd(q, x) −
+
+q∈S
+
+(cid:88)
+
+q∈S
+
+wqd(bq, x).
+
+(1)
+
+(2)
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12)
+
+(cid:88)
+(cid:20)(cid:88)
+
+q∈S
+
+p∈P
+
+d(bp, x) −
+
+6
+
+(cid:88)
+
+q∈S
+
+wqd(bq, x)
+
+(cid:21)(cid:12)(cid:12)(cid:12)(cid:12)(cid:12).
+
+By plugging (1) into (2), we have
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12)(cid:88)
+
+p∈P
+
+(cid:88)
+
+q∈S
+
+(cid:88)
+
+b∈B
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12) =
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12)(cid:88)
+
+p∈P
+
+(cid:88)
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12)
+
+D =
+
+d(p, x) −
+
+wqd(q, x) −
+
+wbd(b, x)
+
+d(p, x) −
+
+q∈S∪B
+
+wqd(q, x)
+
+which implies the lemma.
+
+In [10] it is shown that dim(F, P ) = O(kd). Therefore, by Lemma 2, when |S| ≥ O(cid:0) 1
+
+the weighted cost of S ∪ B approximates the k-median cost of P for any set of centers, then (S ∪ B, w) is an
+-coreset for P . The total communication cost is bounded by O(mn), since even in the most general case
+when every node only knows its neighbors, we can broadcast the local costs with O(mn) communication
+(see Algorithm 3).
+
+2 (kd + log 1
+
+δ )(cid:1),
+
+3.2 Proof of Theorem 1: k-means
+δ )), the algorithm constructs
+We have for k-means a similar lemma that when t = O( 1
+an -coreset with probability at least 1 − δ. The key idea is the same as that for k-median: we use centers bp
+from the local approximation solutions as an approximation to the original data points p, and show that the
+error between the total cost and the weighted sample cost is approximately the error between the cost of p
+and its sampled cost (compensated by the weighted centers), which is shown to be small by Lemma 1.
+
+δ )+nk log nk
+
+4 (kd+log 1
+
+The key difference between k-means and k-median is that triangle inequality applies directly to the k-
+median cost. In particular, for the k-median problem note that cost(bp, p) = d(bp, p) is an upper bound for the
+error of bp on any set of centers, i.e. ∀x ∈ (Rd)k, d(bp, p) ≥ |d(p, x)− d(bp, x)| = |cost(p, x)− cost(bp, x)|
+by triangle inequality. Then we can construct fx(p) := cost(p, x) − cost(bp, x) + d(bp, p) such that hp(x)
+is bounded. In contrast, for k-means, the error |cost(p, x) − cost(bp, x)| = |d(p, x)2 − d(bp, x)2| does not
+have such an upper bound. The main change to the analysis is that we divide the points into two categories:
+good points whose costs approximately satisfy the triangle inequality (up to a factor of 1/) and bad points.
+The good points for a ﬁxed set of centers x are deﬁned as
+
+G(x) = {p ∈ P : |cost(p, x) − cost(bp, x)| ≤ ∆p}
+
+where the upper bound is ∆p = cost(p,bp)
+. Good points we can bound as before. For bad points we can
+show that while the difference in cost may be larger than cost(p, bp)/, it must still be small, namely
+O( min{cost(p, x), cost(bp, x)}).
+(cid:40)
+
+Formally, the functions fx(p) are restricted to be deﬁned only over good points:
+
+
+
+cost(p, x) − cost(bp, x) + ∆p
+0
+
+if p ∈ G(x),
+otherwise.
+
+(3)
+
+(4)
+
+(5)
+
+Then(cid:80)
+
+fx(p) =
+
+(cid:80)
+
+p∈P cost(p, x) −
+
+q∈S∪B wqcost(q, x) is decomposed into three terms:
+
+(cid:88)
+
+(cid:88)
+
+p∈P
+
++
+
+−
+
+(cid:88)
+(cid:88)
+
+p∈P\G(x)
+
+q∈S\G(x)
+
+fx(p) −
+
+wqfx(q)
+
+q∈S
+[cost(p, x) − cost(bp, x) + ∆p]
+
+wq[cost(q, x) − cost(bq, x) + ∆q]
+
+7
+
+Lemma 1 bounds (3) by O()cost(P, x), but we need an accuracy of 2 to compensate for the 1/ factor
+
+in the upper bound, resulting in a O(1/4) factor in the sample complexity.
+
+We begin by bounding (4). Note that for each term in (4), |cost(p, x)−cost(bp, x)| > ∆p since p (cid:54)∈ G(x).
+Furthermore, p (cid:54)∈ G(x) only when p and bp are close to each other and far away from x. In Lemma 3 we use
+this to show that |cost(p, x) − cost(bp, x)| ≤ O() min{cost(p, x), cost(bp, x)}. The details are presented
+in the appendix.
+
+Similarly, by the deﬁnition of ∆q and Lemma 3, (5) is bounded by
+
+p∈P\G(x) cost(p, x) ≤ O()cost(P, x).
+
+2wq|cost(q, x) − cost(bq, x)| ≤ O()
+
+wq cost(bq, x)
+
+(cid:88)
+
+q∈S\G(x)
+
+(5) ≤
+
+Using Lemma 3, (4) can be bounded by O()(cid:80)
+ cost(b, x).
+q∈Pb∩S wq ≤ 2|Pb|. Then (5) is bounded by O()(cid:80)
+
+(cid:88)
+(cid:88)
+Note that the expectation of(cid:80)
+then(cid:80)
+where(cid:80)
+
+ (cid:88)
+
+≤ O()
+
+b∈B
+
+q∈Pb∩S
+
+q∈S\G(x)
+
+wq
+
+(cid:12)(cid:12)(cid:12)cost(P, x) −
+
+(cid:80)
+
+δ ),
+q∈Pb∩S wq is |Pb|. By a sampling argument (Lemma 4), if t ≥ O(nk log nk
+p∈P cost(bp, x)
+
+b∈B cost(b, x)|Pb| = O()(cid:80)
+
+p∈P cost(bp, x) is at most a constant factor more than the optimum cost.
+
+Since each of (3),(4), and (5) is O()cost(P, x), we know that their sum is the same magnitude. Combin-
+
+(cid:12)(cid:12)(cid:12) ≤ O()cost(P, x). The proof is then
+
+ing the above bounds, we have
+completed by choosing a suitable , and bounding dim(F, P ) = O(kd) as in [10].
+
+q∈S∪B wqcost(q, x)
+
+4 Effect of Network Topology on Communication Cost
+
+In the previous section, we presented a distributed coreset construction algorithm. If there is a central
+coordinator in the communication graph, then we can simply send the local portions of the coreset to the
+coordinator which can perform the clustering task. The total communication cost is just the size of the coreset.
+In this section, we consider the distributed clustering tasks where the nodes are arranged in some arbitrary
+connected topology, and can only communicate with their neighbors. We propose a message passing approach
+for globally sharing information, and use it for collecting information for coreset construction and sharing the
+local portions of the coreset. We also consider the special case when the graph is a rooted tree.
+
+Algorithm 2 Distributed clustering on a graph
+
+Input: {Pi}, 1 ≤ i ≤ n local datasets; {Ni} the neighbors of vi, 1 ≤ i ≤ n; Aα an α-approximation
+algorithm for weighted clustering instances.
+
+Round 1: on each node vi
+
+• Construct its local portion Di of an /2-coreset by Algorithm 1,
+using Message-Passing for communicating the local costs.
+
+Round 2: on each node vi
+
+• x = Aα((cid:83)
+
+• Call Message-Passing(Di, Ni).
+
+j Dj).
+
+Output: x
+
+8
+
+Algorithm 3 Message-Passing(Ii, Ni)
+
+Input: Ii is the message, Ni are the neighbors.
+
+• Let Ri denote the information received.
+Initialize Ri = {Ii}, and send Ii to all the neighbors.
+• While Ri (cid:54)= {Ij, 1 ≤ j ≤ n}:
+
+If receive message Ij (cid:54)∈ Ri,
+
+Ri = Ri ∪ {Ij} and send Ij to all the neighbors.
+
+4.1 General Graphs
+We now present the main result for distributed clustering on graphs.
+Theorem 2. Given an α-approximation algorithm for weighted k-means (k-median respectively) as a sub-
+routine, there exists an algorithm that with probability at least 1 − δ outputs a (1 + )α-approximation
+solution for distributed k-means (k-median respectively) clustering. The total communication cost is
+O(m( 1
+
+δ )) for k-means, and O(m( 1
+
+δ ) + nk)) for k-median.
+
+δ ) + nk log nk
+
+4 (kd + log 1
+
+2 (kd + log 1
+
+Proof. The details are presented in Algorithm 2. By Theorem 1, the output of Algorithm 1 is a coreset.
+Observe that in Algorithm 3, for any j, Ij propagates on the graph in a breadth-ﬁrst-search style, so at the
+end every node receives Ij. This holds for all 1 ≤ j ≤ n, so all nodes has a copy of the coreset at the end,
+and thus the output is a (1 + )α-approximation solution.
+Also observe that in Algorithm 3, for any node vi and j ∈ [n], vi sends out Ij once, so the communication
+j=1 |Ij|). Then the total
+
+(cid:80)n
+j=1 |Ij|. The communication cost of Algorithm 3 is O(m(cid:80)n
+
+of vi is |Ni| ×
+communication cost of Algorithm 2 follows from the size of the coreset constructed.
+
+In contrast, an approach where each node constructs an -coreset for k-means and sends it to the other
+
+nodes incurs communication cost of ˜O( mnkd
+
+4
+
+). Our algorithm signiﬁcantly reduces this.
+
+4.2 Rooted Trees
+Our algorithm can also be applied on a rooted tree, and compares favorably to other approaches involving
+coresets [26]. We can restrict message passing to operating along this tree, leading to the following theorem
+for this special case.
+Theorem 3. Given an α-approximation algorithm for weighted k-means (k-median respectively) as a
+subroutine, there exists an algorithm that with probability at least 1 − δ outputs a (1 + )α-approximation
+solution for distributed k-means (k-median respectively) clustering on a rooted tree of height h. The total
+δ ) + nk)) for
+communication cost is O(h( 1
+k-median.
+
+δ )) for k-means, and O(h( 1
+
+δ ) + nk log nk
+
+2 (kd + log 1
+
+4 (kd + log 1
+
+Di leads to a communication cost of O(|Di|h), so the total communication cost is O(h(cid:80)n
+
+Proof. We can construct the distributed coreset using Algorithm 1. In the construction, the costs of the local
+approximation solutions are sent from every node to the root, and the sum is sent to every node by the root.
+After the construction, the local portions of the coreset are sent from every node to the root. A local portion
+i=1 |Di|). Once
+the coreset is constructed at the root, the α-approximation algorithm can be applied centrally, and the results
+can be sent back to all nodes.
+
+9
+
+) for k-means and the cost of ˜O( nh2kd
+
+2
+
+4
+
+Our approach improves the cost of ˜O( nh4kd
+
+) for k-median in [26] 2.
+The algorithm in [26] builds on each node a coreset for the union of coresets from its children, and thus
+needs O(/h) accuracy at the low levels of the tree to prevent the accumulation of errors. Since the coreset
+construction subroutine has quadratic dependence on 1/ for k-median (quartic for k-means), the algorithm
+then has quadratic dependence on h (quartic for k-means). Our algorithm does not build coreset on top of
+coresets, resulting in a better dependence on the height of the tree h.
+In a general graph, any rooted tree will have its height h at least as large as half the diameter. For sensors
+in a grid network, this implies h = Ω(√n). In this case, our algorithm gains a signiﬁcant improvement over
+existing algorithms.
+
+5 Experiments
+
+In our experiments we seek to determine whether our algorithm is effective for the clustering tasks and how it
+compares to the other distributed coreset algorithms 3. We present the k-means cost of the solution produced
+by our algorithm with varying communication cost, and compare to those of other algorithms when they use
+the same amount of communication.
+Data sets: Following the setup of [26, 4], for the synthetic data we randomly choose k = 5 centers from
+the standard Gaussian distribution in R10, and sample equal number of 20, 000 points from the Gaussian
+distribution around each center. Note that, as in [26, 4], we use the cost of the centers as a baseline for
+comparing the clustering quality. We choose the following real world data sets from [3]: Spam (4601 points in
+R58), Pendigits (10992 points in R16), Letter (20000 points in R16), and ColorHistogram of the Corel Image
+data set (68040 points in R32). We use k = 10 for these data sets. We further choose YearPredictionMSD
+(515345 points in R90) for larger scale experiments, and use k = 50 for this data set.
+Experimental Methodology: To transform the centralized clustering data sets into distributed data sets we
+ﬁrst generate a communication graph connecting local sites, and then partition the data into local data sets.
+To evaluate our algorithm, we consider several network topologies and partition methods.
+
+The algorithms are evaluated on three types of communication graphs: random, grid, and preferential.
+The random graphs are Erd¨os-Renyi graphs G(n, p) with p = 0.3, i.e. they are generated by including each
+potential edge independently with probability 0.3. The preferential graphs are generated according to the
+preferential attachment mechanism in the Barab´asi-Albert model [1]. For data sets Spam, Pendigits, and
+Letter, we use random/preferential graphs with 10 sites and 3 × 3 grid graphs. For synthetic data set and
+ColorHistogram, we use random/preferential graphs with 25 sites and 5 × 5 grid graphs. For large data set
+YearPredictionMSD, we use random/preferential graphs with 100 sites and 10 × 10 grid graphs.
+The data is then distributed over the local sites. When the communication network is a random graph, we
+consider three partition methods: uniform, similarity-based, and weighted. In the uniform partition, each
+data point in the global data set is assigned to the local sites with equal probability. In the similarity-based
+partition, each site has an associated data point randomly selected from the global data. Each data point in
+the global data is then assigned to the site with probability proportional to its similarity to the associated
+point of the site, where the similarities are computed by Gaussian kernel function. In the weighted partition,
+each local site is assigned a weight chosen by |N (0, 1)| and then each data point is distributed to the local
+2 Their algorithm used coreset construction as a subroutine. The construction algorithm they used builds coreset of size
+d log |P|). Throughout this paper, when we compare to [26] we assume they use the coreset construction technique of [10] to
+3Our theoretical analysis shows that our algorithm has better bounds on the communication cost. Since the bounds are from
+worst-case analysis, it is meaningful to verify that our algorithm also empirically outperforms other distributed coreset algorithms.
+
+˜O( nkh
+reduce their coreset size and communication cost.
+
+10
+
+(a) random graph, uniform
+
+(b) random graph, similarity-based
+
+(c) random graph, weighted
+
+(d) grid graph, similarity-based
+
+(e) grid graph, weighted
+
+(f) preferential graph, degree-based
+
+Figure 2: k-means cost (normalized by baseline) v.s. communication cost over graphs. The titles indicate the
+network topology and partition method.
+
+sites with probability proportional to the site’s weight. When the network is a grid graph, we consider
+the similarity-based and weighted partitions. When the network is a preferential graph, we consider the
+degree-based partition, where each point is assigned with probability proportional to the site’s degree.
+
+To measure the quality of the coreset generated, we run Lloyd’s algorithm on the coreset and the global
+data respectively to get two solutions, and compute the ratio between the costs of the two solutions over the
+global data. The average ratio over 10 runs is then reported. We compare our algorithm with the na¨ıve method
+of combining a coreset from each local data set and the algorithm of [26] (Zhang et al.). When running the
+algorithm of Zhang et al., we restrict the general communication network to a spanning tree by picking a root
+uniformly at random and performing a breadth ﬁrst search.
+Results: Here we focus on the results of the largest data set YearPredictionMSD, and in Appendix B we
+present the experimental results for all the data sets.
+
+Figure 2 shows the results over different network topologies and partition methods. We observe that
+the algorithms perform well with much smaller coreset sizes than predicted by the theoretical bounds. For
+example, to get 1.1 cost ratio, the coreset size and thus the communication needed is only 0.1% − 1% of the
+theoretical bound.
+In the uniform partition, our algorithm performs nearly the same as COMBINE. This is not surprising
+since our algorithm reduces to the COMBINE algorithm when each local site has the same cost and the two
+
+11
+
+  COMBINEOurAlgok-meanscostratio×1071.61.822.21.051.11.15×1071.71.81.922.12.22.31.041.061.081.11.121.141.161.181.2×1071.61.71.81.922.12.21.041.061.081.11.121.141.161.181.2k-meanscostratiocommunicationcost×10622.22.42.62.81.051.11.15communicationcost×10622.22.42.62.81.051.11.15communicationcost×1062.22.42.62.81.051.11.15(a) random graph, uniform
+
+(b) random graph, similarity-based
+
+(c) random graph, weighted
+
+(d) grid graph, similarity-based
+
+(e) grid graph, weighted
+
+(f) preferential graph, degree-based
+
+Figure 3: k-means cost (normalized by baseline) v.s. communication cost over the spanning trees of the
+graphs. The titles indicate the network topology and partition method.
+
+algorithms use the same amount of communication. In this case, since in our algorithm the sizes of the local
+samples are proportional to the costs of the local solutions, it samples the same number of points from each
+local data set. This is equivalent to the COMBINE algorithm with the same amount of communication. In
+the similarity-based partition, similar results are observed as it also leads to balanced local costs. However,
+when the local sites have signiﬁcantly different costs (as in the weighted and degree-based partitions), our
+algorithm outperforms COMBINE. As observed in Figure 2, the costs of our solutions consistently improve
+over those of COMBINE by 2% − 5%. Our algorithm then saves 10% − 20% communication cost to achieve
+the same approximation ratio.
+Figure 3 shows the results over the spanning trees of the graphs. Our algorithm performs much better
+than the algorithm of Zhang et al., achieving about 20% improvement in cost. This is due to the fact that
+their algorithm needs larger coresets to prevent the accumulation of errors when constructing coresets from
+component coresets, and thus needs higher communication cost to achieve the same approximation ratio.
+
+Similar results are observed on the other datasets, which are presented in Appendix B.
+
+6 Additional Related Work
+
+Many empirical algorithms adapt the centralized algorithms to the distributed setting. They generally provide
+no bound for the clustering quality or the communication cost. For instance, a technique is proposed in [12]
+
+12
+
+  Zhangetal.OurAlgok-meanscostratio×1042.833.23.43.63.811.11.21.31.41.5×1042.22.42.62.811.11.21.31.41.5×1042.42.62.833.23.411.11.21.31.41.5k-meanscostratiocommunicationcost×1050.911.11.211.11.21.31.4communicationcost×1050.911.11.211.11.21.31.4communicationcost×10444.555.511.11.21.31.4to adapt several iterative center-based data clustering algorithms including Lloyd’s algorithm for k-means to
+the distributed setting, where sufﬁcient statistics instead of the raw data are sent to a central coordinator. This
+approach involves transferring data back and forth in each iteration, and thus the communication cost depends
+on the number of iterations. Similarly, the communication costs of the distributed clustering algorithms
+proposed in [9] and [25] depend on the number of iterations. Some other algorithms gather local summaries
+and then perform global clustering on the summaries. The distributed density-based clustering algorithm
+in [17] clusters and computes summaries for the local data at each node, and sends the local summaries
+to a central node where the global clustering is carried out. This algorithm only considers the ﬂat two-tier
+topology. Some in-network aggregation schemes for computing statistics over distributed data are useful
+for such distributed clustering algorithms. For example, an algorithm is provided in [7] for approximate
+duplicate-sensitive aggregates across distributed data sets, such as SUM. An algorithm is proposed in [14] for
+power-preserving computation of order statistics such as quantile.
+
+Several coreset construction algorithms have been proposed for k-median, k-means and k-line median
+clustering [16, 6, 15, 20, 10]. For example, the algorithm in [10] constructs a coreset of size ˜O(kd/2) whose
+cost approximates that of the original data up to accuracy  with respect to k-median in Rd. All of these
+algorithms consider coreset construction in the centralized setting, while our construction algorithm is for the
+distributed setting.
+
+There has also been work attempting to parallelize clustering algorithms. [11] showed that coresets could
+be constructed in parallel and then merged together. In Scalable k-means++ [4], Bahmani et al. adapted
+k-means++ to the parallel setting. In this setting a centralized problem is broken up and distributed to
+several processors with the aim of reducing computation time. In contrast to the distributed setting, the
+communication costs are ignored.
+
+There is also related work providing approximation solutions for k-median based on random sampling [5].
+Particularly, they showed that given a sample of size ˜O( k
+2 ) drawn i.i.d. from the data, there exists an algorithm
+that outputs a solution with an average cost bounded by twice the optimal average cost plus an error bound .
+If we convert it to a multiplicative approximation factor, the factor depends on the optimal average cost.
+When there are outlier points far away from all other points, the optimal average cost can be very small after
+normalization, then the multiplicative approximation factor is large. The coreset approach provides better
+guarantees. Additionally, their approach is not applicable to k-means.
+
+Acknowledgements This work was supported by ONR grant N00014-09-1-0751, AFOSR grant FA9550-
+09-1-0538, and by a Google Research Award. We thank Le Song for generously allowing us to use his
+computer cluster.
+
+References
+
+[1] R. Albert and A.-L. Barab´asi. Statistical mechanics of complex networks. Reviews of Modern Physics,
+
+2002.
+
+[2] P. Awasthi and M. Balcan. Center based clustering: A foundational perspective. Survey Chapter in
+
+Handbook of Cluster Analysis (Manuscript), 2013.
+
+[3] K. Bache and M. Lichman. UCI machine learning repository, 2013.
+
+[4] B. Bahmani, B. Moseley, A. Vattani, R. Kumar, and S. Vassilvitskii. Scalable k-means++. In Proceedings
+
+of the International Conference on Very Large Data Bases, 2012.
+
+13
+
+[5] S. Ben-David. A framework for statistical clustering with a constant time approximation algorithms for
+
+k-median clustering. Proceedings of Annual Conference on Learning Theory, 2004.
+
+[6] K. Chen. On k-median clustering in high dimensions. In Proceedings of the Annual ACM-SIAM
+
+Symposium on Discrete Algorithms, 2006.
+
+[7] J. Considine, F. Li, G. Kollios, and J. Byers. Approximate aggregation techniques for sensor databases.
+
+In Proceedings of the International Conference on Data Engineering, 2004.
+
+[8] J. C. Corbett, J. Dean, M. Epstein, A. Fikes, C. Frost, J. Furman, S. Ghemawat, A. Gubarev, C. Heiser,
+P. Hochschild, et al. Spanner: Googles globally-distributed database. In Proceedings of the USENIX
+Symposium on Operating Systems Design and Implementation, 2012.
+
+[9] S. Datta, C. Giannella, H. Kargupta, et al. K-means clustering over peer-to-peer networks. In Proceed-
+
+ings of the International Workshop on High Performance and Distributed Mining, 2005.
+
+[10] D. Feldman and M. Langberg. A uniﬁed framework for approximating and clustering data.
+
+In
+
+Proceedings of the Annual ACM Symposium on Theory of Computing, 2011.
+
+[11] D. Feldman, A. Sugaya, and D. Rus. An effective coreset compression algorithm for large scale
+sensor networks. In Proceedings of the International Conference on Information Processing in Sensor
+Networks, 2012.
+
+[12] G. Forman and B. Zhang. Distributed data clustering can be efﬁcient and exact. ACM SIGKDD
+
+Explorations Newsletter, 2000.
+
+[13] S. Greenhill and S. Venkatesh. Distributed query processing for mobile surveillance. In Proceedings of
+
+the International Conference on Multimedia, 2007.
+
+[14] M. Greenwald and S. Khanna. Power-conserving computation of order-statistics over sensor networks.
+In Proceedings of the ACM SIGMOD-SIGACT-SIGART Symposium on Principles of Database Systems,
+2004.
+
+[15] S. Har-Peled and A. Kushal. Smaller coresets for k-median and k-means clustering. Discrete &
+
+Computational Geometry, 2007.
+
+[16] S. Har-Peled and S. Mazumdar. On coresets for k-means and k-median clustering. In Proceedings of
+
+the Annual ACM Symposium on Theory of Computing, 2004.
+
+[17] E. Januzaj, H. Kriegel, and M. Pfeiﬂe. Towards effective and efﬁcient distributed clustering.
+
+In
+Workshop on Clustering Large Data Sets in the IEEE International Conference on Data Mining, 2003.
+
+[18] T. Kanungo, D. M. Mount, N. S. Netanyahu, C. D. Piatko, R. Silverman, and A. Y. Wu. A local
+search approximation algorithm for k-means clustering. In Proceedings of the Annual Symposium on
+Computational Geometry, 2002.
+
+[19] H. Kargupta, W. Huang, K. Sivakumar, and E. Johnson. Distributed clustering using collective principal
+
+component analysis. Knowledge and Information Systems, 2001.
+
+[20] M. Langberg and L. Schulman. Universal ε-approximators for integrals. In Proceedings of the Annual
+
+ACM-SIAM Symposium on Discrete Algorithms, 2010.
+
+14
+
+[21] S. Li and O. Svensson. Approximating k-median via pseudo-approximation. In Proceedings of the
+
+Annual ACM Symposium on Theory of Computing, 2013.
+
+[22] Y. Li, P. M. Long, and A. Srinivasan. Improved bounds on the sample complexity of learning. In
+
+Proceedings of the eleventh annual ACM-SIAM Symposium on Discrete Algorithms, 2000.
+
+[23] S. Mitra, M. Agrawal, A. Yadav, N. Carlsson, D. Eager, and A. Mahanti. Characterizing web-based
+
+video sharing workloads. ACM Transactions on the Web, 2011.
+
+[24] C. Olston, J. Jiang, and J. Widom. Adaptive ﬁlters for continuous queries over distributed data streams.
+
+In Proceedings of the ACM SIGMOD International Conference on Management of Data, 2003.
+
+[25] D. Tasoulis and M. Vrahatis. Unsupervised distributed clustering. In Proceedings of the International
+
+Conference on Parallel and Distributed Computing and Networks, 2004.
+
+[26] Q. Zhang, J. Liu, and W. Wang. Approximate clustering on distributed data streams. In Proceedings of
+
+the IEEE International Conference on Data Engineering, 2008.
+
+A Proofs for Section 3
+
+The proof of Lemma 1 follows from the analysis in [10], although not explicitly stated there. We begin with
+the following theorem for uniform sampling on a function space. The theorem is from [10] but rephrased for
+convenience.
+Theorem 4 (Theorem 6.9 in [10]). Let F be a set of functions from P to R≥0, and let  ∈ (0, 1). Let S be a
+sample of
+
+|S| =
+
+c
+2 (dim(F, P ) + log
+
+1
+δ
+
+)
+
+i.i.d items from P , where c is a sufﬁciently large constant. Then, with probability at least 1 − δ, for any
+f ∈ F and any r ≥ 0,
+
+(cid:80)
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12)
+
+p∈P,f (p)≤r f (p)
+
+|P|
+
+(cid:80)
+
+−
+
+q∈S,f (q)≤r f (q)
+
+|S|
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12) ≤ r.
+
+Proof of Lemma 1. Without loss of generality, assume mp ∈ N+. Deﬁne G as follows: for each p ∈ P ,
+include mp copies {pi}mp
+i=1 of p in G and deﬁne f (pi) = f (p)/mp. Then S is equivalent to a sample draw
+i.i.d. and uniformly at random from G. We now apply Theorem 4 on G and r = maxf∈F,p(cid:48)∈G f (p(cid:48)). By
+Theorem 4, we know that for any f ∈ F ,
+p(cid:48)∈G f (p(cid:48))
+|G|
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12) ≤  max
+The lemma then follows from multiplying both sides of (6) by |G| =(cid:80)
+
+(cid:80)
+q(cid:48)∈S f (q(cid:48))
+|S|
+
+p∈P mp. Also note that the dimension
+
+f (p(cid:48)
+
+).
+
+p(cid:48)∈G
+
+(cid:80)
+
+(cid:12)(cid:12)(cid:12)(cid:12)(cid:12)
+
+(6)
+
+−
+
+dim(F, G) is the same as that of dim(F, P ) as pointed out by [10].
+Lemma 3. If d(p, bp)2/ ≤ |d(p, x)2 − d(bp, x)2|, then
+
+|d(p, x)2 − d(bp, x)2| ≤ 8 min{d(p, x)2, d(bp, x)2}.
+
+15
+
+Proof. We ﬁrst have by triangle inequality
+
+|d(p, x)2 − d(bp, x)2| ≤ d(p, bp)[d(p, x) + d(bp, x)].
+
+Then by d(p, bp)2/ ≤ |d(p, x)2 − d(bp, x)2|,
+
+d(p, bp) ≤ [d(p, x) + d(bp, x)].
+
+Therefore, we have
+
+|d(p, x)2 − d(bp, x)2| ≤ d(p, bp)[d(p, x) + d(bp, x)] ≤ [d(p, x) + d(bp, x)]2
+
+≤ 2[d(p, x)2 + d(bp, x)2] ≤ 2[d(p, x)2 + (d(p, x) + d(p, bp))2]
+≤ 2[d(p, x)2 + 2d(p, x)2 + 2d(p, bp)2] ≤ 6d(p, x)2 + 4d(p, bp)2
+≤ 6d(p, x)2 + 42|d(p, x)2 − d(bp, x)2|
+
+for sufﬁciently small . Then
+
+|d(p, x)2 − d(bp, x)2| ≤
+
+6
+
+1 − 42 d(p, x)2 ≤ 8d(p, x)2.
+
+Similarly, |d(p, x)2 − d(bp, x)2| ≤ 8d(bp, x)2. The lemma follows from the last two inequalities.
+Lemma 4 (Corollary 15.4 in [10]). Let 0 < δ < 1/2, and t ≥ c|B| log
+
+with probability at least 1 − δ, ∀b ∈ Bi,(cid:80)
+
+q∈Pb∩S wq ≤ 2|Pb|.
+
+|B|
+δ
+
+for a sufﬁciently large c. Then
+
+B Complete Experimental Results
+
+Here we present the results of all the data sets over different network topologies and data partition methods.
+Figure 4 shows the results of all the data sets on random graphs. The ﬁrst column of Figure 4 shows that
+our algorithm and COMBINE perform nearly the same in the uniform data partition. This is not surprising
+since our algorithm reduces to the COMBINE algorithm when each local site has the same cost and the two
+algorithms use the same amount of communication. In this case, since in our algorithm the sizes of the local
+samples are proportional to the costs of the local solutions, it samples the same number of points from each
+local data set. This is equivalent to the COMBINE algorithm with the same amount of communication. In the
+similarity-based partition, similar results are observed as this partition method also leads to balanced local
+costs. However, in the weighted partition where local sites have signiﬁcantly different contributions to the
+total cost, our algorithm outperforms COMBINE. It improves the k-means cost by 2% − 5%, and thus saves
+10% − 30% communication cost to achieve the same approximation ratio.
+Figure 5 shows the results of all the data sets on grid and preferential graphs. Similar to the results
+on random graphs, our algorithm performs nearly the same as COMBINE in the similarity-based partition
+and outperforms COMBINE in the weighted partition and degree-based partition. Furthermore, Figure 4
+and 5 also show that the performance of our algorithm merely changes over different network topologies and
+partition methods.
+
+Figure 6 shows the results of all the data sets on the spanning trees of the random graphs and Figure 7
+shows those on the spanning trees of the grid and preferential graphs. Compared to the algorithm of
+Zhang et al., our algorithm consistently shows much better performance on all the data sets in different
+settings. It improves the k-means cost by 10% − 30%, and thus can achieve even better approximation ratio
+
+16
+
+with only 10% communication cost. This is because the algorithm of Zhang et al. constructs coresets from
+component coresets and needs larger coresets to prevent the accumulation of errors. Figure 6 also shows that
+although their costs decrease with the increase of the communication, the decrease is slower on larger graphs
+(e.g., as in the experiments for YearPredictionMSD). This is due to the fact that the spanning tree of a larger
+graph has larger height, leading to more accumulation of errors. In this case, more communication is needed
+to prevent the accumulation.
+
+17
+
+random graph
+
+uniform partition
+
+random graph
+
+similarity-based partition
+
+random graph
+
+weighted partition
+
+Figure 4: k-means cost on random graphs. Columns: random graph with uniform partition, random graph
+with similarity-based partition, and random graph with weighted partition. Rows: Spam, Pendigits, Letter,
+synthetic, ColorHistogram, and YearPredictionMSD.
+
+18
+
+  COMBINEOurAlgok-meanscostratiok-meanscostratiok-meanscostratio×104×104×104×104×104×1042341.522.533.541.522.533.5411.522.511.522.511.522.5600080001000012000600080001000012000600080001000011.051.111.051.111.051.111.051.11.1511.051.11.1511.051.11.1511.051.11.1511.051.11.1511.051.11.15communicationcostcommunicationcostk-meanscostratiocommunicationcostk-meanscostratiok-meanscostratio×107×107×107×105×104×104×105×105×1051.61.822.21.822.21.61.822.20.811.281012810120.60.811.21.40.60.811.21.40.60.811.21.41.051.11.151.051.11.151.051.11.151.051.11.151.051.11.151.051.11.1511.021.041.0611.021.041.0611.021.041.06grid graph
+
+similarity-based partition
+
+grid graph
+
+weighted partition
+
+preferential graph
+
+degree-based partition
+
+Figure 5: k-means cost on grid and preferential graphs. Columns: grid graph with similarity-based partition,
+grid graph with weighted partition, and preferential graph with degree-based partition. Rows: Spam, Pendigits,
+Letter, synthetic, ColorHistogram, and YearPredictionMSD.
+
+19
+
+  COMBINEOurAlgok-meanscostratiok-meanscostratiok-meanscostratio×104×104×104×104×104×1041.522.533.5411.522.533.511.522.533.511.5211.5211.52600080001000012000500060007000800090005000600070008000900011.051.111.051.111.051.111.051.11.1511.051.11.1511.051.11.1511.051.11.1511.051.11.1511.051.11.15communicationcostcommunicationcostk-meanscostratiocommunicationcostk-meanscostratiok-meanscostratio×106×106×106×104×104×104×104×104×1042.22.42.62.822.22.42.62.822.22.42.62.83.544.555.5633.544.555.533.544.555.5345670.60.811.21.41.60.60.811.21.41.61.051.11.151.051.11.151.051.11.151.051.11.151.051.11.151.051.11.1511.021.041.0611.021.041.0611.021.041.06spanning tree of random graph
+
+spanning tree of random graph
+
+spanning tree of random graph
+
+uniform partition
+
+similarity-based partition
+
+weighted partition
+
+Figure 6: k-means cost on the spanning trees of the random graphs. Columns: random graph with uniform
+partition, random graph with similarity-based partition, and random graph with weighted partition. Rows:
+Spam, Pendigits, Letter, synthetic, ColorHistogram, and YearPredictionMSD.
+
+20
+
+  Zhangetal.OurAlgok-meanscostratiok-meanscostratiok-meanscostratio1000150020002500300035001000150020002500300015002000250030003500100015002000800100012001400160018001000150020005006007008009001000500600700800900500600700800900100011.11.21.311.11.21.311.11.21.311.11.21.31.411.11.21.31.411.11.21.31.411.21.411.21.411.21.4communicationcostcommunicationcostk-meanscostratiocommunicationcostk-meanscostratiok-meanscostratio×104×104×1042.42.62.833.23.42.22.42.62.82.833.23.43.63.81400160018002000220024001200140016001800200022001200140016001800200022001500200025003000100015002000250010001500200011.11.21.31.411.11.21.31.411.11.21.31.411.21.411.21.411.21.411.11.21.311.11.21.311.11.21.3spanning tree of grid graph
+similarity-based partition
+
+spanning tree of grid graph
+
+spanning tree of preferential graph
+
+weighted partition
+
+degree-based partition
+
+Figure 7: k-means cost on the spanning trees of the grid and preferential graphs. Columns: grid graph
+with similarity-based partition, grid graph with weighted partition, and preferential graph with degree-based
+partition. Rows: Spam, Pendigits, Letter, synthetic, ColorHistogram, and YearPredictionMSD.
+
+21
+
+  Zhangetal.OurAlgok-meanscostratiok-meanscostratiok-meanscostratio1000150020002500300015002000250030003500400010001500200025003000600800100012001400160080010001200140016001800100015002000400500600700500600700800900100040050060070080011.11.21.311.11.21.311.11.21.311.11.21.31.411.11.21.31.411.11.21.31.411.21.411.21.411.21.4communicationcostcommunicationcostk-meanscostratiocommunicationcostk-meanscostratiok-meanscostratio×104×105×10544.555.50.911.11.20.911.11.2120014001600180020002200200025003000350020002500300035001000150020002500500100015005001000150011.11.21.31.411.11.21.31.411.11.21.31.411.21.411.21.411.21.411.11.21.311.11.21.311.11.21.3

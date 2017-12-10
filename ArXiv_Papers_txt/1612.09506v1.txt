@@ -1,0 +1,650 @@
+Adult Content Recognition from Images Using a Mixture of Convolu-
+
+tional Neural Networks 
+
+Mundher Al-Shabi 
+
+ 
+
+Tee Connie
+
+Andrew Beng Jin Teoh 
+
+Faculty of Information Science and 
+Technology, Multimedia University, 
+
+Faculty of Information Science and 
+Technology, Multimedia University, 
+
+Melaka 75450, Malaysia. 
+
+ 
+
+Melaka 75450, Malaysia.
+
+School of Electrical and Electronic 
+
+Engineering, Yonsei University, 
+
+Seoul 120-749, South Korea. 
+
+ 
+ 
+
+Abstract 
+
+With rapid development of the Internet, the web contents 
+become huge. Most of the websites are publicly available 
+and  anyone  can  access  the  contents  everywhere  such  as 
+workplace,  home  and  even  schools.  Nevertheless,  not  all 
+the  web  contents  are  appropriate  for  all  users,  especially 
+children. An example of these contents is pornography im-
+ages  which  should  be  restricted  to  certain  age  group. 
+Besides,  these  images  are  not  safe  for  work  (NSFW)  in 
+which  employees  should  not  be  seen  accessing  such  con-
+tents.  Recently,  convolutional  neural  networks  have  been 
+successfully applied to many computer vision problems. In-
+spired  by  these  successes,  we  propose  a  mixture  of 
+convolutional  neural  networks  for  adult  content  recogni-
+tion.  Unlike  other  works,  our  method  is  formulated  on  a 
+weighted sum of multiple deep neural network models. The 
+weights of each CNN models are expressed as a linear re-
+gression  problem  learnt  using  Ordinary  Least  Squares 
+(OLS). Experimental results demonstrate that the proposed 
+model outperforms both single CNN model and the average 
+sum of CNN models in adult content recognition. 
+
+1.  Introduction 
+
+The number of Internet users increases rapidly since the 
+introduction  of  World  Wide  Web  (WWW)  in  1991.  With 
+the growth of Internet users, the content of the Internet be-
+comes huge. However, some contents such as adult content 
+are not appropriate for all users. Filtering websites and re-
+stricting  access  to  adult  images  are  important  problems 
+which  researchers  have  been  trying  to  solve  for  decades. 
+Different methods have been introduced to block or restrict 
+access to adult  websites such as IP address blocking, text 
+filtering, and image filtering. Internet Protocol (IP) address 
+blocking bans the adult content from being accessed by cer-
+tain users. This technique works by maintaining a list of IPs 
+or  Domain  Name  Servers  (DNS)  addresses  of  such  non-
+appropriate websites. For each request, an application agent 
+compares the requested website IP address or DNS with the 
+restricted  list.  The  request  is  denied  if  the  two  addresses 
+match, and approved otherwise. This method requires man-
+ual  keeping  and  maintenance  of  the  restricted  list  IPs, 
+which is difficult as the number of the adult content web-
+sites  grows  or  some  websites  change  their  addresses 
+regularly.   
+
+Filtering by text is the most popular method to block ac-
+cess  to  adult  content  websites.  The  text  filtering  method 
+blocks the access to a website if it contains at least one of 
+the restricted  words. Another  method is to use a  machine 
+
+learning algorithm to find the restricted words. Sometimes, 
+instead of using the machine learning technique to extract 
+keywords, a classification model is used directly to decide 
+whether the requested webpage is safe [1]. Nonetheless, the 
+text blocking method only understands texts and it cannot 
+work with standalone images. This problem arises when the 
+webpage does not contain the restricted keywords or does 
+not  contain  text  at  all.  Worse  still,  it  may  block  safe 
+webpages such as a  medical webpage as it contains some 
+restricted keywords.   
+
+Another  blocking  method  uses  image  filtering  [2]–[4]. 
+This method works directly on the images, trying to detect 
+if the image contains adult content. Detection directly from 
+images is favorable as it does not require a list of IPs and is 
+scalable to new websites; and is not sensitive to certain key-
+words.  However,  detecting  adult  content  from  images 
+requires a complex model as the images have different illu-
+minations, positions, backgrounds, resolutions or poses. In 
+addition, the image may contain part of the human body, or 
+the person in the image may be partially dressed. 
+
+  In this paper, we seek to automatically recognize adult 
+content from images using a mixture of convolutional neu-
+ral networks (CNNs). Figure 1 shows the architecture of the 
+proposed model in which eight CNNs models, followed by 
+Fully Connected (FC) layers, are used to vote for the possi-
+ble class of  the image. Each  model conforms to  the same 
+architecture  with  different  weights  computed  using  Ordi-
+nary Least Square (OLS). Usually, the training time of the 
+deep  CNN  is  very  long.  We  present  a  solution  to  create 
+eight models from a single architecture during training. A 
+checkpoint  is  set  to  identify  and  pick  the  eight  most-per-
+forming  models  during  the  training  session.  The  solution 
+selects  the  most  optimal  model  to  improve  accuracy,  and 
+helps reduce the training time drastically.   
+
+The  contributions  of  this  paper  are  as  follows:  1)  con-
+structing a mixture of multiple deep CNNs at no extra cost; 
+2) assigning different weights to every model by applying 
+OLS on all the model's output predictions 
+
+2.  Related work 
+
+The methods of recognizing adult content images can be 
+divided  into  four  categories:  color-based,  shape  infor-
+mation-based,  local  features-based,  and  deep  learning-
+based. 
+
+The  first  approach  analyzes  the  images  based  on  skin 
+color.  This  method  classifies  a  region  of  pixels  as  either 
+skin or non-skin. The skin color can be detected manually 
+using a color range [2], computed color histograms [5], or 
+
+Figure 1: The mixture of CNNs in which the eight CNNs models are combined linearly. 
+
+ 
+
+parametric  color  distribution  functions  [6].  Once  a  skin 
+color model of the image has been defined, the adult image 
+can be detected by a simple skin color histogram threshold, 
+or by passing the statistics of the skin information to a clas-
+sifier [4]. 
+
+Often,  the  skin  areas  contain  some  shape  information 
+such as ellipses or color compactness in certain regions of 
+the human body. The structure of a group of skin color re-
+gions  is  analyzed  to  see  how  they  are  connected.  Several 
+methods  have  been  proposed  to  detect  the  shape  features 
+such as contour-based features [2] where the outlines of the 
+skin  region  are  extracted  and  used  as  feature,  Hu  and 
+Zernike moments of the skin distribution [7], and Geometric 
+constraints which model the human body geometry [8]. 
+
+The third approach based on local features is inspired by 
+the  success  of  local  features  in  other  image  recognition 
+problems.  Scale  Invariant  Feature  Transform  (SIFT)  was 
+used in conjunction  with bag  of  words to recognize adult 
+images in [3]. The resulting features were trained using lin-
+ear Support Vector Machine (SVM). Another local features 
+called  Probabilistic  Latent  Semantic  Analysis  was  pro-
+posed in [9] to convert the image into a certain number of 
+topics for adult content recognition. 
+
+The  fourth  and  the  most  recent  type  of  image  content 
+recognition technique is the use of deep learning approach. 
+Moustafa  [10]  adopted  AlexNet-based  classifier  [11]  and 
+the GoogLeNet [12] model architecture. Both models were 
+treated  as  consultants  in  an  ensemble  classifier.  Simple 
+weighted average with equal weights was used to combine 
+the predictions from the two models. Another model based 
+on deep learning was proposed by Zhou, Kailong, et al. [13]. 
+A  pre-trained  caffenet  model  was  developed  and  the  last 
+two layers were fine-tuned with adult images dataset. 
+
+3.  The Proposed Mixture of CNN Model   
+
+The proposed network contains six convolutional layers 
+followed by two fully-connected layers as shown in Figure 
+2. The number of filters in each convolutional layer is mon-
+otonically increasing from 16 to 128. A 2x2 Max-Pooling 
+is  inserted  after  each  of  the  first  two  layers  and  after  the 
+fourth and the sixth convolutional layer. The size of each 
+filter is 3x3 with two pixel stride. To prevent the network 
+from shrinking after each convolution, one pixel is added 
+to  each  row  and  column  before  passing  the  image  or  the 
+feature to the next convolution. After the six convolutional 
+layers, the features bank is flattened and is passed to a fully-
+connected layer with 128 neurons. The output layer which 
+
+ 
+
+only contains one neuron is placed after the first fully-con-
+nected  layer,  and  before  the  sigmoid  activation  function. 
+Except for the last layer, a rectifier linear unit (Relu) is used 
+as the activation function which is less prone to vanishing 
+gradient  as  the  network  grows.  Another  reason  to  adapt 
+Relu  is  that  it  operates  very  fast  as  only  a  simple  𝑚𝑎𝑥 
+function is used. 
+
+To  prevent  the  network  from  over-fitting  the  data,  two 
+regularization techniques have been applied. The first tech-
+nique applies  𝐿2  weight decay with 0.01 on the first fully-
+connected layer. Dropout is also used to prevent over-fitting. 
+Dropout works by randomly zeroing some of the neurons 
+output at training to make the network more robust to small 
+changes. Dropout is placed directly after each Max-Pooling, 
+and also after the first fully-connected layer. The probabil-
+ities of these four dropouts are set to 0.1, 0.2, 0.3, 0.4, and 
+0.4, respectively. 
+
+The network is trained for 300 epochs, with each epoch 
+consisting of multiple batches optimized with Adam [14]. 
+The batch size is 128 and is trained with the cross-entropy 
+loss function. As adult image recognition is a binary prob-
+lem in which the output can be either positive or negative, 
+the binary cross-entropy is used 
+
+𝐿(𝑓, 𝑦) = − ∑ 𝑓 log 𝑦 + (1 − 𝑦) log(1 − 𝑓) 
+
+(1) 
+
+where  𝑓  is the predicted value and  𝑦  is the true value. 
+ 
+
+Generally, the training time of deep CNN is very long. 
+To  alleviate  this  problem,  we  introduce  a  way  to  extract 
+eight sub-models with different weights in a single training 
+session. 
+
+Algorithm 1 Generating Best Eight Performing Mod-
+els 
+Input:  Training  data,  X,  validation  data,  V,  set  of 
+epochs {1,2,…,300}, Q 
+Output: The top 8 models, top8 
+Procedure: 
+checkpoints  empty list 
+model  Deep CNN model with random weights 
+a  -∞ 
+for each epoch  ∈  Q   
+
+model  train model on X using Adam 
+accuracy  validate model on V 
+if accuracy > a 
+a  accuracy 
+add model to the checkpoints list 
+
+end 
+
+top8  top 8 models in checkpoints 
+return top8 
+
+ 
+
+Figure 2: The architecture of deep convolutional neural network model 
+
+ 
+
+ 
+
+All the eight models are validated on the validation set 
+
+and a  𝑁 × 8  matrix is constructed from the outputs 
+
+𝐅 = [
+
+𝑓11 … 𝑓81
+⋮
+⋮
+𝑓1𝑁 … 𝑓8𝑁
+
+⋱
+
+] 
+
+(2) 
+
+where N  is  the  number  samples  in  the  validation  set,  and 
+𝑓𝑖𝑁  is the predicted output of the i-th model of the N sam-
+ples. The eight models combined linearly as, 
+
+𝑧(𝑤) = {
+
+1,
+0,
+
+𝑓1𝑤1 + 𝑓2𝑤2 + ⋯ + 𝑓8𝑤8 > 0
+𝑂𝑡ℎ𝑒𝑟𝑤𝑖𝑠𝑒
+
+ 
+
+(3) 
+
+Finding  the  unknown  weights  vector  𝐖 = (𝑤1, … , 𝑤8) 
+that minimizes  𝑚𝑖𝑛𝐖 (𝐘 − 𝐙(𝐖))2  is possible as long as 
+N  >>  8.  This  problem  is  solved  using  Ordinary  Least 
+Squares (OLS) as, 
+
+𝐘 = [
+
+𝑓11 … 𝑓81
+⋮
+⋮
+𝑓1𝑁 … 𝑓8𝑁
+
+⋱
+
+] [
+
+𝑤1
+⋮
+𝑤8
+
+] 
+
+ 
+
+𝐖 = (𝐅T𝐅)−1𝐅T𝐘 
+
+(4) 
+
+(5) 
+
+Usually, a model with a higher accuracy will get a 
+higher weight than a model with lower accuracy. 
+
+ 
+
+4.  Dataset 
+
+Due to the nature of the problem, there is no recogniza-
+ble  public  dataset  on  adult  content  recognition.  In  this 
+research, we collected the data manually from the Internet 
+yielding 41,154 adult images. For negative images, images 
+from the ILSVRC-2013 [15] test set were used. These data 
+are  separated  into  training,  validation,  and  testing  sets  as 
+shown in Table 1.   
+
+Each  image  is  resized,  centered,  and  cropped  from  the 
+middle region to  128 × 128  pixels in RGB format. After 
+that,  all  the  images  are  normalized  and  mean  subtracted. 
+RGB images are fed as input to the network as they allow 
+the first convolutional layer to extract the skin color infor-
+mation  while the rest of the networks extract a  high level 
+features based on body shape or textures. 
+
+5.  Experimental results 
+
+The CNN model is trained on 56,914 images and the val-
+idation set is used to pick the best eight models. In order to 
+increase  the  generality  of  the  model,  the  training  data  is 
+augmented  by  flipping  each  image  horizontally.  This 
+increases the total training images to 113,828.   
+
+ 
+
+ 
+
+Table 1: Dataset distribution 
+
+ 
+
+Positive 
+(Porn) 
+
+Negative 
+(Neutral) 
+
+Training 
+
+28930 
+
+27984 
+
+Validation 
+
+Testing 
+
+Total 
+
+6092 
+
+6132 
+
+6104 
+
+6064 
+
+41154 
+
+40152 
+
+Total 
+
+56914 
+
+12196 
+
+12196 
+
+81306 
+
+We observe from Figure 3 that the accuracy increases in 
+a steady manner during training while the validation accu-
+racy  fluctuates  around  96%.  The  best  result  at  96.43%  is 
+achieved at epoch 50. 
+
+The CNN-Mixture  model  is  tested using the  validation 
+and testing sets. Table 2 shows the performance of the eight 
+models in CNN-Mixture on the validation and testing sets 
+with increasing OLS weights with respect to the number of 
+epoch. The performances of each model on the validation 
+and testing are very close. We observe that the OLS weights 
+of the models do not always reflect its performance on the 
+validation  or  testing  sets.  For  example,  the  second  model 
+has a higher OLS weight than the third and the fourth model. 
+In addition, the first model has a negative value which re-
+sults  in  opposite  contribution  to  the  output.  Hence,  we 
+conjecture that the weight values represent the contribution 
+of  the  model  to  the  overall  output  and  how  unique  the 
+model is as compared to other models.   
+
+Table  3  illustrates  the  performances  of  CNN-Mixture, 
+Average-Sum, and also single CNN on the validation and 
+testing  sets.  We  could  not  compare  our  result  with  other 
+works as their data are not freely available and their codes 
+are  not  publicly  accessible.  The  average  sum  model  is  a 
+linear combination of eight models. All weights are set to 
+0.125, so all models have the same contribution towards the 
+output prediction. In contrast,  CNN-Mixture has different 
+weights to reflect the performances of the individual model 
+on the validation set.   
+
+    We observe that the CNN-Mixture model gains small 
+but  constant  accuracy  gain  in  both  validation  and  testing 
+sets,  where  it  achieves  96.58%  on  validation  set  and 
+96.59% testing set, respectively. From the experimental re-
+sults, we find that CNN-Mixture can effectively distinguish 
+
+References 
+
+[1]  P. Y. Lee, S. C. Hui, and A. C. M. Fong, “Neural net-
+works for web content filtering,”  IEEE Intell. Syst., 
+vol. 17, no. 5, pp. 48–57, Sep. 2002. 
+
+[2]  W. A. Arentz and B. Olstad, “Classifying offensive 
+sites  based  on  image  content,”  Comput.  Vis.  Image 
+Underst., vol. 94, no. 1–3, pp. 295–310, Apr. 2004. 
+
+[3]  A. P. B. Lopes, S. E. F. de Avila, A. N. A. Peixoto, R. 
+S. Oliveira, and A. de A. Araújo, “A bag-of-features 
+approach based on Hue-SIFT descriptor for nude de-
+tection,” in Signal Processing Conference, 2009 17th 
+European, 2009, pp. 1552–1556. 
+
+[4]  H.  A.  Rowley,  Y.  Jing,  and  S.  Baluja,  Large  Scale 
+
+ 
+
+Image-Based Adult-Content Filtering. . 
+
+Figure 3: The performance of the model during training 
+
+ 
+an adult image from a neutral image. Moreover CNN-Mix-
+ture  outperforms  the  single  CNN  model  and  even  the 
+average sum of multiple CNNs. Compared with the average 
+sum, the CNN-Mixture uses the OLS to find the proper con-
+tribution for each model which help to better distinguish the 
+role of each model in extracting useful features for recog-
+nizing the image content.   
+
+ 
+Table 2: Performance of the eight models on validation 
+
+and testing sets with their weights 
+
+Model 
+
+Validation 
+
+Testing 
+
+Weight 
+
+1 
+
+2 
+
+3 
+
+4 
+
+5 
+
+6 
+
+7 
+
+8 
+ 
+
+95.74% 
+
+95.79% 
+
+95.85% 
+
+95.98% 
+
+96.00% 
+
+96.14% 
+
+96.25% 
+
+96.43% 
+
+95.74% 
+
+-0.0712 
+
+95.75% 
+
+0.1244 
+
+95.82% 
+
+0.0625 
+
+95.95% 
+
+0.0293 
+
+95.98% 
+
+0.1756 
+
+96.05% 
+
+0.0670 
+
+96.02% 
+
+0.2184 
+
+96.34% 
+
+0.3933 
+
+Table 3: Comparison of the models based on accuracy 
+
+ 
+
+CNN-Mixture  Average Sum  Single CNN 
+
+Validation 
+
+Testing 
+
+96.58% 
+
+96.59% 
+
+96.44% 
+
+96.43% 
+
+96.50% 
+
+96.34% 
+
+6.  Conclusion 
+
+In this paper, we propose an adult image recognition  system 
+using a mixture of CNN. The proposed model is end-to-end 
+learnable as compared to traditional solutions such as skin 
+color  detection.  The  proposed  method  is  formed  as  a  linear 
+regression problem where the weights are calculated using or-
+dinary  least  square.  The  proposed  model  is  tested  on  a 
+manually  collected  large  dataset  consisting  of  over  hundred 
+thousand  of  training  images.  Experiment  results  show  that 
+CNN-Mixture  is  effective  against  recognition  of  adult 
+images, yielding an accuracy of over 96% on the testing set.   
+
+ 
+
+[5]  M. J. Jones and J. M. Rehg, “Statistical Color Models 
+with Application to Skin Detection,” Int. J. Comput. 
+Vis., vol. 46, no. 1, pp. 81–96, Jan. 2002. 
+
+[6]  W.  Hu,  O.  Wu,  Z.  Chen,  Z.  Fu,  and  S.  Maybank, 
+“Recognition of Pornographic Web Pages by Classi-
+fying Texts and Images,” IEEE Trans. Pattern Anal. 
+Mach.  Intell.,  vol.  29,  no.  6,  pp.  1019–1034,  Jun. 
+2007. 
+
+[7]  Q.-F.  Zheng,  W.  Zeng,  W.-Q.  Wang,  and  W.  Gao, 
+“Shape-based  adult  image  detection,”  Int.  J.  Image 
+Graph., vol. 6, no. 1, pp. 115–124, Jan. 2006. 
+
+[8]  M. M. Fleck, D. A. Forsyth, and C. Bregler, “Finding 
+naked people,” in Computer Vision — ECCV ’96, B. 
+Buxton and R. Cipolla, Eds. Springer Berlin Heidel-
+berg, 1996, pp. 593–602. 
+
+[9]  R.  Lienhart  and  R.  Hauke,  “Filtering  adult  image 
+content  with  topic  models,”  in  2009  IEEE  Interna-
+tional Conference on Multimedia and Expo, 2009, pp. 
+1472–1475. 
+
+[10]  M.  Moustafa,  “Applying  deep  learning  to  classify 
+pornographic images and videos,”  ArXiv151108899 
+Cs, Nov. 2015. 
+
+[11]  A.  Krizhevsky,  I.  Sutskever,  and  G.  E.  Hinton, 
+“ImageNet  Classification  with  Deep  Convolutional 
+Neural  Networks,”  in  Advances  in  Neural  Infor-
+mation  Processing  Systems  25,  F.  Pereira,  C.  J.  C. 
+Burges, L. Bottou, and K. Q. Weinberger, Eds. Cur-
+ran Associates, Inc., 2012, pp. 1097–1105. 
+
+[12]  C. Szegedy et al., “Going deeper with convolutions,” 
+in  2015  IEEE  Conference  on  Computer  Vision  and 
+Pattern Recognition (CVPR), 2015, pp. 1–9. 
+
+[13]  K. Zhou, L. Zhuo, Z. Geng, J. Zhang, and X. G. Li, 
+“Convolutional  Neural  Networks  Based  Porno-
+graphic Image Classification,” in 2016 IEEE Second 
+International  Conference  on  Multimedia  Big  Data 
+(BigMM), 2016, pp. 206–209. 
+
+[14]  D. Kingma and J. Ba, “Adam: A Method for Stochas-
+
+tic Optimization,” ArXiv14126980 Cs, Dec. 2014. 
+
+[15]  “ImageNet Large Scale Visual Recognition Compe-
+tition  2013  (ILSVRC2013).”  [Online].  Available: 
+http://image-net.org/challenges/LSVRC/2013/.  [Ac-
+cessed: 27-Nov-2016]. 
+
+ 
+ 
+
+
